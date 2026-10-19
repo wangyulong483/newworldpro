@@ -170,28 +170,18 @@ class PixelScene:
                 break
 
         # -- berry bushes (leaves + edible berries) ---------------------
+        # NOTE: the placement below can fail all attempts on small worlds
+        # (measured: 480x300 and 800x500 generated **zero** bushes, i.e. no food
+        # at all, so every civilization starved regardless of its mechanisms).
+        # ``_ensure_food_supply`` afterwards guarantees a minimum number of
+        # bushes, so the food web exists at every world size.
         for _ in range(rng.randint(3, 5)):
             for _attempt in range(30):
                 cx = rng.randint(12, aw - 13)
                 if cx in reserved or any(abs(cx - other) < 22 for other in tree_positions):
                     continue
                 reserved.add(cx)
-                radius = rng.uniform(3.0, 5.0)
-                leaf_count = self._disc(cx, surface - radius * 0.8, radius, "leaf")
-                berry_positions = []
-                for _b in range(rng.randint(2, 5)):
-                    bx = int(cx + rng.uniform(-radius * 0.7, radius * 0.7))
-                    by = int(surface - radius * 0.8 + rng.uniform(-radius * 0.5, radius * 0.5))
-                    if self.grid[by, bx] == MATERIAL_INDEX["leaf"]:
-                        self._set(bx, by, "berry")
-                        berry_positions.append((bx, by))
-                self.berries.extend(berry_positions)
-                self._add_object(
-                    "bush", "浆果丛", int(cx - radius), int(cx + radius),
-                    int(surface - 2 * radius), surface, (74, 138, 66), leaf_count,
-                    260.0, 1600.0, blocking=False, berries=berry_positions,
-                )
-                self.objects[-1].berry_slots = list(berry_positions)
+                self._place_bush(cx, rng.uniform(3.0, 5.0), rng)
                 break
 
         # -- grass tufts, flowers ---------------------------------------
@@ -207,6 +197,57 @@ class PixelScene:
             self._set(x, surface - 1, "grass")
             self._set(x, surface - 2, "grass")
             self._set(x, surface - 3, "berry")
+
+        self._ensure_food_supply(reserved, tree_positions, rng)
+
+    # ------------------------------------------------------------------
+    def _place_bush(self, cx: int, radius: float, rng) -> int:
+        """Create one berry bush at atom column ``cx``; returns berries added."""
+        surface = self.surface
+        leaf_count = self._disc(cx, surface - radius * 0.8, radius, "leaf")
+        berry_positions: list[tuple[int, int]] = []
+        for _b in range(rng.randint(2, 5)):
+            bx = int(cx + rng.uniform(-radius * 0.7, radius * 0.7))
+            by = int(surface - radius * 0.8 + rng.uniform(-radius * 0.5, radius * 0.5))
+            if not (0 <= bx < self.aw and 0 <= by < self.ah):
+                continue
+            if self.grid[by, bx] == MATERIAL_INDEX["leaf"]:
+                self._set(bx, by, "berry")
+                berry_positions.append((bx, by))
+        self.berries.extend(berry_positions)
+        self._add_object(
+            "bush", "浆果丛", int(cx - radius), int(cx + radius),
+            int(surface - 2 * radius), surface, (74, 138, 66), leaf_count,
+            260.0, 1600.0, blocking=False, berries=berry_positions,
+        )
+        self.objects[-1].berry_slots = list(berry_positions)
+        return len(berry_positions)
+
+    def _ensure_food_supply(self, reserved, tree_positions, rng) -> None:
+        """Guarantee a minimum number of edible plants (food web exists).
+
+        The minimum scales with the *area* (not the width) so that the small
+        worlds used by experiments are viable and the full-screen world does not
+        become a berry farm: ``max(2, round(area_atoms / 40000))``.
+        """
+        wanted = max(2, round(self.aw * self.ah / 40000.0))
+        placed = sum(1 for obj in self.objects if obj.kind == "bush")
+        if placed >= wanted:
+            return
+        for _ in range((wanted - placed) * 40):
+            if placed >= wanted:
+                break
+            cx = rng.randint(12, self.aw - 13)
+            if cx in reserved:
+                continue
+            if any(abs(cx - other) < 12 for other in tree_positions):
+                continue
+            if any(abs(cx - int((obj.x0 + obj.x1) / 2)) < 18
+                   for obj in self.objects if obj.kind == "bush"):
+                continue
+            reserved.add(cx)
+            if self._place_bush(cx, rng.uniform(3.0, 5.0), rng) > 0:
+                placed += 1
 
     def _add_object(
         self,

@@ -73,7 +73,7 @@ class SocietyNetwork:
 
 
 class Society:
-    def __init__(self, seed: int = 0) -> None:
+    def __init__(self, seed: int = 0, *, on_death=None, config=None) -> None:
         self.network = SocietyNetwork(seed)
         self.affinity: dict[tuple[int, int], float] = {}
         self.events: list[SocietyEvent] = []
@@ -81,6 +81,30 @@ class Society:
         self.deaths = 0
         self.generation = 0
         self.last_context = np.zeros((0, SOCIAL_DIM))
+        #: callback(agent, *, t, cause) invoked **before** the agent is removed,
+        #: so the civilization layer can archive inventory/knowledge/memory
+        self.on_death = on_death
+        #: set by Population: the budgeted creation path (registry enforced)
+        self.population = None
+        self.config = config
+        #: demographic constants are overridable by the civilization config
+        self.lifespan_s = float(getattr(config, "lifespan_s", LIFESPAN_S))
+        self.maturity_s = float(getattr(config, "maturity_s", MATURITY_S))
+        self.pregnancy_s = float(getattr(config, "pregnancy_s", PREGNANCY_S))
+
+    # ------------------------------------------------------------------
+    def _can_create(self, world) -> bool:
+        """Whether a new agent may be created (hard historical budget).
+
+        The original code checked ``len(world.agents) >= MAX_POPULATION``, i.e.
+        the number of *living* agents.  Death removed the agent from the list and
+        therefore freed a slot, which let the cumulative number of created agents
+        exceed 8 (demonstrated in ``experiments/probe_cap_path.py``).  When a
+        population manager is attached we ask its registry instead.
+        """
+        if self.population is not None:
+            return bool(self.population.registry.can_create())
+        return len(world.agents) < MAX_POPULATION
 
     # ------------------------------------------------------------------
     def _pair(self, a: int, b: int) -> tuple[int, int]:
@@ -121,18 +145,25 @@ class Society:
                     current = self.affinity.get(key, 0.3)
                     self.affinity[key] = min(1.0, current + 0.03 * dt)
 
-        # aging and death
+        # aging and death (the historical record must survive: archive first)
         for agent in list(agents):
             agent.age += dt
-            if agent.age >= LIFESPAN_S or agent.physiology.energy <= 0.5:
+            if agent.age >= self.lifespan_s or agent.physiology.energy <= 0.5:
+                cause = "old_age" if agent.age >= self.lifespan_s else "starvation"
+                if self.on_death is not None:
+                    self.on_death(agent, t=world.t, cause=cause)
                 agent.alive = False
+                agent.died_at = world.t
+                agent.death_cause = cause
                 world.remove_agent(agent.agent_id)
                 self.deaths += 1
-                self.events.append(SocietyEvent("death", f"{agent.agent_id}号死亡（{agent.age:.0f}s）"))
+                self.events.append(
+                    SocietyEvent("death", f"{agent.agent_id}号死亡（{agent.age:.0f}s/{cause}）")
+                )
                 continue
 
         # pair bonding / pregnancy
-        adults = [agent for agent in world.agents if agent.alive and agent.age >= MATURITY_S]
+        adults = [agent for agent in world.agents if agent.alive and agent.age >= self.maturity_s]
         for female in [agent for agent in adults if agent.sex == "female" and not agent.pregnant]:
             for male in [agent for agent in adults if agent.sex == "male"]:
                 if abs(female.x - male.x) > 120.0:
@@ -141,10 +172,10 @@ class Society:
                     continue
                 if female.physiology.energy < 50.0 or male.physiology.energy < 40.0:
                     continue
-                if len(world.agents) >= MAX_POPULATION:
+                if not self._can_create(world):
                     break
                 female.pregnant = True
-                female.pregnancy_timer = PREGNANCY_S
+                female.pregnancy_timer = self.pregnancy_s
                 female.partner_id = male.agent_id
                 male.partner_id = female.agent_id
                 self.events.append(SocietyEvent("pregnant", f"{female.agent_id}号怀孕"))
@@ -156,25 +187,45 @@ class Society:
             if mother.pregnancy_timer > 0:
                 continue
             mother.pregnant = False
-            if len(world.agents) >= MAX_POPULATION:
+            if not self._can_create(world):
                 continue
             father_id = mother.partner_id
             child_sex = "female" if len(world.agents) % 2 == 0 else "male"
-            child = world.spawn(
-                x=mother.x + (30.0 if mother.facing > 0 else -30.0),
-                facing=mother.facing,
-                sex=child_sex,
-                age=0.0,
-                generation=mother.generation + 1,
-                body_scale=0.65,
-                parents=tuple(x for x in (mother.agent_id, father_id) if x is not None),
-                name=f"ender-{len(world.agents) + 1}",
-            )
+            child = None
+            if self.population is not None:
+                # budget-checked path: registers the child or returns None
+                child = self.population.create_agent(
+                    x=mother.x + (30.0 if mother.facing > 0 else -30.0),
+                    facing=mother.facing,
+                    sex=child_sex,
+                    age=0.0,
+                    generation=mother.generation + 1,
+                    body_scale=0.65,
+                    parents=tuple(x for x in (mother.agent_id, father_id) if x is not None),
+                    parent_id=mother.agent_id,
+                    cause="birth",
+                )
+            else:
+                # legacy standalone path (unit tests without a Population)
+                child = world.spawn(
+                    x=mother.x + (30.0 if mother.facing > 0 else -30.0),
+                    facing=mother.facing,
+                    sex=child_sex,
+                    age=0.0,
+                    generation=mother.generation + 1,
+                    body_scale=0.65,
+                    parents=tuple(x for x in (mother.agent_id, father_id) if x is not None),
+                    name=f"ender-{len(world.agents) + 1}",
+                )
+            if child is None:
+                continue
             self.generation = max(self.generation, child.generation)
             self.relate(mother.agent_id, child.agent_id, 0.9)
             if father_id is not None:
                 self.relate(father_id, child.agent_id, 0.7)
             self.births += 1
+            if self.population is not None:
+                self.population.note_birth(child, mother=mother, father_id=father_id)
             self.events.append(SocietyEvent("birth", f"{child.agent_id}号出生（第{child.generation}代，{child_sex}）"))
 
     # ------------------------------------------------------------------
@@ -186,7 +237,7 @@ class Society:
             progress = min(1.0, (world.community.wood + world.community.stone) / 6.0)
         return [
             1.0 if agent.sex == "female" else 0.0,
-            agent.age / LIFESPAN_S,
+            agent.age / max(1.0, self.lifespan_s),
             agent.physiology.energy / 100.0,
             agent.physiology.hydration / 100.0,
             agent.inventory.wood / 6.0,

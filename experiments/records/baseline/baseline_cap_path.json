@@ -1,0 +1,21 @@
+{
+  "max_population_constant": 8,
+  "created_initial": 8,
+  "alive_after_old_age_death": 7,
+  "births_after_death": 1,
+  "alive_at_end": 8,
+  "cumulative_created_upper_bound": 9,
+  "cap_broken": true,
+  "agent_ids_seen": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9
+  ],
+  "note": "原始代码用 len(world.agents)（存活数）判定上限；死亡释放名额后仍可生育，历史累计创建数因此可超过 8。本脚本是受控构造，不依赖长时程随机模拟。"
+}

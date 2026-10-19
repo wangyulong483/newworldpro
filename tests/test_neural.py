@@ -12,6 +12,14 @@ from newworld import World, make_config
 from newworld.autonomy import Mind
 from newworld.neural import FEATURE_DIM, MODES, NeuralInnerLife, NeuralPolicy, features
 
+# --- test-environment shim (Windows/DSH sandbox tempdir fix) ---------------
+try:  # "python -m unittest tests.test_neural"
+    from tests._env_compat import patch_tempdir
+except ImportError:  # "python -m unittest discover -s tests"
+    from _env_compat import patch_tempdir
+patch_tempdir()
+# -------------------------------------------------------------------------
+
 
 def small_world() -> World:
     world = World(make_config(800, 500), seed=0)

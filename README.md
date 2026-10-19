@@ -1,152 +1,184 @@
-# newworld — 像素原子社会（v0.8.0）
+# newworld — 像素原子社会 · 微型文明（v0.9.0）
 
 > **世界的原子就是像素。** 2560×1600 屏幕划分为 **512×320 个原子**（1 原子 = 5×5 px）；
-> 原子有材料与元素组成（水 H₂O、石头 SiO₂、草/叶/木纤维素、空气 N₂/O₂/Ar、肉体/骨骼），
-> 岩石、土壤、水、树、灌木、浆果、花、草都是物理法则下自然生成的原子团。
+> 原子有材料与元素组成（水 H₂O、石头 SiO₂、草/叶/木纤维素、空气 N₂/O₂/Ar、肉体/骨骼）。
 >
-> **社会版本 v0.8**：世界里有两个初始人物——**ender（男，橙色）** 和 **ender-2（女，玫瑰色 + 蝴蝶结）**。
-> 他们由原始蓝图人物构成，拥有各自的神经网络；**所有 agent 组成一个社会网络**（关系图 + 图聚合网络），
-> 会建立亲密关系、怀孕、生育、衰老、死亡；会**从自然界采集木头/石头、制作工具（斧头）、搭建社区（小屋 + 篝火）**。
+> **v0.9 文明版**：在**最多创建 8 个 Agent** 的硬约束下，个体拥有
+> **目标规划 / 持久化记忆 / 技术发现与验证 / 知识传承 / 公共设施 / 社会合作 / 环境扰动**，
+> 文明的发展、停滞、崩溃与灭绝全部由世界规则 + 个体决策 + 知识积累产生，
+> **没有固定剧情**。
 >
-> 打开程序 → **自动连续训练每个 agent 的神经网络**；**F2 → 所有 agent 从零训练**。
-> 桌面快捷方式：`newworld 像素世界`。
+> 原有的强化学习神经网络与世界模拟器被保留：MLP 策略（输入 40 → 64 → 32 → 58，
+> 行为克隆）继续驱动基础行为；旧 24 维 checkpoint **零初始化迁移**，行为逐比特一致。
 
 ![社会世界](assets/gui_pixel_world.png)
 
-![社会与工具/社区](assets/society_preview.png)
+---
+
+## 1. 快速开始
+
+```powershell
+# 依赖：Python 3.11+，numpy 与 pillow（见 requirements.txt）
+cd C:\Users\27826\Desktop\vscode_win_ws\ds_ws\newworld\newworldpro
+python -m pip install -r requirements.txt
+
+# 交互运行（全屏；F1 调试层，F2 从零训练所有 agent，空格暂停，Q 退出）
+python -m newworld --neural --debug
+
+# 无窗口单个体仿真
+python -m newworld --headless --steps 600 --log run.jsonl
+
+# 无窗口文明实验（推荐，含 A/B/C/D 消融）
+python -m newworld.simulation --group D --seed 0 --steps 24000 --dt 0.05
+
+# 完整消融实验（4 组 × 3 随机种子，结果写入 experiments/results/ablation_final/）
+python experiments/run_ablation.py --groups A B C D --seeds 0 1 2 --steps 24000 --dt 0.05
+
+# 测试（沙箱环境请先设置可写 TEMP；见 §9）
+python -m unittest discover -s tests
+```
+
+桌面快捷方式：`newworld 像素世界`（`start_world.bat`）。
 
 ---
 
-## 1. 两个人物与多智能体
+## 2. 硬约束：最多创建 8 个 Agent
 
-| 角色 | 特征 |
-| --- | --- |
-| ender（0 号） | 男性，橙色原始人物，四条腿 + 蓝色思考气泡 |
-| ender-2（1 号） | 女性，玫瑰色身体、丁香色气泡、头顶蝴蝶结 |
-| 孩子 | 由父母神经网络交叉+变异生成；体型 0.65 倍，第 1/2/… 代，随机性别 |
+- `CivilizationConfig.max_agents_created = 8` 约束的是**历史累计创建数**，
+  不是当前存活数。`world.registry.total_created` 只增不减。
+- 唯一受约束的创建路径是 `World.create_agent()` →
+  `AgentRegistry.register()`；第 9 次创建直接返回 `None` 并记录拒绝
+  （`world.creation_denied`）。
+- `World.spawn()` 保留为几何/测试原语（不做预算检查），模拟内部不得使用。
+- 死亡个体：先归档 `AgentRecord`（`died_at` / `cause` / 库存 / 掌握知识 / 技能 /
+  记忆 / 亲子关系），再从存活列表移除，脑对象销毁 → **不能再行动**。
+- 8 个名额用完后，世界不会再生新个体；**即使存活为 0 也不会复活人口**。
+- "当前存活人口"（`registry.alive_count()`）与"历史累计创建人口"
+  （`registry.total_created`）是两个独立指标，调试层与 telemetry 分别展示。
 
-- 每个人物都有**独立**的 `NeuralPolicy`（自己的权重文件），不是共享一个策略。
-- 孩子继承父母两套网络的交叉权重并加入变异；出生后立即拥有自己的感知与行为。
-- 渲染支持多人物：不同颜色、体型、独立说话气泡和影子。
+## 3. 决策层：规划 → 教师 → 神经网络
 
-## 2. 社会网络（每个 agent 的 NN + 社会网络）
+每个个体每帧按顺序尝试：
 
-**每个人物**：24 维感知/生理输入 → 64 → 32 → 58 输出（5 行为模式 + 3 移动 + 跳/说 + 3×16 语言头）。
+1. **基础设施反射**：能量低时前往活跃的粮仓/篝火/小屋休息（技术真实改变生存）；
+2. **目标规划层** `goals.GoalManager`：由需求/库存/知识候选/设施损耗/种群名额
+   生成目标 → 计划（gather→craft/build/experiment）→ 结构化步骤执行；
+   无进展 45 世界秒/240 步 → 重规划；连续 3 次失败 → 放弃 + 冷却；
+3. **社会技能教师** `social.SocialLife`：采集/制作/建造/求偶；
+   **生存优先**——能量/水分过低时返回 `None`，把控制权交回下层；
+4. **神经网络** `neural.NeuralPolicy`：40 维观测 → 64 → 32 → 58（行为克隆）。
 
-**社会网络**（`newworld/society.py::SocietyNetwork`）：对所有 agent 的社会状态做图聚合：
+> 原始实现的缺陷修复：教师不再在社区建成后永久接管（原实现导致全员饿死，
+> 实测 t=537s 全族灭绝）；浆果被采空后能再生；小世界不再缺少浆果丛。
 
-```
-每个 agent 的 11 维社会/生理特征（性别、年龄、能量、水分、木材、石头、
-社区进度、社区是否建成、平均亲密、代数、体型）
-        + 关系图 affinity 的行归一化消息（每个 agent 是节点，亲密是边权）
-        → 22 维 → 12 tanh → 6 维社会上下文
-```
+## 4. 文明层：知识、技术、设施、传承
 
-- 每个 agent 得到自己的 **6 维社会上下文**，写入 `character.social_context`，供其行为/调试使用。
-- 关系是**动态的**：距离近会提升亲密；社会网络每步重算；调试层显示 `关系：0↔1 亲密 1.00`。
-- 社会网络权重持久化到 `assets/society.npz`；F2 会重新随机化它，自动训练会继续保存。
+- **技术目录（世界规则，非剧情）**：石斧、纤维绳、背篓、篝火、水井、小屋、粮仓。
+  每条都有前置技术与真实数值效果（采集×2、负重+4、夜间/休息恢复、取水半径、
+  食物储存）。发现顺序由个体行为与随机实验决定，允许永远不发明。
+- **知识状态机**：`hypothesis → verified → invalidated`；
+  只有 `verified` 可进入 `craft/build` 计划；每次验证都走
+  `Technology.simulate_recipe`（真实扣材料、产产物、按难度可能失败）。
+- **依赖图**：`KnowledgeStore.edges()/depth()`；只有已验证子图计入技术深度。
+- **知识传播**：邻近教学（距离 + 概率规则）、出生继承（已验证知识 + 程序记忆）、
+  死亡后档案永久保留（可追踪"谁发现/谁掌握/何时遗失"）。
+- **公共设施**：建造后按半径提供真实效果（能量/水/休息），随时间损耗；
+  维护消耗材料。设施失效会影响 `collapse_state`。
+- **社会合作**：饱食个体把能量分享给附近濒危个体（真实资源转移，计入
+  `cooperation_benefit` 与 `cooperation_index`）。
 
-## 3. 生育、衰老、死亡
+## 5. 观测与记忆（神经网络扩维）
 
-- 成熟年龄 **70 s**；成年男女距离 <120 px、亲密 >0.55、能量充足时，女性怀孕（妊娠 **24 s**）。
-- 出生：在母亲旁边生成真实新 agent（随机性别、第 N 代、体型 0.65、父母 id），孩子有自己的神经网络。
-- 死亡：寿命 **900 s** 或能量耗尽；死亡后从世界与所有脑中移除。
-- 人口上限 8；调试面板显示 `人口 · 社会网络 出生/死亡/代数/关系数 · 社区进度`。
+- 输入 24 → **40**：原 24 维感知/生理 + 8 维记忆摘要 + 4 维目标/计划 + 4 维文明上下文。
+- 旧 24 维 checkpoint 自动迁移：新增输入列权重为 0，输出**逐比特一致**；
+  `expanded_observation=False`（A/B 组）时上下文恒为 0。
+- 个体情景记忆 / 程序记忆保存在 `MemoryStore`，死亡后仍保留（`archive`）。
 
-## 4. 从自然界取得材料 → 工具 → 社区
+## 6. 环境、昼夜、物理（原有能力）
 
-- **采集**：手够到树木/岩石的原子，直接移除那个 wood/stone 原子，放入 `Inventory`（工具可翻倍采集）。
-- **工具**：2 木头 + 1 石头 → **石斧**（`craft`），提高采集效率。
-- **社区**：社区站点在屏幕中央；把 2 木头 +1 石头带回并 `contribute`；累计 **4 木头 + 2 石头** → 建造小屋和篝火。
-- 渲染：社区地面会出现木料堆、木屋、房顶、门和篝火；调试层显示 `社区 木/4 石/2 结构/篝火`。
-- 社会技能目前是**可教学教师策略**（`newworld/social.py`）：它负责采集/制作/建造/求偶的执行，神经网络负责基础行走/觅食/睡眠等行为；下一步会把技能层也训练成独立网络。
+- 昼夜（600 s/天）、太阳高度、气温、阴影；原子级破坏/生长、土壤水循环。
+- 力学（重力 9.80665、弹道跳跃）、声学（343.2 m/s、语言气泡）、热学、电磁学/黑体太阳、视觉（瞳孔/视网膜/扫视）、听觉。
+- **环境扰动（P4，seed 驱动）**：干旱（土壤湿度骤降、停止降雨）、风暴（摧毁浆果丛）、
+  资源枯竭（移除整棵树/整块岩石）。事件写入 JSONL，可影响发展路线。
 
-## 5. 自动训练 / F2 从零训练（多 agent）
-
-- 打开程序：加载每个 agent 的 `assets/agents/agent_<id>.npz`（缺失时从基础 checkpoint 复制/初始化），
-  后台每约 30 秒对**每个 agent** 做一轮连续训练并保存；F1 面板显示 `神经网络：训练中 · 自动连续训练中…` 与模式准确率。
-- **F2**：为所有 agent 重新随机初始化网络（社会网络也重置），从零预训练每人的网络，覆盖各自 checkpoint；之后自动训练继续。
-- 训练数据来自手写 homeostatic 教师（走/觅食/吃/喝/睡），语言头学习每个内部状态的 3 音节词（原始语言）。
-
-## 6. 生态、昼夜、物理
-
-- 昼夜（600 s/天，太阳高度角日变化）、阴影、空气温度；白天/夜晚天空颜色、月亮、星星。
-- 原子级破坏/生长：踩碎草叶→碎片；浆果/草生长；土壤湿度、蒸发、降雨、水位。
-- 力学（重力 9.80665、弹道跳跃）、声学（343.2 m/s、SPL、语言气泡）、热学（Stefan–Boltzmann、体温）、
-  电磁学/黑体太阳、视觉（瞳孔/视网膜/扫视）、听觉。
-
-## 7. 中文调试层（示例）
-
-```text
-newworld v0.8.0   第1天 11:59  正午（白昼）
-太阳高度 +65.0°  白昼强度 0.91  环境温度 22.7°C  fps 59.6
-神经网络：训练中 · 连续训练完成·第1轮·2个agent 模式准确率 0.93
-人口：人口 2 · 社会网络 出生0 死亡0 代数0 关系数1 · 社区 木4/4 石2/2 结构1 篝火
-关系：0↔1 亲密 1.00
-角色：social  位置 x=1279 ...
-生态：土壤湿度 ... 破坏 ... 生长 ...
-```
-
-## 8. 运行
-
-```powershell
-# 双击桌面快捷方式（自动连续训练）
-cd C:\Users\27826\Desktop\vscode_win_ws\ds_ws\newworld\newworldpro
-python -m newworld --neural --debug
-
-# F1 调试 / F2 从零训练全部 agent / 空格暂停 / Q 退出
-
-python -m newworld --preview
-python -m newworld --headless --steps 600 --log run.jsonl
-python -m unittest discover -s tests
-python tools/train_neural_policy.py --mode fine
-```
-
-## 9. 代码结构（新增部分）
+## 7. 代码结构
 
 ```text
 newworld/
-├── population.py   ← 多 agent 管理：每人独立脑、社会更新、出生/死亡同步
-├── society.py      ← SocietyNetwork 图网络、亲密关系、怀孕/出生/死亡
-├── technology.py   ← Inventory、社区站点、采集/石斧/建造
-├── social.py       ← 工具/社区/求偶的技能教师
-├── art.py/body.py  ← 原始人物 + 女性配色/蝴蝶结 + 儿童缩放
-├── neural.py/training.py ← 每人 MLP + 语言头 + 教师模仿
-├── app_tk.py       ← 多人物渲染、F1 中文、F2 从零训练、自动连续训练
-└── render.py       ← 多人物、社区小屋/篝火、调试层
-assets/
-├── agents/agent_<id>.npz   ← 每人独立网络
-├── society.npz             ← 社会网络
-├── neural_policy.npz       ← 基础网络
-└── 预览图
+├── population.py    ← 集成层：决策顺序、创建/死亡/继承/教学/设施/指标
+├── goals.py         ← P1 目标/计划/规划器（反卡死、重规划）
+├── knowledge.py     ← P2 技术目录、验证状态机、依赖图
+├── memory.py        ← P3 情景/程序记忆、传承、死亡归档
+├── civilization.py  ← P3 历史注册表、设施、契约、collapse/灭绝
+├── telemetry.py     ← P0/P4 指标采集（19 指标）+ 事件 JSONL
+├── simulation.py    ← headless 文明运行器 + 环境扰动 + CLI
+├── world.py         ← 世界 + 注册表/知识/记忆/文明服务 + 存档
+├── technology.py    ← 数据驱动配方执行、验证、设施效果
+├── society.py       ← 关系图网络、生育/衰老/死亡（死亡回调归档）
+├── neural.py        ← 40 维输入的 MLP + 旧 checkpoint 迁移
+├── training.py      ← 行为克隆训练（保留原流程）
+├── social.py        ← 技能教师（生存优先）
+├── pixelworld.py / ecology.py / physiology.py / physics.py / daynight.py …
+└── app_tk.py / render.py / cli.py ← 交互与渲染（调试层显示人口/累计创建/知识）
+experiments/
+├── probe_baseline.py / probe_long.py / probe_cap_path.py  ← P0 诊断
+├── run_ablation.py                                        ← A/B/C/D × 多 seed
+└── results/                                               ← 实验产物（JSON/CSV/报告）
+docs/
+├── architecture_audit.md      ← P0 代码审计（含实测基线）
+├── civilization_design.md     ← 机制设计与接口契约
+├── implementation_plan.md     ← 分阶段改造记录
+├── experiment_protocol.md     ← 指标定义与实验协议
+├── architecture.md            ← 改造后模块关系与数据流
+└── final_report.md            ← 最终改造报告（已完成/未完成/风险/下一步）
 ```
 
-## 10. 验证
+## 8. 测试
 
-- `python -m unittest discover -s tests` → **111 tests OK**（社会/图网络/生育死亡/工具社区/身体/生态/神经/训练/物理/视觉/CLI/预览）。
-- 实机：两个人物、女性外观、独立气泡、出生儿童、社区建成、调试行。
-- 自动训练启动 → 每个 agent 一轮训练完成（模式准确率约 0.93）。
-- F2 从零训练路径已实现（`Population.reset_policies` + `pretrain` 每人网络）。
+```powershell
+cd newworldpro
+$env:TEMP = (Resolve-Path .tmp).Path   # 沙箱/受限环境下需要（见 §9）
+python -m unittest discover -s tests
+```
 
-## 11. 参考（社会仿真/协作/工具文化）
+覆盖：原有世界/物理/生态/神经/训练/视觉/社会测试（111 个）+ 新增
+目标规划（37）、知识库（40）、记忆（14）、文明注册表/设施（28）、指标（34）、
+硬约束/死亡（8）、知识集成（8）、传承（7）、存档（2）、观测迁移（8）、
+实验脚本等。
 
-- Bonabeau, *Agent-based modeling: Methods and techniques for simulating human systems*, PNAS 2002:
-  <https://www.pnas.org/doi/full/10.1073/pnas.082080899>
-- Epstein & Axtell, *Growing Artificial Societies*:
-  <https://books.google.com.sg/books?id=8sXENe8QrmYC>
+## 9. 沙箱 / Windows 临时目录说明
+
+在受限沙箱中 `tempfile.mkdtemp()` 创建的目录可能不可写（Windows ACL），
+会让 6 个与临时目录有关的测试出现假错误。项目提供 `tests/_env_compat.py`
+垫片（把 `mkdtemp` 替换为普通创建，语义不变），相关测试模块已引入；
+运行时建议把 `TEMP` 指到工作区内（如上）。
+
+## 10. 查看实验结果
+
+```powershell
+# 单次运行：完整指标 + 事件 + 知识/设施状态
+python -m newworld.simulation --group D --seed 0 --steps 24000 --dt 0.05 --json run_D0.json
+
+# 消融：4 组 × 3 seed，输出 runs.csv / aggregate.json / report.md
+python experiments/run_ablation.py --seeds 0 1 2 --steps 24000 --dt 0.05
+Get-Content experiments\results\ablation_final\report.md
+```
+
+指标定义见 `docs/experiment_protocol.md`；最终结论与局限见 `docs/final_report.md`。
+
+## 11. 已知限制（如实）
+
+- 主路径没有奖励函数（原项目是监督式行为克隆），因此**没有**引入 PPO/DQN；
+  规划/知识层用规则 + 代价搜索实现。
+- 8 人累计创建上限意味着单个生命周期最终必然灭绝（约 900–1050 世界秒）；
+  "文明延续"只能体现为知识档案、代际继承与积累速度，而不是人口增长。
+- `deliver` 目前是 contribute 别名；维护仅在设施失效后触发；环境扰动只有三种。
+- 时间尺度为可观测性压缩（寿命 900 世界秒），不是人口学标定。
+
+## 12. 参考
+
+- Bonabeau, *Agent-based modeling*, PNAS 2002: <https://www.pnas.org/doi/full/10.1073/pnas.082080899>
+- Epstein & Axtell, *Growing Artificial Societies*: <https://books.google.com.sg/books?id=8sXENe8QrmYC>
 - *Multi-Agent, Human-Agent and Beyond: A Survey on Cooperation in Social Dilemmas*:
   <http://export.arxiv.org/pdf/2402.17270v2>
-- *From individual decisions to team emergence: a survey on explainable cooperative MARL*:
-  <https://link.springer.com/article/10.1007/s10462-026-11598-3>
-- *Multi-Agent Cooperation via Graph Convolutional Reinforcement Learning*:
-  <https://xplorestaging.ieee.org/document/11388085>
-- 社会学习与工具文化：<https://www.nature.com/articles/s41599-021-00829-3.pdf>、
-  <https://europepmc.org/backend/ptpmcrender.fcgi?accid=PMC3049103&blobtype=pdf>
-- 既有人眼/物理/声学参考见前几节与 `ref/`。
-
-## 12. 已知限制
-
-- 工具/社区/求偶技能目前由教师规则执行；基础行为由神经网络学习；技能层尚未成为独立可训练网络。
-- 社会网络是图聚合网络，但当前主要做关系上下文，不是完整的社会规范/声誉学习；育儿投资、亲属网络、资源继承仍是简化。
-- 生育/死亡参数（70 s 成熟、24 s 妊娠、900 s 寿命）是为了可观察性压缩过的；不是人口学标定。
-- 世界 2-D 侧视；无硬碰撞；视觉 1-D 方位角视网膜；简化生态。
+- 既有人眼/物理/声学参考见 `ref/` 与 `docs/architecture_audit.md`。

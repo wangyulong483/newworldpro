@@ -1,0 +1,290 @@
+{
+  "config": {
+    "steps": 40000,
+    "dt": 0.05,
+    "size": [
+      800,
+      500
+    ],
+    "seed": 0,
+    "perception": false,
+    "world_version": "0.8.0"
+  },
+  "timing": {
+    "wall_s": 2.18,
+    "steps_per_s": 4933.3
+  },
+  "cumulative_created": 8,
+  "created_at": {
+    "0": 0.0,
+    "1": 0.0,
+    "2": 32.3,
+    "3": 56.3,
+    "4": 80.3,
+    "5": 104.3,
+    "6": 128.3,
+    "7": 152.3
+  },
+  "max_alive_ever": 8,
+  "deaths": [
+    {
+      "t": 431.15,
+      "agent_id": 3,
+      "age": 374.9,
+      "energy": 0.49,
+      "hydration": 57.38,
+      "cause": "starved",
+      "inventory": {
+        "wood": 0,
+        "stone": 0,
+        "tool": null
+      }
+    },
+    {
+      "t": 432.05,
+      "agent_id": 2,
+      "age": 399.8,
+      "energy": 0.49,
+      "hydration": 56.09,
+      "cause": "starved",
+      "inventory": {
+        "wood": 0,
+        "stone": 0,
+        "tool": null
+      }
+    },
+    {
+      "t": 448.6,
+      "agent_id": 4,
+      "age": 368.3,
+      "energy": 0.5,
+      "hydration": 57.64,
+      "cause": "starved",
+      "inventory": {
+        "wood": 0,
+        "stone": 0,
+        "tool": null
+      }
+    },
+    {
+      "t": 484.05,
+      "agent_id": 5,
+      "age": 379.8,
+      "energy": 0.5,
+      "hydration": 57.29,
+      "cause": "starved",
+      "inventory": {
+        "wood": 0,
+        "stone": 0,
+        "tool": null
+      }
+    },
+    {
+      "t": 523.0,
+      "agent_id": 6,
+      "age": 394.7,
+      "energy": 0.49,
+      "hydration": 56.3,
+      "cause": "starved",
+      "inventory": {
+        "wood": 0,
+        "stone": 0,
+        "tool": null
+      }
+    },
+    {
+      "t": 532.9,
+      "agent_id": 1,
+      "age": 662.9,
+      "energy": 0.5,
+      "hydration": 48.01,
+      "cause": "starved",
+      "inventory": {
+        "wood": 0,
+        "stone": 1,
+        "tool": "axe"
+      }
+    },
+    {
+      "t": 533.0,
+      "agent_id": 0,
+      "age": 683.0,
+      "energy": 0.5,
+      "hydration": 48.01,
+      "cause": "starved",
+      "inventory": {
+        "wood": 0,
+        "stone": 1,
+        "tool": "axe"
+      }
+    },
+    {
+      "t": 537.55,
+      "agent_id": 7,
+      "age": 385.3,
+      "energy": 0.0,
+      "hydration": 57.61,
+      "cause": "starved",
+      "inventory": {
+        "wood": 0,
+        "stone": 0,
+        "tool": null
+      }
+    }
+  ],
+  "first_starvation_t": 431.15,
+  "extinct": true,
+  "extinction_t": 537.55,
+  "cap_expected": 8,
+  "cap_violated": false,
+  "final_alive": 0,
+  "community_built": true,
+  "behavior_state_steps": {
+    "social": 55826,
+    "explore": 8505,
+    "rest": 2874,
+    "gather": 107,
+    "forage": 52,
+    "craft": 2,
+    "build": 2
+  },
+  "snapshots": [
+    {
+      "t": 0.1,
+      "alive": 2,
+      "cumulative_created": 2,
+      "deaths": 0,
+      "community_built": false,
+      "ages": [
+        150,
+        130
+      ],
+      "energies": [
+        78,
+        78
+      ]
+    },
+    {
+      "t": 100.0,
+      "alive": 5,
+      "cumulative_created": 5,
+      "deaths": 0,
+      "community_built": true,
+      "ages": [
+        250,
+        230,
+        68,
+        44,
+        20
+      ],
+      "energies": [
+        63,
+        63,
+        49,
+        57,
+        69
+      ]
+    },
+    {
+      "t": 200.1,
+      "alive": 8,
+      "cumulative_created": 8,
+      "deaths": 0,
+      "community_built": true,
+      "ages": [
+        350,
+        330,
+        168,
+        144,
+        120,
+        96,
+        72,
+        48
+      ],
+      "energies": [
+        49,
+        49,
+        34,
+        34,
+        37,
+        42,
+        47,
+        58
+      ]
+    },
+    {
+      "t": 300.1,
+      "alive": 8,
+      "cumulative_created": 8,
+      "deaths": 0,
+      "community_built": true,
+      "ages": [
+        450,
+        430,
+        268,
+        244,
+        220,
+        196,
+        172,
+        148
+      ],
+      "energies": [
+        34,
+        34,
+        20,
+        20,
+        22,
+        27,
+        33,
+        35
+      ]
+    },
+    {
+      "t": 400.1,
+      "alive": 8,
+      "cumulative_created": 8,
+      "deaths": 0,
+      "community_built": true,
+      "ages": [
+        550,
+        530,
+        368,
+        344,
+        320,
+        296,
+        272,
+        248
+      ],
+      "energies": [
+        20,
+        20,
+        5,
+        5,
+        8,
+        13,
+        18,
+        21
+      ]
+    },
+    {
+      "t": 500.1,
+      "alive": 4,
+      "cumulative_created": 8,
+      "deaths": 4,
+      "community_built": true,
+      "ages": [
+        650,
+        630,
+        372,
+        348
+      ],
+      "energies": [
+        5,
+        5,
+        4,
+        6
+      ]
+    }
+  ],
+  "note": "原始系统：死亡即删除、无历史注册表、无知识/记忆/目标；上限只限制存活数。"
+}

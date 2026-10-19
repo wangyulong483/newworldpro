@@ -161,7 +161,15 @@ class Ecology:
     # ------------------------------------------------------------------
     def _grow(self, scene, daylight: float) -> bool:
         changed = False
-        # berry bushes regrow their berries on wet, sunlit days
+        # berry bushes regrow their berries on wet, sunlit days.
+        #
+        # P0 defect fix: the original condition required the slot atom to still be
+        # ``leaf``, but eating a berry clears that atom (``pick_berry``), so a bush
+        # could only ever produce its initial berries — the documented regrowth
+        # rule was unreachable and a finite food supply was eaten to extinction.
+        # A slot may regrow when it is leaf (fresh bush) or empty air (picked).
+        air = 0
+        leaf = materials.MATERIAL_INDEX["leaf"]
         for obj in scene.objects:
             if getattr(obj, "kind", "") != "bush":
                 continue
@@ -169,7 +177,7 @@ class Ecology:
                 if slot in scene.berries:
                     continue
                 x, y = slot
-                if scene.grid[y, x] != materials.MATERIAL_INDEX["leaf"]:
+                if scene.grid[y, x] not in (leaf, air):
                     continue
                 moisture = float(self.moisture[y, x])
                 if moisture > 0.22 and daylight > 0.08 and self.rng.random() < 0.30:

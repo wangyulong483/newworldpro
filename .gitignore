@@ -17,3 +17,7 @@ frames/
 .tmp/
 experiments/results/
 
+
+# scratch dirs created by permission probes / legacy tempdir tests
+probe_dir/
+tmp*/

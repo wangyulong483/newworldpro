@@ -187,6 +187,24 @@ def debug_lines_zh(world: World, mind, *, fps: float = 0.0, paused: bool = False
         f"材料：{scene.material_composition_text()}",
         "按键：空格 暂停  ·  F1 开关调试  ·  Q/Esc 关闭",
     ]
+    # -- civilization layer (only when the world carries it) --------------
+    registry = getattr(world, "registry", None)
+    if registry is not None:
+        limit = getattr(getattr(world, "civ_config", None), "max_agents_created", 8)
+        lines.insert(
+            3,
+            f"人口：存活 {registry.alive_count()} / 累计创建 {registry.total_created}/"
+            f"{limit}  死亡 {registry.total_deaths}",
+        )
+        knowledge = getattr(world, "knowledge", None)
+        civilization = getattr(world, "civilization", None)
+        parts = []
+        if knowledge is not None:
+            parts.append(knowledge.summary_zh())
+        if civilization is not None:
+            parts.append(civilization.summary_zh())
+        if parts:
+            lines.insert(4, "文明：" + "  ·  ".join(parts))
     return lines
 
 

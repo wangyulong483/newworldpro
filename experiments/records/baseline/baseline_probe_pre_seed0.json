@@ -1,0 +1,165 @@
+{
+  "config": {
+    "size": [
+      800,
+      500
+    ],
+    "steps": 2400,
+    "dt": 0.05,
+    "seed": 0,
+    "world_version": "0.8.0",
+    "network": "MLP 24-64-32-58 (BC, no reward)"
+  },
+  "timing": {
+    "wall_s": 54.364,
+    "steps_per_s": 44.1
+  },
+  "population": {
+    "alive_start": 2,
+    "alive_end": 6,
+    "births": 4,
+    "deaths": 0,
+    "total_agents_in_world": 6,
+    "max_alive": 6
+  },
+  "action_distribution": {
+    "behavior_state": {
+      "explore": 0.4236,
+      "social": 0.3088,
+      "rest": 0.2493,
+      "gather": 0.012,
+      "forage": 0.0058,
+      "craft": 0.0002,
+      "build": 0.0002
+    },
+    "neural_mode": {},
+    "teacher_override": {
+      "yes": 5153,
+      "no": 3783
+    }
+  },
+  "repetition": {
+    "repeat_run_max": 2227,
+    "no_progress_step_ratio": 0.0,
+    "state_change_step_ratio": 1.0
+  },
+  "economy": {
+    "tech_calls": {
+      "harvest_attempt": 17,
+      "harvest_wood": 6,
+      "harvest_stone": 4,
+      "craft_attempt": 2,
+      "craft_ok": 2,
+      "contribute_attempt": 2,
+      "contribute_ok": 2
+    },
+    "community_wood": 4,
+    "community_stone": 2,
+    "community_structures": 1,
+    "community_built": true,
+    "inventory_end": {
+      "0": {
+        "wood": 0,
+        "stone": 1,
+        "tool": "axe"
+      },
+      "1": {
+        "wood": 0,
+        "stone": 1,
+        "tool": "axe"
+      },
+      "2": {
+        "wood": 0,
+        "stone": 0,
+        "tool": null
+      },
+      "3": {
+        "wood": 0,
+        "stone": 0,
+        "tool": null
+      },
+      "4": {
+        "wood": 0,
+        "stone": 0,
+        "tool": null
+      },
+      "5": {
+        "wood": 0,
+        "stone": 0,
+        "tool": null
+      }
+    }
+  },
+  "goal_tracking": {
+    "goals_defined": 0,
+    "goals_completed": 0,
+    "goals_failed": 0,
+    "note": "原始系统没有目标/计划数据结构（审计结论 §3.1-5）"
+  },
+  "reward": {
+    "steps": 2400,
+    "scalar_reward_total": 0.0,
+    "reward_per_step": 0.0,
+    "reward_functions_in_env_py": [
+      "ZeroReward",
+      "AliveReward",
+      "ExplorationReward",
+      "CenterReward"
+    ],
+    "note": "env.py 的奖励函数未被主循环使用；population/neural 路径是行为克隆，无奖励"
+  },
+  "per_agent": {
+    "0": {
+      "steps": 2400,
+      "states": {
+        "gather": 54,
+        "forage": 26,
+        "craft": 1,
+        "build": 1,
+        "social": 2318
+      },
+      "tool_ever": true
+    },
+    "1": {
+      "steps": 2400,
+      "states": {
+        "gather": 53,
+        "forage": 26,
+        "craft": 1,
+        "build": 1,
+        "social": 90,
+        "rest": 2229
+      },
+      "tool_ever": true
+    },
+    "2": {
+      "steps": 1755,
+      "states": {
+        "explore": 1402,
+        "social": 353
+      },
+      "tool_ever": false
+    },
+    "3": {
+      "steps": 1275,
+      "states": {
+        "explore": 1275
+      },
+      "tool_ever": false
+    },
+    "4": {
+      "steps": 795,
+      "states": {
+        "explore": 795
+      },
+      "tool_ever": false
+    },
+    "5": {
+      "steps": 315,
+      "states": {
+        "explore": 315
+      },
+      "tool_ever": false
+    }
+  }
+}

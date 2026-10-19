@@ -31,7 +31,14 @@ from .materials import ATOM_SIZE
 # ---------------------------------------------------------------------------
 # architecture
 # ---------------------------------------------------------------------------
-FEATURE_DIM = 24
+#: number of sensory/physiology features available before the civilization layer
+LEGACY_FEATURE_DIM = 24
+#: extra context appended by the civilization layer (P3):
+#: 8 memory summary + 4 goal/plan context + 4 civilization context
+CONTEXT_DIM = 16
+#: full input width.  Old 24-dim checkpoints are migrated by **zero-initialising**
+#: the new input columns, so their behaviour is bit-identical until retrained.
+FEATURE_DIM = LEGACY_FEATURE_DIM + CONTEXT_DIM
 HIDDEN1 = 64
 HIDDEN2 = 32
 MODES: tuple[str, ...] = ("explore", "forage", "drink", "sleep", "rest")
@@ -44,6 +51,13 @@ VOCAB: tuple[str, ...] = (
 )
 LANG_DIM = LANG_TOKENS * len(VOCAB)
 OUTPUT_DIM = len(MODES) + MOVE_DIM + AUX_DIM + LANG_DIM
+
+#: flat parameter count of the legacy 24-input network (pre-civilization v0.8.0)
+LEGACY_FLAT_SIZE = (
+    LEGACY_FEATURE_DIM * HIDDEN1 + HIDDEN1
+    + HIDDEN1 * HIDDEN2 + HIDDEN2
+    + HIDDEN2 * OUTPUT_DIM + OUTPUT_DIM
+)
 
 #: a distinct word for each internal state (the language target during training)
 MODE_WORDS: dict[str, tuple[str, ...]] = {
@@ -141,22 +155,119 @@ class NeuralPolicy:
             hidden2=HIDDEN2,
             output_dim=OUTPUT_DIM,
             vocab=np.asarray(VOCAB),
-            version=np.asarray(2),
+            version=np.asarray(3),
         )
         return path
+
+    @classmethod
+    def from_legacy_weights(cls, flat: np.ndarray) -> "NeuralPolicy":
+        """Migrate a 24-input checkpoint by zero-initialising the new columns.
+
+        With zero input columns and zero weights the extra features contribute
+        exactly ``0`` to the first hidden layer, so the migrated network produces
+        **bit-identical** outputs to the original one.  Continuous training then
+        gradually learns (or ignores) the new context.
+        """
+        flat = np.asarray(flat, dtype=np.float64).reshape(-1)
+        if flat.size != LEGACY_FLAT_SIZE:
+            raise ValueError(
+                f"not a legacy checkpoint: {flat.size} values, expected {LEGACY_FLAT_SIZE}"
+            )
+        policy = cls(seed=0)
+        index = 0
+        legacy_w1 = flat[index : index + LEGACY_FEATURE_DIM * HIDDEN1].reshape(LEGACY_FEATURE_DIM, HIDDEN1)
+        index += LEGACY_FEATURE_DIM * HIDDEN1
+        policy.w1 = np.zeros((FEATURE_DIM, HIDDEN1))
+        policy.w1[:LEGACY_FEATURE_DIM] = legacy_w1
+        policy.b1 = flat[index : index + HIDDEN1].copy()
+        index += HIDDEN1
+        policy.w2 = flat[index : index + HIDDEN1 * HIDDEN2].reshape(HIDDEN1, HIDDEN2).copy()
+        index += HIDDEN1 * HIDDEN2
+        policy.b2 = flat[index : index + HIDDEN2].copy()
+        index += HIDDEN2
+        policy.w3 = flat[index : index + HIDDEN2 * OUTPUT_DIM].reshape(HIDDEN2, OUTPUT_DIM).copy()
+        index += HIDDEN2 * OUTPUT_DIM
+        policy.b3 = flat[index : index + OUTPUT_DIM].copy()
+        return policy
 
     @classmethod
     def load(cls, path: str | Path) -> "NeuralPolicy":
         data = np.load(Path(path), allow_pickle=False)
         if "hidden1" not in data or int(data["hidden1"]) != HIDDEN1:
             raise ValueError("incompatible neural policy checkpoint (old network size)")
-        return cls(weights=data["weights"])
+        weights = np.asarray(data["weights"], dtype=np.float64).reshape(-1)
+        if weights.size == LEGACY_FLAT_SIZE:
+            # v0.8.0 checkpoint (24 inputs) -> zero-initialised migration
+            return cls.from_legacy_weights(weights)
+        expected = FEATURE_DIM * HIDDEN1 + HIDDEN1 + HIDDEN1 * HIDDEN2 + HIDDEN2 + HIDDEN2 * OUTPUT_DIM + OUTPUT_DIM
+        if weights.size != expected:
+            raise ValueError(
+                f"incompatible neural policy checkpoint ({weights.size} weights, expected {expected})"
+            )
+        return cls(weights=weights)
 
 
 # ---------------------------------------------------------------------------
 # feature extraction
 # ---------------------------------------------------------------------------
+def _context_features(world, character) -> list[float]:
+    """16 extra inputs: memory summary (8) + goal/plan (4) + civilization (4).
+
+    These are all zeros when ``world.expanded_observation`` is off (ablation
+    groups A/B) *or* when the civilization layer is absent, which keeps the
+    legacy behaviour bit-identical (see :meth:`NeuralPolicy.from_legacy_weights`).
+    """
+    context = [0.0] * CONTEXT_DIM
+    if not bool(getattr(world, "expanded_observation", False)):
+        return context
+    agent_id = int(getattr(character, "agent_id", -1))
+
+    memory = getattr(world, "memory", None)
+    if memory is not None:
+        try:
+            vector = np.asarray(memory.feature_vector(agent_id), dtype=np.float64).reshape(-1)
+            context[: min(8, vector.size)] = np.clip(vector[:8], -1.0, 1.0).tolist()
+        except Exception:
+            pass
+
+    manager = getattr(world, "goal_manager", None)
+    if manager is not None:
+        try:
+            goals = manager.goals_of(agent_id)
+            plan = manager.active_plan(agent_id)
+            context[8] = min(1.0, len([g for g in goals if g.status == "active"]) / 3.0)
+            if plan is not None and plan.steps:
+                context[9] = min(1.0, plan.current / max(1, len(plan.steps)))
+            context[10] = 1.0 if plan is not None else 0.0
+            context[11] = min(1.0, len(goals) / 20.0)
+        except Exception:
+            pass
+
+    knowledge = getattr(world, "knowledge", None)
+    if knowledge is not None:
+        try:
+            context[12] = min(1.0, len(knowledge.verified_ids()) / 6.0)
+        except Exception:
+            pass
+    civilization = getattr(world, "civilization", None)
+    if civilization is not None:
+        try:
+            facilities = list(getattr(civilization, "facilities", ()) or ())
+            context[13] = min(1.0, len([f for f in facilities if getattr(f, "active", False)]) / 4.0)
+            context[14] = min(1.0, len([a for a in world.agents if a.alive]) / 8.0)
+            context[15] = max(0.0, min(1.0, float(getattr(civilization, "cooperation_index", 0.0))))
+        except Exception:
+            pass
+    return context
+
+
 def features(world, perception=None, character=None) -> np.ndarray:
+    """The 40-dimensional input vector of the neural policy.
+
+    The first 24 values are the original v0.8.0 sensory/physiology features; the
+    last 16 are civilization context (memory, goals, knowledge, society) and are
+    zero unless the world enables the expanded observation.
+    """
     character = character if character is not None else world.agent
     scene = world.pixel_scene
     physiology = character.physiology
@@ -208,6 +319,7 @@ def features(world, perception=None, character=None) -> np.ndarray:
         hour / 24.0,
         scene.ecology.water_level,
     ]
+    vector.extend(_context_features(world, character))
     return np.asarray(vector, dtype=np.float64)
 
 

@@ -11,6 +11,14 @@ import numpy as np
 from newworld.neural import FEATURE_DIM, MODES, NeuralPolicy
 from newworld.training import collect_dataset, fine_tune, train_supervised
 
+# --- test-environment shim (Windows/DSH sandbox tempdir fix) ---------------
+try:  # "python -m unittest tests.test_training"
+    from tests._env_compat import patch_tempdir
+except ImportError:  # "python -m unittest discover -s tests"
+    from _env_compat import patch_tempdir
+patch_tempdir()
+# -------------------------------------------------------------------------
+
 
 class TestTraining(unittest.TestCase):
     def test_dataset(self) -> None:

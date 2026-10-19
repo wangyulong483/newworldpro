@@ -26,6 +26,19 @@ class SocialLife:
         community = tech.community
         inventory = character.inventory
 
+        # -- survival gate (P0 defect fix) ------------------------------
+        # The original teacher returned a mate-seeking/standing decision for every
+        # adult once the community was built and *never* returned None, which
+        # silenced the neural policy and starved the whole population
+        # (measured: 8/8 deaths by t=537s in the P0 baseline).  Survival always
+        # outranks social/technical work: hand control back to the planner /
+        # neural policy while the individual is hungry, thirsty or exhausted.
+        physiology = character.physiology
+        if physiology.energy < 35.0 or physiology.hydration < 30.0:
+            return None
+        if physiology.energy < 45.0 and inventory.wood < 2:
+            return None
+
         # pregnant mothers stay near the community and rest
         if character.pregnant:
             character.behavior_state = "rest"

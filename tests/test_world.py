@@ -29,6 +29,14 @@ from newworld.render import (
 )
 from newworld.world import World as WorldClass
 
+# --- test-environment shim (Windows/DSH sandbox tempdir fix) ---------------
+try:  # "python -m unittest tests.test_world"
+    from tests._env_compat import patch_tempdir
+except ImportError:  # "python -m unittest discover -s tests"
+    from _env_compat import patch_tempdir
+patch_tempdir()
+# -------------------------------------------------------------------------
+
 SMALL = (800, 500)
 
 

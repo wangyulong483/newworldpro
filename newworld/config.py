@@ -26,7 +26,7 @@ from typing import Any
 from . import art
 
 WORLD_NAME = "newworld"
-WORLD_VERSION = "0.8.0"
+WORLD_VERSION = "0.9.0"
 
 RGB = tuple[int, int, int]
 
@@ -269,3 +269,116 @@ def make_config(
         config.sprite_w = art.SPRITE_W * config.cell
         config.sprite_h = art.SPRITE_H * config.cell
     return config
+
+
+# ---------------------------------------------------------------------------
+# Civilization / evolution configuration (P1–P4)
+# ---------------------------------------------------------------------------
+@dataclass
+class CivilizationConfig:
+    """Knobs for the civilization layer, including the ablation switches.
+
+    The **hard constraint** of the task is ``max_agents_created``: the world may
+    never *create* more than this many agents over its whole life, no matter how
+    many of them have died.  Everything else here is a mechanism switch used by
+    the ablation experiments A/B/C/D (see :data:`ABLATIONS`).
+
+    Time scales are compressed for observability (a ``lifespan_s`` of 900 world
+    seconds is ~1.5 virtual days, not a demographic calibration).
+    """
+
+    # -- hard constraint ---------------------------------------------------
+    max_agents_created: int = 8
+    lifespan_s: float = 900.0
+    maturity_s: float = 70.0
+    pregnancy_s: float = 24.0
+
+    # -- mechanism switches (ablation) ------------------------------------
+    enable_planning: bool = True        # P1: goal manager + planner
+    enable_knowledge: bool = True       # P2: knowledge store / tech graph
+    enable_inheritance: bool = True     # P3: memory, archiving, teaching
+    enable_social: bool = True          # P4: cooperation, facilities, rules
+    enable_disturbance: bool = False    # P4: droughts / storms / scarcity
+    expanded_observation: bool = True   # P3: 24 -> 40 neural inputs
+    enable_perception: bool = True      # experiments may disable (95% of cost)
+
+    # -- experiment budget ------------------------------------------------
+    seed: int = 0
+
+    def __post_init__(self) -> None:
+        if self.max_agents_created < 1:
+            raise ValueError("max_agents_created must be >= 1")
+        if not 0.0 < self.maturity_s < self.lifespan_s:
+            raise ValueError("maturity_s must be < lifespan_s")
+        if self.pregnancy_s <= 0.0:
+            raise ValueError("pregnancy_s must be > 0")
+
+    def as_dict(self) -> dict[str, Any]:
+        keys = (
+            "max_agents_created", "lifespan_s", "maturity_s", "pregnancy_s",
+            "enable_planning", "enable_knowledge", "enable_inheritance",
+            "enable_social", "enable_disturbance", "expanded_observation",
+            "enable_perception", "seed",
+        )
+        return {key: getattr(self, key) for key in keys}
+
+
+#: Ablation groups required by the task book (§7):
+#: A = original mechanisms, B = +planning, C = +persistent knowledge/inheritance,
+#: D = full system (+social mechanisms + environment disturbance).
+#:
+#: Note: the *hard* 8-agent creation cap is **not** an ablation switch — it is a
+#: constraint that holds in every group, including A.
+ABLATIONS: dict[str, dict[str, bool]] = {
+    "A": {
+        "enable_planning": False,
+        "enable_knowledge": False,
+        "enable_inheritance": False,
+        "enable_social": False,
+        "enable_disturbance": False,
+        "expanded_observation": False,
+    },
+    "B": {
+        "enable_planning": True,
+        "enable_knowledge": False,
+        "enable_inheritance": False,
+        "enable_social": False,
+        "enable_disturbance": False,
+        "expanded_observation": False,
+    },
+    "C": {
+        "enable_planning": True,
+        "enable_knowledge": True,
+        "enable_inheritance": True,
+        "enable_social": False,
+        "enable_disturbance": False,
+        "expanded_observation": True,
+    },
+    "D": {
+        "enable_planning": True,
+        "enable_knowledge": True,
+        "enable_inheritance": True,
+        "enable_social": True,
+        "enable_disturbance": True,
+        "expanded_observation": True,
+    },
+}
+
+
+def make_civilization_config(
+    group: str | None = None,
+    *,
+    seed: int = 0,
+    **overrides: Any,
+) -> CivilizationConfig:
+    """Build a :class:`CivilizationConfig`, optionally from an ablation group."""
+    values: dict[str, Any] = {"seed": seed}
+    if group is not None:
+        try:
+            values.update(ABLATIONS[group.upper()])
+        except KeyError:
+            raise ValueError(
+                f"unknown ablation group {group!r}, available: {', '.join(sorted(ABLATIONS))}"
+            ) from None
+    values.update(overrides)
+    return CivilizationConfig(**values)

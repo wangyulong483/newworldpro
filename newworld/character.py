@@ -83,6 +83,24 @@ class Character:
     body_scale: float = 1.0
     inventory: Inventory = field(default_factory=Inventory)
     social_context: tuple[float, ...] = ()
+    # -- civilization layer (P3): identity, history, knowledge, plans -----
+    #: direct parent (``parents[0]`` when present); kept explicit for lineage
+    parent_id: int | None = None
+    #: world time of creation and of death (None while alive)
+    created_at: float = 0.0
+    died_at: float | None = None
+    death_cause: str = ""
+    #: knowledge ids this individual has learned (KnowledgeStore ids)
+    known_knowledge_ids: list[str] = field(default_factory=list)
+    #: skill -> proficiency (0..1), learned procedurally
+    skills: dict[str, float] = field(default_factory=dict)
+    #: ids of episodic memories kept for this agent (MemoryStore)
+    memory_ids: list[int] = field(default_factory=list)
+    #: current goal / plan handles (GoalManager ids)
+    current_goal_id: int | None = None
+    current_plan_id: int | None = None
+    #: contributions to public facilities / cooperation (kind -> amount)
+    contributions: dict[str, float] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         self.x = float(self.x)
@@ -279,8 +297,18 @@ class Character:
             "alive": self.alive,
             "pregnant": self.pregnant,
             "generation": self.generation,
+            "parent_id": self.parent_id,
+            "created_at": round(self.created_at, 3),
+            "died_at": None if self.died_at is None else round(self.died_at, 3),
+            "death_cause": self.death_cause,
+            "current_goal_id": self.current_goal_id,
+            "current_plan_id": self.current_plan_id,
+            "known_knowledge": list(self.known_knowledge_ids),
+            "skills": {key: round(value, 3) for key, value in self.skills.items()},
             "wood": self.inventory.wood,
             "stone": self.inventory.stone,
+            "fiber": getattr(self.inventory, "fiber", 0),
+            "cord": getattr(self.inventory, "cord", 0),
             "tool": self.inventory.tool,
             "energy": round(self.physiology.energy, 2),
             "hydration": round(self.physiology.hydration, 2),

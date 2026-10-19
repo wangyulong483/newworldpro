@@ -197,6 +197,25 @@ class CivilizationState:
 或 `alive_count()==0` 且 `enable_inheritance=False`（不允许新生）→ 同样灭绝。
 灭绝后世界不再产生新个体，`collapse_state="collapsed"`，只保留历史。
 
+> **实现补充（集成层）**：由于本世界没有任何"自发创建"路径，
+> 存活的成年个体为 0 时生育不可能发生，所以 `Population._enforce_extinction_rules`
+> 在 `CivilizationState.update` 之后把"存活为 0"直接判定为灭绝，并记录
+> `extinction_cause`（starvation / old_age）。这比契约的字面条件更强，
+> 因为契约条件在"还有创建名额但已无人"时会漏判。
+
+---
+
+## 3.5 集成层的两条世界机制（P4，位于 `population.py`）
+
+1. **基础设施反射** `_infrastructure_directive`：能量 < 55 时，
+   若世界上存在活跃的 `granary`/`campfire`/`hut`，个体走向最近的设施并在那里休息。
+   这是"公共设施真实改变生存"的机制，也是村庄围着粮仓形成的原因——
+   没有它，夜间（浆果停止生长）群体仍会饿死，技术等于没用。
+2. **食物分享** `_cooperation`：`enable_social=True` 时，能量 ≥65 的个体把最多 8 点
+   能量转给 60px 内能量 ≤50 的个体（真实资源转移，计入 `cooperation_benefit` 与
+   `cooperation_index`）。`enable_social=False`（C 组）不允许该行为，
+   因此 C/D 组的合作指标出现可解释差异。
+
 ---
 
 ## 4. `goals.py` —— 目标 / 计划 / 规划器（P1，P2 扩展）
@@ -392,8 +411,10 @@ class KnowledgeStore:
 **技术内容（世界规则，非剧情）**：见 `docs/architecture_audit.md` §技术依赖图草案。
 最小集合：`stone_axe`（木+石→斧，采集×2）、`fiber_cord`（草/叶纤维→绳）、
 `basket`（木+绳→背篓，负重上限+）、`campfire`（木+石→篝火，夜间保暖/照明）、
-`hut`（木+石+绳→小屋，休息恢复+知识存储）、`well`（石+绳→水井，取水距离+）。
-每条都**真实改变世界数值**（采集成品、负重、恢复速率、移动成本、取水半径）。
+`hut`（木+石+绳→小屋，休息恢复+知识存储）、`well`（石+绳→水井，取水距离+）、
+`granary`（木+石→粮仓，半径内持续恢复能量——让群体越过浆果丛的自然承载力，
+是 P4 中"文明延续"的关键技术）。
+每条都**真实改变世界数值**（采集成品、负重、恢复速率、移动成本、取水半径、食物储存）。
 
 ---
 
@@ -553,4 +574,11 @@ class SocietyRunner:
    **受约束的创建路径**是 `Population.create_agent()` → `AgentRegistry.register()`。
    所有文明指标只统计受约束路径。
 3. 为了可观测性压缩了时间尺度（寿命 900 世界秒）；实验预算与步长在
-   `docs/experiment_protocol.md` 中固定并公开。
+   `docs/experiment_protocol.md` 中固定并公开。实验固定 `dt=0.05`：
+   实测 `dt=0.5` 会让教师规则的近距离导航失效（`experiments/probe_cap.py` 反例）。
+4. **A 组包含 P0 机制缺陷修复**（食物链、教师生存优先、受约束创建、禁止隐式复活），
+   否则基线不可比较；未打补丁版本的 537.55s 饥饿灭绝另存于
+   `experiments/results/baseline_long_pre_seed0.json`。
+5. 实验中的环境扰动在**早期**（60–150s）发生才有意义：一旦粮仓建成，
+   群体能扛过资源冲击（实测晚期扰动使 C/D 指标几乎相同，已如实记录在实验报告里）。
+6. 规划器的实验计划会先采集缺失材料，候选技术按尝试次数轮转，避免卡在单条难题上。
