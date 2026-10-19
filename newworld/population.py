@@ -22,6 +22,7 @@ the only sanctioned birth path.
 
 from __future__ import annotations
 
+from collections import Counter
 from pathlib import Path
 
 import numpy as np
@@ -41,6 +42,19 @@ SOCIETY_PATH = Path(__file__).resolve().parent.parent / "assets" / "society.npz"
 EPISODE_INTERVAL_S = 0.5
 #: distance within which living agents can teach each other verified knowledge
 TEACHING_RANGE_PX = 170.0
+#: how often (world seconds) the limited combinatorial innovation lab is tried
+INNOVATION_INTERVAL_S = 5.0
+
+#: reward weights of the learned high-level goal policy (real world deltas)
+REWARD_ALIVE_PER_S = 0.02
+REWARD_TECH = 5.0
+REWARD_FACILITY = 3.0
+REWARD_RESOURCE = 0.5
+REWARD_KNOWLEDGE = 2.0
+REWARD_COOPERATION = 1.0
+REWARD_GOAL_FAILED = -2.5
+REWARD_DEATH = -8.0
+REWARD_INFEASIBLE_GOAL = -0.5
 
 
 class AgentMind:
@@ -53,6 +67,8 @@ class AgentMind:
         self.perception = None
         self.last_decision = None
         self.memory = memory
+        #: which module produced the last decision ("teacher" | "neural")
+        self.last_source = "neural"
 
     def decide(self, world, dt: float):
         decision = self.social.decide(world, self.character, dt)
@@ -63,6 +79,9 @@ class AgentMind:
                 perception=self.perception,
                 character=self.character,
             )
+            self.last_source = "neural"
+        else:
+            self.last_source = "teacher"
         self.last_decision = decision
         return decision
 
@@ -102,6 +121,19 @@ class Population:
         self.minds: dict[int, AgentMind] = {}
         self._last_episode_at: dict[int, float] = {}
         self._last_state: dict[int, str] = {}
+        # -- learned high-level decision layer (this upgrade) ----------------
+        #: GoalPolicy (newworld/highlevel.py) or a compatible object; None means
+        #: the heuristic goal priorities are used (previous behaviour)
+        self.goal_policy = None
+        #: (features, action_index, reward) tuples for the policy-gradient trainer
+        self.policy_transitions: list[tuple[np.ndarray, int, float]] = []
+        #: per-agent pending policy episode: features/action/start snapshot
+        self._policy_pending: dict[int, dict[str, object]] = {}
+        #: which module made each per-frame decision (audit / anti-misattribution)
+        self.decision_counts: Counter[str] = Counter()
+        # -- limited combinatorial innovation --------------------------------
+        self._innovation_lab = None
+        self._last_innovation_t = -1e9
         # expose the goal manager on the world so neural.features() can read it
         world.goal_manager = self.goals
         self._ensure_initial_agents()
@@ -259,6 +291,13 @@ class Population:
         history and knowledge record must not be deleted).  Only the *transfer*
         of memory/knowledge to others is a mechanism switch.
         """
+        # close a pending policy episode with the death penalty (honest signal)
+        pending = self._policy_pending.pop(agent.agent_id, None)
+        if pending is not None:
+            reward = self._goal_reward(dict(pending["snapshot"]), failed=False, died=True)  # type: ignore[arg-type]
+            self.policy_transitions.append(
+                (np.asarray(pending["features"], dtype=np.float64), int(pending["action"]), reward)
+            )
         final_state = {
             "x": round(float(agent.x), 2),
             "energy": round(float(agent.physiology.energy), 2),
@@ -330,17 +369,180 @@ class Population:
         agent.behavior_state = "rest"
         return Decision(0, False, False, None)
 
+    def _low_level_decision(self, agent, mind: AgentMind, dt: float):
+        """Primitive action from the configured low-level controller.
+
+        ``full`` = behaviour-cloning network, ``random`` = random walk,
+        ``off`` = stand still (decision-chain ablations).  Applies to *all*
+        delegated frames as well, otherwise the ablation would be bypassed by the
+        planner's explore delegation.
+        """
+        mode = str(getattr(self.config, "low_level_mode", "full") if self.config else "full")
+        if mode == "off":
+            self.decision_counts["lowlevel_off"] += 1
+            mind.last_decision = Decision(0, False, False, None)
+            return mind.last_decision
+        if mode == "random":
+            self.decision_counts["lowlevel_random"] += 1
+            rng = self.world.rng
+            direction = rng.choice((-1, 0, 1))
+            mind.last_decision = Decision(direction, rng.random() < 0.03, False, None)
+            return mind.last_decision
+        decision = mind.will.decide(
+            self.world, dt, perception=mind.perception, character=agent
+        )
+        self.decision_counts["neural"] += 1
+        mind.last_decision = decision
+        return decision
+
     def _decide(self, agent, mind: AgentMind, dt: float):
         directive = self._infrastructure_directive(agent)
         if directive is not None:
+            self.decision_counts["infrastructure"] += 1
             mind.last_decision = directive
             return directive
+        if self.goal_policy is not None:
+            self._maybe_request_policy_goal(agent)
         if self.goals is not None:
             decision = self.goals.update(self.world, agent, dt)
             if decision is not None:
+                self.decision_counts["goal"] += 1
                 mind.last_decision = decision
                 return decision
-        return mind.decide(self.world, dt)
+            if self.goals.consume_delegation(agent.agent_id):
+                # the semantic layer chose "explore/idle" and delegated the
+                # primitive action: go straight to the low-level controller.
+                # Do NOT let the mate-seeking teacher hijack these frames — that
+                # produced a stand-still loop (measured repeat_run_max 9476).
+                return self._low_level_decision(agent, mind, dt)
+        mode = str(getattr(self.config, "low_level_mode", "full") if self.config else "full")
+        if mode != "full":
+            return self._low_level_decision(agent, mind, dt)
+        decision = mind.decide(self.world, dt)
+        self.decision_counts[str(mind.last_source)] += 1
+        return decision
+
+    # ------------------------------------------------------------------
+    # learned high-level goal policy integration (real REINFORCE loop)
+    # ------------------------------------------------------------------
+    def attach_goal_policy(self, policy) -> None:
+        """Attach a learned goal-selection policy (idempotent, replaces old one).
+
+        ``policy`` only needs ``sample(features) -> action_index``; the trainer in
+        ``newworld/highlevel.py`` calls this on the env it is given, so the very
+        policy under training is the one driving the simulation (no silent
+        fallback to a different policy).
+        """
+        self.goal_policy = policy
+        self._policy_pending.clear()
+
+    def detach_goal_policy(self) -> None:
+        self.goal_policy = None
+        self._policy_pending.clear()
+
+    def drain_policy_transitions(self) -> list[tuple[np.ndarray, int, float]]:
+        """Pop all finished (features, action_index, reward) transitions."""
+        out = self.policy_transitions
+        self.policy_transitions = []
+        return out
+
+    def _snapshot_metrics(self) -> dict[str, float]:
+        alive = [agent for agent in self.world.agents if agent.alive]
+        return {
+            "t": float(self.world.t),
+            "tech": float(len(self.knowledge.verified_ids())),
+            "fac": float(
+                len([f for f in self.civilization.facilities if getattr(f, "active", False)])
+            ),
+            "res": float(sum(agent.inventory.load() for agent in alive)),
+            "known": float(sum(len(agent.known_knowledge_ids) for agent in alive)),
+            "coop": float(sum(agent.contributions.get("share_food", 0.0) for agent in alive)),
+        }
+
+    def _goal_reward(self, start: dict[str, float], *, failed: bool, died: bool) -> float:
+        """Reward of one policy episode, computed from **real world changes**.
+
+        Formula (documented in docs/EXPERIMENT_REPORT.md): survival time,
+        newly verified technologies, active facilities, resource units, known
+        knowledge and cooperation transfers are rewarded; goal failure and death
+        are penalised.  It uses only world state deltas measured between the
+        moment the goal was requested and its end — never BC labels.
+        """
+        now = self._snapshot_metrics()
+        reward = REWARD_ALIVE_PER_S * max(0.0, now["t"] - start["t"])
+        reward += REWARD_TECH * (now["tech"] - start["tech"])
+        reward += REWARD_FACILITY * (now["fac"] - start["fac"])
+        reward += REWARD_RESOURCE * (now["res"] - start["res"])
+        reward += REWARD_KNOWLEDGE * (now["known"] - start["known"])
+        reward += REWARD_COOPERATION * (now["coop"] - start["coop"])
+        if failed:
+            reward += REWARD_GOAL_FAILED
+        if died:
+            reward += REWARD_DEATH
+        return float(max(-25.0, min(35.0, reward)))
+
+    def _maybe_request_policy_goal(self, agent) -> None:
+        """Ask the learned policy for a goal when the agent has none active."""
+        policy = self.goal_policy
+        if policy is None or self.goals is None:
+            return
+        agent_id = agent.agent_id
+        if agent_id in self._policy_pending:
+            return
+        if self.goals.has_active_goal(agent_id) or self.goals.active_plan(agent_id) is not None:
+            return
+        try:
+            from .highlevel import GOAL_ACTIONS, extract_features
+
+            features = np.asarray(extract_features(self.world, agent, self), dtype=np.float64)
+            index = int(policy.sample(features))
+            action = GOAL_ACTIONS[index] if 0 <= index < len(GOAL_ACTIONS) else "explore"
+        except Exception:
+            self.decision_counts["policy_error"] += 1
+            return
+        snapshot = self._snapshot_metrics()
+        goal = self.goals.request_goal(self.world, agent, action)
+        if goal is None:
+            # infeasible action: small negative reward, no episode (honest signal)
+            self.policy_transitions.append((features, index, REWARD_INFEASIBLE_GOAL))
+            self.decision_counts["policy_infeasible"] += 1
+            return
+        self._policy_pending[agent_id] = {
+            "features": features,
+            "action": index,
+            "snapshot": snapshot,
+            "goal_type": action,
+        }
+        self.decision_counts["policy_goal"] += 1
+
+    def _settle_policy_episodes(self) -> None:
+        """Close policy episodes whose goal ended (completed/failed/dead)."""
+        if not self._policy_pending:
+            return
+        for agent_id in list(self._policy_pending):
+            pending = self._policy_pending[agent_id]
+            agent = self.world.agent_by_id(agent_id)
+            alive = agent is not None and agent.alive
+            goal = self.goals.current_goal(agent_id) if self.goals is not None else None
+            if alive and goal is not None and goal.status == "active":
+                continue
+            failed = bool(goal is not None and goal.status in ("failed", "abandoned"))
+            reward = self._goal_reward(
+                dict(pending["snapshot"]),  # type: ignore[arg-type]
+                failed=failed,
+                died=not alive,
+            )
+            self.policy_transitions.append(
+                (np.asarray(pending["features"], dtype=np.float64), int(pending["action"]), reward)
+            )
+            del self._policy_pending[agent_id]
+
+    def decision_share(self) -> dict[str, float]:
+        """Fraction of per-frame decisions made by each module (audit metric)."""
+        total = float(sum(self.decision_counts.values()))
+        if total <= 0.0:
+            return {}
+        return {key: round(value / total, 4) for key, value in self.decision_counts.items()}
 
     def step(self, dt: float) -> None:
         agents = [agent for agent in self.world.agents if agent.alive]
@@ -385,8 +587,108 @@ class Population:
         if self._flag("enable_inheritance", True):
             self._social_learning(dt)
         self._cooperation(dt)
+        self._maybe_innovate(dt)
+        self._settle_policy_episodes()
         self._enforce_extinction_rules()
         self._emit_step(dt)
+
+    # ------------------------------------------------------------------
+    # limited combinatorial innovation integration
+    # ------------------------------------------------------------------
+    def _maybe_innovate(self, dt: float) -> None:
+        """Try one bounded combinational invention per interval (real materials).
+
+        Only runs when ``enable_innovation`` is on; proposals come from
+        :class:`newworld.innovation.InnovationLab`, which validates components
+        against the agent's **verified** knowledge and registers effects through
+        ``Technology.register_custom_effect``.  A successful invention changes
+        real numbers (harvest yield / carry capacity / regeneration).
+        """
+        if not self._flag("enable_innovation", False):
+            return
+        if self._innovation_lab is None:
+            try:
+                from .innovation import InnovationLab
+
+                self._innovation_lab = InnovationLab(seed=self.seed)
+            except Exception:
+                return
+        if self.world.t - self._last_innovation_t < INNOVATION_INTERVAL_S:
+            return
+        self._last_innovation_t = self.world.t
+        lab = self._innovation_lab
+        # lifecycle guard: World.reset() rebuilds Technology (custom effects are
+        # lost) while the lab keeps its inventions — re-register them so records
+        # and real world effects never diverge.
+        try:
+            for tool_name, effects in lab.custom_effects().items():
+                if tool_name not in self.world.technology.custom_effects:
+                    self.world.technology.register_custom_effect(tool_name, dict(effects))
+        except Exception:
+            pass
+        for agent in [a for a in self.world.agents if a.alive]:
+            try:
+                # only attempt combinations the individual can actually afford:
+                # an unaffordable proposal is a precondition miss, not an experiment
+                proposals = lab.proposals(agent, self.knowledge, affordable_only=True)
+            except Exception:
+                continue
+            if not proposals:
+                continue
+            try:
+                ok, reason, innovation = lab.attempt(agent, proposals[0], self.world)
+            except Exception:
+                continue
+            if ok and innovation is not None:
+                # capacity is a property of the tool the agent now carries: read it
+                # from the technology effect table so tools registered elsewhere work too
+                bonus = int(round(float(
+                    self.world.technology.custom_effect(
+                        agent.inventory.tool, "capacity_bonus"
+                    )
+                )))
+                if bonus > 0:
+                    agent.inventory.capacity_bonus = max(agent.inventory.capacity_bonus, bonus)
+                try:
+                    self.memory.record(
+                        agent.agent_id,
+                        self.world.t,
+                        "procedural",
+                        f"innovate:{innovation.innovation_id}",
+                        f"ok:{innovation.name_zh}",
+                        True,
+                        detail=str(innovation.effects),
+                        salience=0.8,
+                    )
+                except Exception:
+                    pass
+                self._emit(
+                    "innovation",
+                    agent_id=agent.agent_id,
+                    innovation=innovation.innovation_id,
+                    name=innovation.name_zh,
+                    effects=dict(innovation.effects),
+                )
+            elif not ok and reason not in (
+                "missing_material",
+                "no_effect_backend",
+                "already_invented",
+                "max_innovations",
+                "component_not_verified",
+                "component_not_known",
+                "unknown_attribute",
+                "incompatible_tags",
+            ):
+                self._emit("innovation_failed", agent_id=agent.agent_id, reason=str(reason))
+
+    def innovations(self) -> list[dict[str, object]]:
+        lab = self._innovation_lab
+        if lab is None:
+            return []
+        try:
+            return [item.to_dict() for item in lab.innovations()]
+        except Exception:
+            return []
 
     def _cooperation(self, dt: float) -> None:
         """P4: food sharing between neighbours (a real, measurable social rule).
@@ -453,19 +755,24 @@ class Population:
         run ended (starvation vs old age) so the report can explain it.
         """
         civilization = self.civilization
-        if self.registry.alive_count() > 0 or getattr(civilization, "extinct", False):
+        if self.registry.alive_count() > 0:
             return
         causes = [record.death_cause for record in self.registry.records() if not record.alive]
         cause = "unknown"
         if causes:
             starvation = causes.count("starvation")
             cause = "starvation" if starvation >= causes.count("old_age") else "old_age"
-        civilization.extinct = True
-        civilization.extinct_at = self.world.t
-        civilization.collapse_state = "collapsed"
+        if not getattr(civilization, "extinct", False):
+            civilization.extinct = True
+            civilization.extinct_at = self.world.t
+            civilization.collapse_state = "collapsed"
+            self._emit("extinction", cause=cause, t=round(self.world.t, 2))
+        # the civilization layer may have flagged extinction first (budget
+        # exhausted) with a placeholder cause: replace it with the real reason.
         if hasattr(civilization, "extinction_cause"):
-            civilization.extinction_cause = cause
-        self._emit("extinction", cause=cause, t=round(self.world.t, 2))
+            current = str(getattr(civilization, "extinction_cause", "") or "")
+            if current in ("", "unknown"):
+                civilization.extinction_cause = cause
 
     def _advance_empty(self, dt: float) -> None:
         self.world.t += dt

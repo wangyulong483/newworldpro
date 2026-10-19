@@ -302,6 +302,16 @@ class CivilizationConfig:
     expanded_observation: bool = True   # P3: 24 -> 40 neural inputs
     enable_perception: bool = True      # experiments may disable (95% of cost)
 
+    # -- learned decision layer (this upgrade) -----------------------------
+    #: "heuristic" = rule priorities (previous behaviour), "neural" = trained
+    #: high-level goal policy sample, "random" = uniform random goal (ablation)
+    goal_policy_mode: str = "heuristic"
+    #: low-level controller: "full" = behaviour-cloning network, "random" =
+    #: random walk, "off" = stand still (decision-chain ablations)
+    low_level_mode: str = "full"
+    #: limited combinatorial innovation prototype (see newworld/innovation.py)
+    enable_innovation: bool = False
+
     # -- experiment budget ------------------------------------------------
     seed: int = 0
 
@@ -312,13 +322,24 @@ class CivilizationConfig:
             raise ValueError("maturity_s must be < lifespan_s")
         if self.pregnancy_s <= 0.0:
             raise ValueError("pregnancy_s must be > 0")
+        if self.goal_policy_mode not in ("heuristic", "neural", "random"):
+            raise ValueError(
+                f"unknown goal_policy_mode {self.goal_policy_mode!r}; "
+                "expected 'heuristic', 'neural' or 'random'"
+            )
+        if self.low_level_mode not in ("full", "random", "off"):
+            raise ValueError(
+                f"unknown low_level_mode {self.low_level_mode!r}; "
+                "expected 'full', 'random' or 'off'"
+            )
 
     def as_dict(self) -> dict[str, Any]:
         keys = (
             "max_agents_created", "lifespan_s", "maturity_s", "pregnancy_s",
             "enable_planning", "enable_knowledge", "enable_inheritance",
             "enable_social", "enable_disturbance", "expanded_observation",
-            "enable_perception", "seed",
+            "enable_perception", "goal_policy_mode", "low_level_mode",
+            "enable_innovation", "seed",
         )
         return {key: getattr(self, key) for key in keys}
 

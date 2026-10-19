@@ -1,0 +1,842 @@
+{
+  "compare": true,
+  "checkpoint": "assets\\goal_policy.npz",
+  "checkpoint_size": 15120,
+  "eval_seeds": [
+    100,
+    101,
+    102,
+    103,
+    104,
+    105,
+    106,
+    107,
+    108,
+    109
+  ],
+  "steps": 4000,
+  "dt": 0.05,
+  "group": "D",
+  "width": 640,
+  "height": 400,
+  "conditions": {
+    "trained": {
+      "rows": [
+        {
+          "seed": 100,
+          "return": 285.7700000000016,
+          "transitions": 136.0,
+          "steps_run": 4000.0,
+          "decision_share": {
+            "policy_infeasible": 0.0026,
+            "goal": 0.0134,
+            "teacher": 0.5935,
+            "policy_goal": 0.004,
+            "neural": 0.3839,
+            "infrastructure": 0.0025
+          },
+          "alive_count": 8.0,
+          "tech_verified": 5.0,
+          "facilities_active": 4.0,
+          "goal_decisions": 86.0
+        },
+        {
+          "seed": 101,
+          "return": 1135.1270000000004,
+          "transitions": 138.0,
+          "steps_run": 4000.0,
+          "decision_share": {
+            "policy_goal": 0.0036,
+            "teacher": 0.5959,
+            "policy_infeasible": 0.0031,
+            "goal": 0.0086,
+            "neural": 0.3888
+          },
+          "alive_count": 8.0,
+          "tech_verified": 1.0,
+          "facilities_active": 1.0,
+          "goal_decisions": 77.0
+        },
+        {
+          "seed": 102,
+          "return": 213.17700000000133,
+          "transitions": 135.0,
+          "steps_run": 4000.0,
+          "decision_share": {
+            "policy_goal": 0.0038,
+            "teacher": 0.597,
+            "goal": 0.0122,
+            "policy_infeasible": 0.0027,
+            "neural": 0.3817,
+            "infrastructure": 0.0025
+          },
+          "alive_count": 8.0,
+          "tech_verified": 4.0,
+          "facilities_active": 2.0,
+          "goal_decisions": 83.0
+        },
+        {
+          "seed": 103,
+          "return": 630.9710000000011,
+          "transitions": 144.0,
+          "steps_run": 4000.0,
+          "decision_share": {
+            "policy_infeasible": 0.0031,
+            "goal": 0.0054,
+            "teacher": 0.5993,
+            "policy_goal": 0.0038,
+            "neural": 0.3826,
+            "infrastructure": 0.0058
+          },
+          "alive_count": 8.0,
+          "tech_verified": 4.0,
+          "facilities_active": 3.0,
+          "goal_decisions": 81.0
+        },
+        {
+          "seed": 104,
+          "return": 608.4720000000013,
+          "transitions": 143.0,
+          "steps_run": 4000.0,
+          "decision_share": {
+            "policy_infeasible": 0.0027,
+            "goal": 0.0126,
+            "policy_goal": 0.0041,
+            "teacher": 0.598,
+            "neural": 0.3808,
+            "infrastructure": 0.0018
+          },
+          "alive_count": 8.0,
+          "tech_verified": 5.0,
+          "facilities_active": 4.0,
+          "goal_decisions": 89.0
+        },
+        {
+          "seed": 105,
+          "return": 272.5670000000013,
+          "transitions": 144.0,
+          "steps_run": 4000.0,
+          "decision_share": {
+            "policy_goal": 0.0038,
+            "goal": 0.0272,
+            "policy_infeasible": 0.0032,
+            "teacher": 0.5882,
+            "neural": 0.3753,
+            "infrastructure": 0.0023
+          },
+          "alive_count": 8.0,
+          "tech_verified": 5.0,
+          "facilities_active": 3.0,
+          "goal_decisions": 82.0
+        },
+        {
+          "seed": 106,
+          "return": 232.01000000000133,
+          "transitions": 139.0,
+          "steps_run": 4000.0,
+          "decision_share": {
+            "policy_infeasible": 0.003,
+            "goal": 0.0072,
+            "teacher": 0.5985,
+            "policy_goal": 0.0035,
+            "neural": 0.38,
+            "infrastructure": 0.0077
+          },
+          "alive_count": 8.0,
+          "tech_verified": 3.0,
+          "facilities_active": 2.0,
+          "goal_decisions": 75.0
+        },
+        {
+          "seed": 107,
+          "return": 674.2730000000004,
+          "transitions": 160.0,
+          "steps_run": 4000.0,
+          "decision_share": {
+            "policy_infeasible": 0.0051,
+            "goal": 0.0093,
+            "policy_goal": 0.0026,
+            "teacher": 0.9829
+          },
+          "alive_count": 8.0,
+          "tech_verified": 0.0,
+          "facilities_active": 0.0,
+          "goal_decisions": 57.0
+        },
+        {
+          "seed": 108,
+          "return": 896.6320000000006,
+          "transitions": 139.0,
+          "steps_run": 4000.0,
+          "decision_share": {
+            "policy_infeasible": 0.0035,
+            "goal": 0.0198,
+            "teacher": 0.583,
+            "policy_goal": 0.0031,
+            "neural": 0.3612,
+            "infrastructure": 0.0294
+          },
+          "alive_count": 8.0,
+          "tech_verified": 4.0,
+          "facilities_active": 3.0,
+          "goal_decisions": 67.0
+        },
+        {
+          "seed": 109,
+          "return": 337.1640000000013,
+          "transitions": 142.0,
+          "steps_run": 4000.0,
+          "decision_share": {
+            "policy_infeasible": 0.0034,
+            "goal": 0.0129,
+            "teacher": 0.5908,
+            "policy_goal": 0.0033,
+            "neural": 0.3896
+          },
+          "alive_count": 8.0,
+          "tech_verified": 4.0,
+          "facilities_active": 3.0,
+          "goal_decisions": 71.0
+        }
+      ],
+      "aggregate": {
+        "return": {
+          "n": 10.0,
+          "mean": 528.6163000000012,
+          "std": 298.3331825600528,
+          "min": 213.17700000000133,
+          "max": 1135.1270000000004
+        },
+        "alive_count": {
+          "n": 10.0,
+          "mean": 8.0,
+          "std": 0.0,
+          "min": 8.0,
+          "max": 8.0
+        },
+        "tech_verified": {
+          "n": 10.0,
+          "mean": 3.5,
+          "std": 1.6278820596099706,
+          "min": 0.0,
+          "max": 5.0
+        },
+        "facilities_active": {
+          "n": 10.0,
+          "mean": 2.5,
+          "std": 1.2041594578792296,
+          "min": 0.0,
+          "max": 4.0
+        },
+        "goal_decisions": {
+          "n": 10.0,
+          "mean": 76.8,
+          "std": 9.173875952943773,
+          "min": 57.0,
+          "max": 89.0
+        },
+        "transitions": {
+          "n": 10.0,
+          "mean": 142.0,
+          "std": 6.723094525588644,
+          "min": 135.0,
+          "max": 160.0
+        },
+        "steps_run": {
+          "n": 10.0,
+          "mean": 4000.0,
+          "std": 0.0,
+          "min": 4000.0,
+          "max": 4000.0
+        },
+        "decision_share.neural": {
+          "n": 10.0,
+          "mean": 0.34239,
+          "std": 0.11437897927503986,
+          "min": 0.0,
+          "max": 0.3896
+        },
+        "decision_share.teacher": {
+          "n": 10.0,
+          "mean": 0.63271,
+          "std": 0.11683349220150871,
+          "min": 0.583,
+          "max": 0.9829
+        },
+        "decision_share.goal": {
+          "n": 10.0,
+          "mean": 0.01286,
+          "std": 0.006108223964459718,
+          "min": 0.0054,
+          "max": 0.0272
+        },
+        "decision_share.policy_goal": {
+          "n": 10.0,
+          "mean": 0.00356,
+          "std": 0.00043174066289845814,
+          "min": 0.0026,
+          "max": 0.0041
+        },
+        "decision_share.policy_infeasible": {
+          "n": 10.0,
+          "mean": 0.00324,
+          "std": 0.000681469001496033,
+          "min": 0.0026,
+          "max": 0.0051
+        },
+        "decision_share.infrastructure": {
+          "n": 10.0,
+          "mean": 0.005200000000000001,
+          "std": 0.008413798191066862,
+          "min": 0.0,
+          "max": 0.0294
+        },
+        "decision_share.policy_error": {
+          "n": 10.0,
+          "mean": 0.0,
+          "std": 0.0,
+          "min": 0.0,
+          "max": 0.0
+        }
+      }
+    },
+    "untrained": {
+      "rows": [
+        {
+          "seed": 100,
+          "return": 82.72700000000044,
+          "transitions": 141.0,
+          "steps_run": 4000.0,
+          "decision_share": {
+            "policy_infeasible": 0.0052,
+            "goal": 0.0154,
+            "teacher": 0.5938,
+            "policy_goal": 0.0015,
+            "neural": 0.3829,
+            "infrastructure": 0.0013
+          },
+          "alive_count": 8.0,
+          "tech_verified": 5.0,
+          "facilities_active": 4.0,
+          "goal_decisions": 32.0
+        },
+        {
+          "seed": 101,
+          "return": 3.6890000000005787,
+          "transitions": 138.0,
+          "steps_run": 4000.0,
+          "decision_share": {
+            "policy_goal": 0.0017,
+            "goal": 0.0108,
+            "teacher": 0.5987,
+            "policy_infeasible": 0.0048,
+            "neural": 0.384
+          },
+          "alive_count": 8.0,
+          "tech_verified": 3.0,
+          "facilities_active": 2.0,
+          "goal_decisions": 37.0
+        },
+        {
+          "seed": 102,
+          "return": 166.06200000000047,
+          "transitions": 148.0,
+          "steps_run": 4000.0,
+          "decision_share": {
+            "policy_goal": 0.0019,
+            "goal": 0.0259,
+            "policy_infeasible": 0.005,
+            "teacher": 0.5887,
+            "neural": 0.3762,
+            "infrastructure": 0.0023
+          },
+          "alive_count": 8.0,
+          "tech_verified": 5.0,
+          "facilities_active": 3.0,
+          "goal_decisions": 40.0
+        },
+        {
+          "seed": 103,
+          "return": 367.07100000000014,
+          "transitions": 139.0,
+          "steps_run": 4000.0,
+          "decision_share": {
+            "policy_infeasible": 0.0051,
+            "goal": 0.0095,
+            "policy_goal": 0.0013,
+            "teacher": 0.5972,
+            "neural": 0.3754,
+            "infrastructure": 0.0114
+          },
+          "alive_count": 8.0,
+          "tech_verified": 3.0,
+          "facilities_active": 2.0,
+          "goal_decisions": 29.0
+        },
+        {
+          "seed": 104,
+          "return": 107.94000000000041,
+          "transitions": 152.0,
+          "steps_run": 4000.0,
+          "decision_share": {
+            "policy_goal": 0.0021,
+            "goal": 0.0138,
+            "teacher": 0.5994,
+            "policy_infeasible": 0.005,
+            "neural": 0.3798
+          },
+          "alive_count": 8.0,
+          "tech_verified": 5.0,
+          "facilities_active": 5.0,
+          "goal_decisions": 46.0
+        },
+        {
+          "seed": 105,
+          "return": 156.82400000000047,
+          "transitions": 141.0,
+          "steps_run": 4000.0,
+          "decision_share": {
+            "policy_infeasible": 0.0048,
+            "goal": 0.0255,
+            "policy_goal": 0.0021,
+            "teacher": 0.5948,
+            "neural": 0.3686,
+            "infrastructure": 0.0042
+          },
+          "alive_count": 8.0,
+          "tech_verified": 5.0,
+          "facilities_active": 3.0,
+          "goal_decisions": 44.0
+        },
+        {
+          "seed": 106,
+          "return": 112.12300000000046,
+          "transitions": 139.0,
+          "steps_run": 4000.0,
+          "decision_share": {
+            "policy_infeasible": 0.005,
+            "goal": 0.0116,
+            "teacher": 0.5973,
+            "policy_goal": 0.0016,
+            "neural": 0.3796,
+            "infrastructure": 0.005
+          },
+          "alive_count": 8.0,
+          "tech_verified": 3.0,
+          "facilities_active": 2.0,
+          "goal_decisions": 34.0
+        },
+        {
+          "seed": 107,
+          "return": 361.4860000000002,
+          "transitions": 169.0,
+          "steps_run": 4000.0,
+          "decision_share": {
+            "policy_goal": 0.0021,
+            "goal": 0.0053,
+            "policy_infeasible": 0.0059,
+            "teacher": 0.9867
+          },
+          "alive_count": 8.0,
+          "tech_verified": 0.0,
+          "facilities_active": 0.0,
+          "goal_decisions": 45.0
+        },
+        {
+          "seed": 108,
+          "return": 132.04700000000045,
+          "transitions": 142.0,
+          "steps_run": 4000.0,
+          "decision_share": {
+            "policy_infeasible": 0.0055,
+            "goal": 0.0143,
+            "policy_goal": 0.0012,
+            "teacher": 0.5928,
+            "neural": 0.3835,
+            "infrastructure": 0.0026
+          },
+          "alive_count": 8.0,
+          "tech_verified": 3.0,
+          "facilities_active": 2.0,
+          "goal_decisions": 26.0
+        },
+        {
+          "seed": 109,
+          "return": 52.1130000000003,
+          "transitions": 141.0,
+          "steps_run": 4000.0,
+          "decision_share": {
+            "policy_infeasible": 0.0052,
+            "goal": 0.0164,
+            "teacher": 0.5901,
+            "policy_goal": 0.0015,
+            "neural": 0.3868
+          },
+          "alive_count": 8.0,
+          "tech_verified": 4.0,
+          "facilities_active": 3.0,
+          "goal_decisions": 32.0
+        }
+      ],
+      "aggregate": {
+        "return": {
+          "n": 10.0,
+          "mean": 154.2082000000004,
+          "std": 114.4613749443889,
+          "min": 3.6890000000005787,
+          "max": 367.07100000000014
+        },
+        "alive_count": {
+          "n": 10.0,
+          "mean": 8.0,
+          "std": 0.0,
+          "min": 8.0,
+          "max": 8.0
+        },
+        "tech_verified": {
+          "n": 10.0,
+          "mean": 3.6,
+          "std": 1.4966629547095764,
+          "min": 0.0,
+          "max": 5.0
+        },
+        "facilities_active": {
+          "n": 10.0,
+          "mean": 2.6,
+          "std": 1.2806248474865698,
+          "min": 0.0,
+          "max": 5.0
+        },
+        "goal_decisions": {
+          "n": 10.0,
+          "mean": 36.5,
+          "std": 6.6670833203133135,
+          "min": 26.0,
+          "max": 46.0
+        },
+        "transitions": {
+          "n": 10.0,
+          "mean": 145.0,
+          "std": 9.011104260855047,
+          "min": 138.0,
+          "max": 169.0
+        },
+        "steps_run": {
+          "n": 10.0,
+          "mean": 4000.0,
+          "std": 0.0,
+          "min": 4000.0,
+          "max": 4000.0
+        },
+        "decision_share.neural": {
+          "n": 10.0,
+          "mean": 0.34168,
+          "std": 0.11400194559743268,
+          "min": 0.0,
+          "max": 0.3868
+        },
+        "decision_share.teacher": {
+          "n": 10.0,
+          "mean": 0.6339499999999999,
+          "std": 0.11763123097205094,
+          "min": 0.5887,
+          "max": 0.9867
+        },
+        "decision_share.goal": {
+          "n": 10.0,
+          "mean": 0.014849999999999999,
+          "std": 0.006216309194369276,
+          "min": 0.0053,
+          "max": 0.0259
+        },
+        "decision_share.policy_goal": {
+          "n": 10.0,
+          "mean": 0.0017000000000000001,
+          "std": 0.0003193743884534262,
+          "min": 0.0012,
+          "max": 0.0021
+        },
+        "decision_share.policy_infeasible": {
+          "n": 10.0,
+          "mean": 0.00515,
+          "std": 0.00031701734968294715,
+          "min": 0.0048,
+          "max": 0.0059
+        },
+        "decision_share.infrastructure": {
+          "n": 10.0,
+          "mean": 0.0026799999999999997,
+          "std": 0.003384021276528858,
+          "min": 0.0,
+          "max": 0.0114
+        },
+        "decision_share.policy_error": {
+          "n": 10.0,
+          "mean": 0.0,
+          "std": 0.0,
+          "min": 0.0,
+          "max": 0.0
+        }
+      }
+    },
+    "heuristic": {
+      "rows": [
+        {
+          "seed": 100,
+          "return": 0.0,
+          "transitions": 0.0,
+          "steps_run": 4000.0,
+          "decision_share": {
+            "goal": 0.0164,
+            "teacher": 0.5963,
+            "neural": 0.3873
+          },
+          "alive_count": 8.0,
+          "tech_verified": 5.0,
+          "facilities_active": 4.0,
+          "goal_decisions": 0.0
+        },
+        {
+          "seed": 101,
+          "return": 0.0,
+          "transitions": 0.0,
+          "steps_run": 4000.0,
+          "decision_share": {
+            "goal": 0.0118,
+            "teacher": 0.6016,
+            "neural": 0.3865
+          },
+          "alive_count": 8.0,
+          "tech_verified": 3.0,
+          "facilities_active": 2.0,
+          "goal_decisions": 0.0
+        },
+        {
+          "seed": 102,
+          "return": 0.0,
+          "transitions": 0.0,
+          "steps_run": 4000.0,
+          "decision_share": {
+            "goal": 0.0306,
+            "teacher": 0.5889,
+            "neural": 0.3785,
+            "infrastructure": 0.002
+          },
+          "alive_count": 8.0,
+          "tech_verified": 6.0,
+          "facilities_active": 6.0,
+          "goal_decisions": 0.0
+        },
+        {
+          "seed": 103,
+          "return": 0.0,
+          "transitions": 0.0,
+          "steps_run": 4000.0,
+          "decision_share": {
+            "goal": 0.0078,
+            "teacher": 0.6015,
+            "neural": 0.3879,
+            "infrastructure": 0.0028
+          },
+          "alive_count": 8.0,
+          "tech_verified": 3.0,
+          "facilities_active": 2.0,
+          "goal_decisions": 0.0
+        },
+        {
+          "seed": 104,
+          "return": 0.0,
+          "transitions": 0.0,
+          "steps_run": 4000.0,
+          "decision_share": {
+            "goal": 0.0211,
+            "teacher": 0.6026,
+            "neural": 0.3763
+          },
+          "alive_count": 8.0,
+          "tech_verified": 5.0,
+          "facilities_active": 5.0,
+          "goal_decisions": 0.0
+        },
+        {
+          "seed": 105,
+          "return": 0.0,
+          "transitions": 0.0,
+          "steps_run": 4000.0,
+          "decision_share": {
+            "goal": 0.0299,
+            "teacher": 0.5936,
+            "neural": 0.3744,
+            "infrastructure": 0.0021
+          },
+          "alive_count": 8.0,
+          "tech_verified": 5.0,
+          "facilities_active": 3.0,
+          "goal_decisions": 0.0
+        },
+        {
+          "seed": 106,
+          "return": 0.0,
+          "transitions": 0.0,
+          "steps_run": 4000.0,
+          "decision_share": {
+            "goal": 0.0216,
+            "teacher": 0.5939,
+            "neural": 0.3757,
+            "infrastructure": 0.0089
+          },
+          "alive_count": 8.0,
+          "tech_verified": 6.0,
+          "facilities_active": 5.0,
+          "goal_decisions": 0.0
+        },
+        {
+          "seed": 107,
+          "return": 0.0,
+          "transitions": 0.0,
+          "steps_run": 4000.0,
+          "decision_share": {
+            "goal": 0.0092,
+            "teacher": 0.9908
+          },
+          "alive_count": 8.0,
+          "tech_verified": 1.0,
+          "facilities_active": 0.0,
+          "goal_decisions": 0.0
+        },
+        {
+          "seed": 108,
+          "return": 0.0,
+          "transitions": 0.0,
+          "steps_run": 4000.0,
+          "decision_share": {
+            "goal": 0.0192,
+            "teacher": 0.5888,
+            "neural": 0.3848,
+            "infrastructure": 0.0073
+          },
+          "alive_count": 8.0,
+          "tech_verified": 4.0,
+          "facilities_active": 3.0,
+          "goal_decisions": 0.0
+        },
+        {
+          "seed": 109,
+          "return": 0.0,
+          "transitions": 0.0,
+          "steps_run": 4000.0,
+          "decision_share": {
+            "goal": 0.0232,
+            "teacher": 0.5943,
+            "neural": 0.3825
+          },
+          "alive_count": 8.0,
+          "tech_verified": 4.0,
+          "facilities_active": 3.0,
+          "goal_decisions": 0.0
+        }
+      ],
+      "aggregate": {
+        "return": {
+          "n": 10.0,
+          "mean": 0.0,
+          "std": 0.0,
+          "min": 0.0,
+          "max": 0.0
+        },
+        "alive_count": {
+          "n": 10.0,
+          "mean": 8.0,
+          "std": 0.0,
+          "min": 8.0,
+          "max": 8.0
+        },
+        "tech_verified": {
+          "n": 10.0,
+          "mean": 4.2,
+          "std": 1.4696938456699067,
+          "min": 1.0,
+          "max": 6.0
+        },
+        "facilities_active": {
+          "n": 10.0,
+          "mean": 3.3,
+          "std": 1.676305461424021,
+          "min": 0.0,
+          "max": 6.0
+        },
+        "goal_decisions": {
+          "n": 10.0,
+          "mean": 0.0,
+          "std": 0.0,
+          "min": 0.0,
+          "max": 0.0
+        },
+        "transitions": {
+          "n": 10.0,
+          "mean": 0.0,
+          "std": 0.0,
+          "min": 0.0,
+          "max": 0.0
+        },
+        "steps_run": {
+          "n": 10.0,
+          "mean": 4000.0,
+          "std": 0.0,
+          "min": 4000.0,
+          "max": 4000.0
+        },
+        "decision_share.neural": {
+          "n": 10.0,
+          "mean": 0.34339,
+          "std": 0.1145644399453862,
+          "min": 0.0,
+          "max": 0.3879
+        },
+        "decision_share.teacher": {
+          "n": 10.0,
+          "mean": 0.63523,
+          "std": 0.1186160532980254,
+          "min": 0.5888,
+          "max": 0.9908
+        },
+        "decision_share.goal": {
+          "n": 10.0,
+          "mean": 0.01908,
+          "std": 0.007498239793444859,
+          "min": 0.0078,
+          "max": 0.0306
+        },
+        "decision_share.policy_goal": {
+          "n": 10.0,
+          "mean": 0.0,
+          "std": 0.0,
+          "min": 0.0,
+          "max": 0.0
+        },
+        "decision_share.policy_infeasible": {
+          "n": 10.0,
+          "mean": 0.0,
+          "std": 0.0,
+          "min": 0.0,
+          "max": 0.0
+        },
+        "decision_share.infrastructure": {
+          "n": 10.0,
+          "mean": 0.0023100000000000004,
+          "std": 0.0030885109680880204,
+          "min": 0.0,
+          "max": 0.0089
+        },
+        "decision_share.policy_error": {
+          "n": 10.0,
+          "mean": 0.0,
+          "std": 0.0,
+          "min": 0.0,
+          "max": 0.0
+        }
+      }
+    }
+  },
+  "wall_s": 94.331
+}

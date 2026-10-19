@@ -45,7 +45,20 @@ def collect_dataset(
     seed: int = 0,
     steps_per_hour: int = 300,
     hours: tuple[float, ...] = START_HOURS,
+    *,
+    use_population: bool = True,
 ) -> dict[str, np.ndarray]:
+    """Collect a behaviour-cloning dataset.
+
+    ``use_population=True`` (default, fixed in this upgrade) runs the data
+    collection inside a real :class:`~newworld.population.Population`, so the 16
+    civilization context inputs (memory / goal-plan / civilization) have **real
+    non-zero variance** in the training data.  Previously the dataset was
+    collected in a bare ``World`` with a homeostatic teacher, which made all 16
+    context columns exactly 0 — i.e. those inputs could never be learned
+    (audited: 16/16 zero-std columns).  The labels are still the actions the
+    controller actually executed, so this remains behaviour cloning, not RL.
+    """
     from .config import make_config
 
     config = make_config(800, 500)
@@ -58,26 +71,17 @@ def collect_dataset(
     words: list[np.ndarray] = []
 
     for hour in hours:
-        world = World(config, seed=seed)
-        world.reset(seed=seed + int(hour))
-        world.t = ((hour - world.day.start_hour) % 24.0) / 24.0 * world.day.day_length_s
-        world._update_environment()
-        teacher = InnerLife(seed + int(hour))
-        for _ in range(steps_per_hour):
-            decision = teacher.decide(world, dt)
-            mode = world.agent.behavior_state
-            if mode not in MODE_INDEX:
-                mode = "explore"
-            xs.append(features(world))
-            modes.append(MODE_INDEX[mode])
-            moves.append((1, 0, -1).index(decision.move) if decision.move in (-1, 0, 1) else 1)
-            jumps.append(bool(decision.jump))
-            speaks.append(bool(decision.speak))
-            target_word = MODE_WORDS[mode]
-            words.append(np.asarray([VOCAB.index(token) for token in target_word], dtype=np.int64))
-            world.step(actions=decision, dt=dt)
-            if decision.speak:
-                world.speak(world.agent, decision.word)
+        if use_population:
+            frames = _collect_hour_population(seed, hour, steps_per_hour, config, dt)
+        else:  # legacy homeostatic teacher path (kept for comparison)
+            frames = _collect_hour_teacher(seed, hour, steps_per_hour, config, dt)
+        for frame in frames:
+            xs.append(frame[0])
+            modes.append(frame[1])
+            moves.append(frame[2])
+            jumps.append(frame[3])
+            speaks.append(frame[4])
+            words.append(frame[5])
     return {
         "x": np.asarray(xs, dtype=np.float64),
         "mode": np.asarray(modes, dtype=np.int64),
@@ -86,6 +90,64 @@ def collect_dataset(
         "speak": np.asarray(speaks, dtype=np.float64),
         "word": np.asarray(words, dtype=np.int64),
     }
+
+
+def _frame(agent, decision) -> tuple:
+    """One (features, mode, move, jump, speak, word) training row."""
+    mode = getattr(agent, "behavior_state", "explore")
+    if mode not in MODE_INDEX:
+        mode = "explore"
+    move = 0
+    jump = False
+    speak = False
+    if decision is not None:
+        move = (1, 0, -1).index(decision.move) if decision.move in (-1, 0, 1) else 1
+        jump = bool(decision.jump)
+        speak = bool(decision.speak)
+    word = np.asarray([VOCAB.index(token) for token in MODE_WORDS[mode]], dtype=np.int64)
+    return (None, MODE_INDEX[mode], move, jump, speak, word)
+
+
+def _collect_hour_population(seed: int, hour: float, steps: int, config, dt: float) -> list[tuple]:
+    """Collect frames from the real multi-agent controller (context non-zero)."""
+    from .config import CivilizationConfig
+    from .population import Population
+
+    civ = CivilizationConfig(seed=seed, enable_perception=False)
+    world = World(config, seed=seed, civ_config=civ)
+    world.reset(seed=seed + int(hour))
+    world.t = ((hour - world.day.start_hour) % 24.0) / 24.0 * world.day.day_length_s
+    world._update_environment()
+    population = Population(world, seed=seed)
+    frames: list[tuple] = []
+    for _ in range(steps):
+        population.step(dt)
+        if not world.agents:
+            break
+        agent = world.agents[0]
+        mind = population.minds.get(agent.agent_id)
+        decision = mind.last_decision if mind is not None else None
+        frame = _frame(agent, decision)
+        frames.append((features(world, character=agent),) + frame[1:])
+    return frames
+
+
+def _collect_hour_teacher(seed: int, hour: float, steps: int, config, dt: float) -> list[tuple]:
+    """Legacy path: bare world + hand-written homeostatic teacher."""
+    world = World(config, seed=seed)
+    world.reset(seed=seed + int(hour))
+    world.t = ((hour - world.day.start_hour) % 24.0) / 24.0 * world.day.day_length_s
+    world._update_environment()
+    teacher = InnerLife(seed + int(hour))
+    frames: list[tuple] = []
+    for _ in range(steps):
+        decision = teacher.decide(world, dt)
+        frame = _frame(world.agent, decision)
+        frames.append((features(world),) + frame[1:])
+        world.step(actions=decision, dt=dt)
+        if decision.speak:
+            world.speak(world.agent, decision.word)
+    return frames
 
 
 # ---------------------------------------------------------------------------

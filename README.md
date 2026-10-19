@@ -1,4 +1,4 @@
-# newworld — 像素原子社会 · 微型文明（v0.9.0）
+# newworld — 像素原子社会 · 微型文明（v0.9.1 鼠标交互 + 学习型决策）
 
 > **世界的原子就是像素。** 2560×1600 屏幕划分为 **512×320 个原子**（1 原子 = 5×5 px）；
 > 原子有材料与元素组成（水 H₂O、石头 SiO₂、草/叶/木纤维素、空气 N₂/O₂/Ar、肉体/骨骼）。
@@ -8,8 +8,18 @@
 > 文明的发展、停滞、崩溃与灭绝全部由世界规则 + 个体决策 + 知识积累产生，
 > **没有固定剧情**。
 >
-> 原有的强化学习神经网络与世界模拟器被保留：MLP 策略（输入 40 → 64 → 32 → 58，
-> 行为克隆）继续驱动基础行为；旧 24 维 checkpoint **零初始化迁移**，行为逐比特一致。
+> **v0.9.1 本轮升级**：
+> - **鼠标主导交互**：点击个体选中/查看详情、右侧面板、底部控制栏（开始/暂停/继续/
+>   单步/重置/速度）、智能体列表、事件日志、滚轮缩放、拖动平移；键盘仅作可选辅助。
+>   鼠标选择**只观察**，不暂停仿真、不改变行为。
+> - **真实学习型决策**：新增高层目标选择策略（REINFORCE，真实奖励/采样/参数更新/
+>   checkpoint/独立评估）；修复神经网络在逐帧决策中只占 0.3% 的问题（现约 66%）；
+>   修复 BC 训练数据 16 维文明上下文全零的"死特征"。
+> - **有限组合式创新**：属性规则驱动的两技术组合 → 真实材料成本 → 真实世界效果
+>   （采集/负重/恢复），上限 3 项/世界。
+>
+> 底层动作策略仍是行为克隆 MLP（输入 40 → 64 → 32 → 58）；旧 24 维 checkpoint
+> **零初始化迁移**，行为逐比特一致。
 
 ![社会世界](assets/gui_pixel_world.png)
 
@@ -22,23 +32,34 @@
 cd C:\Users\27826\Desktop\vscode_win_ws\ds_ws\newworld\newworldpro
 python -m pip install -r requirements.txt
 
-# 交互运行（全屏；F1 调试层，F2 从零训练所有 agent，空格暂停，Q 退出）
-python -m newworld --neural --debug
+# 交互运行（鼠标主导；可加 --windowed --size 1280x800 开发）
+python -m newworld --windowed --size 1280x800
+
+# 无人工鼠标自检（程序化点击/缩放/按钮/列表，13 项断言，输出 JSON）
+python -m newworld --ui-test .tmp\ui_test.json --windowed --size 1280x800
 
 # 无窗口单个体仿真
 python -m newworld --headless --steps 600 --log run.jsonl
 
-# 无窗口文明实验（推荐，含 A/B/C/D 消融）
+# 无窗口文明实验（A/B/C/D 消融，或切学习型高层策略/创新）
 python -m newworld.simulation --group D --seed 0 --steps 24000 --dt 0.05
+python -m newworld.simulation --group C --steps 16000 --dt 0.05 --width 640 --height 400 `
+    --policy-mode neural --policy-path assets/goal_policy.npz --innovation
 
-# 完整消融实验（4 组 × 3 随机种子，结果写入 experiments/results/ablation_final/）
-python experiments/run_ablation.py --groups A B C D --seeds 0 1 2 --steps 24000 --dt 0.05
+# 训练高层目标策略（真实 REINFORCE）
+python tools/train_goal_policy.py --episodes 30 --steps 4000 `
+    --eval-seeds 100 101 102 103 104 105 106 107 108 109 --out assets/goal_policy.npz
+
+# 本轮升级的 6 配置 × 10 seed 正式实验
+python experiments/run_upgrade_experiments.py --seed-start 100 --num-seeds 10
 
 # 测试（沙箱环境请先设置可写 TEMP；见 §9）
 python -m unittest discover -s tests
 ```
 
 桌面快捷方式：`newworld 像素世界`（`start_world.bat`）。
+鼠标操作完整说明见 `docs/USER_GUIDE.md`；决策架构见 `docs/IMPLEMENTATION_REPORT.md`；
+实验结果见 `docs/EXPERIMENT_REPORT.md`；审计见 `docs/PROJECT_AUDIT.md`。
 
 ---
 

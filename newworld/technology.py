@@ -50,6 +50,12 @@ FACILITY_RADIUS = {
     "workshop": 160.0,
 }
 
+#: effect keys produced by the limited combinatorial innovation prototype
+#: (newworld/innovation.py) and applied by this module
+CUSTOM_EFFECT_KEYS = frozenset(
+    {"harvest_bonus", "capacity_bonus", "energy_regen", "water_regen", "craft_success_bonus"}
+)
+
 
 @dataclass
 class Inventory:
@@ -68,10 +74,13 @@ class Inventory:
     tool: str | None = None
     basket: int = 0
     capacity_base: int = 8
+    #: extra capacity granted by a validated combinatorial innovation (real
+    #: effect registered through ``Technology.register_custom_effect``)
+    capacity_bonus: int = 0
 
     # ------------------------------------------------------------------
     def capacity(self) -> int:
-        return self.capacity_base + 4 * self.basket
+        return self.capacity_base + 4 * self.basket + int(self.capacity_bonus)
 
     def load(self) -> int:
         return self.wood + self.stone + self.fiber + self.cord
@@ -155,8 +164,36 @@ class Technology:
         #: facilities whose construction was validated this step, consumed by
         #: the civilization layer (kind, x_screen, agent_id) -> see Population
         self.pending_facilities: list[tuple[str, float, int]] = []
+        #: tool name -> validated custom effects (limited combinatorial innovation)
+        self.custom_effects: dict[str, dict[str, float]] = {}
         self.recipes_executed = 0
         self.recipes_failed = 0
+
+    # ------------------------------------------------------------------
+    # limited combinatorial innovation: registered tools change real numbers
+    # ------------------------------------------------------------------
+    def register_custom_effect(self, tool_name: str, effects: dict[str, float]) -> None:
+        """Register the *validated* effects of a combined tool.
+
+        Only :mod:`newworld.innovation` calls this after a proposal has passed its
+        rule checks; the effects are then consumed by :meth:`harvest`,
+        :meth:`simulate_recipe` and :meth:`apply_facility_effects` so the new
+        technology changes real world numbers instead of being a label.
+        """
+        name = str(tool_name or "").strip()
+        if not name:
+            raise ValueError("tool_name must be non-empty")
+        clean: dict[str, float] = {}
+        for key, value in dict(effects or {}).items():
+            if key not in CUSTOM_EFFECT_KEYS:
+                raise ValueError(f"unknown custom effect {key!r}")
+            clean[str(key)] = float(value)
+        self.custom_effects[name] = clean
+
+    def custom_effect(self, tool_name: str | None, key: str) -> float:
+        if not tool_name:
+            return 0.0
+        return float(self.custom_effects.get(str(tool_name), {}).get(str(key), 0.0))
 
     # ------------------------------------------------------------------
     # gathering
@@ -232,8 +269,11 @@ class Technology:
                             best = (distance, x, y)
             if best is not None:
                 _, x, y = best
-                amount = 2 if character.inventory.tool else 1
-                if not character.inventory.add(kind, amount):
+                inventory = character.inventory
+                base = 2 if inventory.tool in ("axe", "pickaxe") else 1
+                base += int(round(self.custom_effect(inventory.tool, "harvest_bonus")))
+                amount = max(1, base)
+                if not inventory.add(kind, amount):
                     return False  # inventory full: a genuine failure
                 self.scene.clear_atom(x, y)
                 self.scene.refresh_caches()
@@ -323,6 +363,9 @@ class Technology:
             self.recipes_failed += 1
             return False, blocker
         difficulty = float(getattr(recipe, "difficulty", 0.3))
+        # a validated combined tool (e.g. a bound haft) reduces experiment failures
+        success_bonus = self.custom_effect(character.inventory.tool, "craft_success_bonus")
+        difficulty = max(0.0, difficulty - max(0.0, success_bonus))
         if self.rng.random() < difficulty:
             # the experiment consumes the materials and teaches nothing usable
             for kind, amount in dict(recipe.inputs).items():
@@ -389,6 +432,16 @@ class Technology:
         effects: dict[str, float] = {}
         physiology = character.physiology
         energy_gain = 0.0
+        # -- validated combined tools: passive effects (real numbers) --------
+        tool = character.inventory.tool
+        tool_energy = self.custom_effect(tool, "energy_regen")
+        tool_water = self.custom_effect(tool, "water_regen")
+        if tool_energy > 0.0:
+            physiology.energy = min(100.0, physiology.energy + tool_energy * dt)
+            effects["tool_energy"] = effects.get("tool_energy", 0.0) + dt
+        if tool_water > 0.0:
+            physiology.hydration = min(100.0, physiology.hydration + tool_water * dt)
+            effects["tool_water"] = effects.get("tool_water", 0.0) + dt
         for facility in facilities or ():
             if not getattr(facility, "active", True):
                 continue

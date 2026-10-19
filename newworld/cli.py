@@ -76,6 +76,12 @@ def build_parser() -> argparse.ArgumentParser:
     geometry.add_argument("--traceback", action="store_true", help="出错时打印完整堆栈")
     geometry.add_argument("--screenshot", metavar="PATH", help="启动约 1 秒后截图并退出（用于验证渲染）")
     geometry.add_argument("--autoclose-ms", type=int, metavar="MS", help="自动关闭窗口（开发用）")
+    geometry.add_argument(
+        "--ui-test",
+        metavar="PATH",
+        dest="ui_test",
+        help="无人工鼠标自检：程序化点击场景/面板并断言交互，结果写 JSON 后退出",
+    )
 
     headless = parser.add_argument_group("无窗口运行（--headless）")
     headless.add_argument("--steps", type=int, default=600, help="仿真步数（默认 600）")
@@ -379,8 +385,10 @@ def run_interactive(args: argparse.Namespace) -> int:
         debug=args.debug,
         screenshot=args.screenshot,
         autoclose_ms=args.autoclose_ms,
+        seed=args.seed,
         policy=neural_policy,
         policy_path=policy_path,
+        ui_test_path=getattr(args, "ui_test", None),
     )
 
 

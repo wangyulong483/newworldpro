@@ -72,12 +72,35 @@ class RunSpec:
     stop_on_extinction: bool = True
     #: optional budget for the neural behaviour-cloning training round
     train_rounds: int = 0
+    #: learned high-level goal policy: "heuristic" | "neural" | "random"
+    goal_policy_mode: str = "heuristic"
+    #: optional checkpoint for goal_policy_mode="neural" (fresh policy if None)
+    goal_policy_path: str | Path | None = None
+    #: low-level controller ablation: "full" | "random" | "off"
+    low_level_mode: str = "full"
+    #: limited combinatorial innovation prototype (None -> follow the group)
+    enable_innovation: bool | None = None
 
     def as_dict(self) -> dict[str, Any]:
         data = dict(self.__dict__)
         data["log_dir"] = None if self.log_dir is None else str(self.log_dir)
         data["save_path"] = None if self.save_path is None else str(self.save_path)
+        data["goal_policy_path"] = (
+            None if self.goal_policy_path is None else str(self.goal_policy_path)
+        )
         return data
+
+
+class _RandomGoalPolicy:
+    """Uniform-random high-level policy used as a decision ablation."""
+
+    def __init__(self, seed: int = 0) -> None:
+        self.rng = random.Random(seed)
+
+    def sample(self, features, rng=None) -> int:  # noqa: ANN001 - duck typed
+        from .highlevel import GOAL_ACTIONS
+
+        return self.rng.randrange(len(GOAL_ACTIONS))
 
 
 @dataclass
@@ -225,6 +248,10 @@ class SocietyRunner:
         )
         if self.spec.disturbance is not None:
             civ_config.enable_disturbance = bool(self.spec.disturbance)
+        civ_config.goal_policy_mode = str(self.spec.goal_policy_mode)
+        civ_config.low_level_mode = str(self.spec.low_level_mode)
+        if self.spec.enable_innovation is not None:
+            civ_config.enable_innovation = bool(self.spec.enable_innovation)
         self.civ_config: CivilizationConfig = civ_config
         self.world_config: WorldConfig = make_config(self.spec.width, self.spec.height)
         self.world = World(self.world_config, seed=self.spec.seed, civ_config=self.civ_config)
@@ -241,11 +268,32 @@ class SocietyRunner:
             group=self.spec.group,
         )
         self.population = Population(self.world, self.spec.seed, telemetry=self.telemetry)
+        self._attach_goal_policy()
         self.disturbance = EnvironmentDisturbance(
             seed=self.spec.seed,
             enabled=bool(self.civ_config.enable_disturbance),
         )
         self.result: dict[str, Any] | None = None
+
+    # ------------------------------------------------------------------
+    def _attach_goal_policy(self) -> None:
+        """Attach the learned / random high-level policy when requested."""
+        mode = str(self.spec.goal_policy_mode or "heuristic")
+        if mode == "heuristic":
+            return
+        if mode == "random":
+            self.population.attach_goal_policy(_RandomGoalPolicy(self.spec.seed))
+            return
+        try:
+            from .highlevel import GoalPolicy
+
+            if self.spec.goal_policy_path:
+                policy = GoalPolicy.load(self.spec.goal_policy_path)
+            else:
+                policy = GoalPolicy(seed=self.spec.seed)
+            self.population.attach_goal_policy(policy)
+        except Exception as exc:  # pragma: no cover - defensive
+            raise RuntimeError(f"cannot attach neural goal policy: {exc}") from exc
 
     # ------------------------------------------------------------------
     def run(self) -> dict[str, Any]:
@@ -292,6 +340,10 @@ class SocietyRunner:
                 "blocked_attempts": getattr(self.world.knowledge, "blocked_attempts", 0),
             },
             "archive": self.population.archive_summary(),
+            "decisions": self.population.decision_share(),
+            "decision_counts": dict(self.population.decision_counts),
+            "innovations": self.population.innovations(),
+            "goal_policy_mode": str(self.spec.goal_policy_mode),
             "disturbances": list(self.disturbance.history),
             "telemetry_windows": getattr(self.telemetry, "windows", []),
             "events_count": len(getattr(self.telemetry, "events", ()) or ()),
@@ -347,6 +399,106 @@ class SocietyRunner:
 
 
 # ---------------------------------------------------------------------------
+# environment for the learned high-level goal policy (REINFORCE training/eval)
+# ---------------------------------------------------------------------------
+class GoalPolicyEnv:
+    """Minimal env used by ``neworld/highlevel.py``'s ``GoalPolicyTrainer``.
+
+    It runs exactly the same world rules as an experiment (same ``Population``,
+    same knowledge/civilization services), only without UI and without the
+    environment-disturbance schedule (training wants a stationary task).
+
+    The trainer attaches its own policy through
+    ``population.attach_goal_policy(policy)`` after construction, so the policy
+    being optimized is the one actually driving the simulation.
+    """
+
+    def __init__(
+        self,
+        seed: int,
+        *,
+        group: str = "D",
+        steps: int = 4000,
+        dt: float = 0.05,
+        width: int = 640,
+        height: int = 400,
+    ) -> None:
+        spec = RunSpec(
+            group=group,
+            seed=seed,
+            steps=steps,
+            dt=dt,
+            width=width,
+            height=height,
+            perception=False,
+            disturbance=False,
+            goal_policy_mode="heuristic",  # trainer attaches its own policy
+        )
+        self.spec = spec
+        self.runner = SocietyRunner(spec)
+        self.population = self.runner.population
+        self.world = self.runner.world
+        self._steps = 0
+        self._max_steps = int(steps)
+
+    # ------------------------------------------------------------------
+    def step(self) -> None:
+        self.population.step(self.spec.dt)
+        self._steps += 1
+
+    def ended(self) -> bool:
+        if self.world.civilization.extinct:
+            return True
+        return not any(agent.alive for agent in self.world.agents)
+
+    def result(self) -> dict[str, float]:
+        world = self.world
+        return {
+            "world_time_s": round(float(world.t), 3),
+            "steps_run": float(self._steps),
+            "alive_count": float(len([a for a in world.agents if a.alive])),
+            "total_agents_created": float(world.registry.total_created),
+            "total_deaths": float(world.registry.total_deaths),
+            "tech_verified": float(len(world.knowledge.verified_ids())),
+            "facilities_active": float(
+                len([f for f in world.civilization.facilities if getattr(f, "active", False)])
+            ),
+            "innovations": float(len(self.population.innovations())),
+            "cooperation_index": float(getattr(world.civilization, "cooperation_index", 0.0)),
+            "extinction_time": float(
+                -1.0 if not world.civilization.extinct else (world.civilization.extinct_at or -1.0)
+            ),
+            "goal_decisions": float(self.population.decision_counts.get("policy_goal", 0)),
+        }
+
+    # ------------------------------------------------------------------
+    def attach_goal_policy(self, policy) -> None:  # pragma: no cover - convenience
+        self.population.attach_goal_policy(policy)
+
+
+def make_goal_policy_env(
+    seed: int,
+    *,
+    group: str = "D",
+    steps: int = 4000,
+    dt: float = 0.05,
+    width: int = 640,
+    height: int = 400,
+    **kwargs,
+) -> GoalPolicyEnv:
+    """Build a training/evaluation env for the high-level goal policy."""
+    del kwargs  # tolerate future keywords from the trainer
+    return GoalPolicyEnv(
+        seed,
+        group=group,
+        steps=steps,
+        dt=dt,
+        width=width,
+        height=height,
+    )
+
+
+# ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
 def main(argv: list[str] | None = None) -> int:
@@ -359,6 +511,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--height", type=int, default=500)
     parser.add_argument("--perception", action="store_true", help="enable visual perception (slow)")
     parser.add_argument("--disturbance", choices=("on", "off"), default=None)
+    parser.add_argument("--policy-mode", choices=("heuristic", "neural", "random"), default="heuristic",
+                        help="high-level goal policy: rules / trained network / uniform random")
+    parser.add_argument("--policy-path", default=None, help="checkpoint for --policy-mode neural")
+    parser.add_argument("--innovation", action="store_true", help="enable combinatorial innovation")
     parser.add_argument("--train-rounds", type=int, default=0)
     parser.add_argument("--log-dir", default=None)
     parser.add_argument("--save", default=None)
@@ -376,6 +532,9 @@ def main(argv: list[str] | None = None) -> int:
         perception=args.perception,
         disturbance=None if args.disturbance is None else args.disturbance == "on",
         train_rounds=args.train_rounds,
+        goal_policy_mode=args.policy_mode,
+        goal_policy_path=args.policy_path,
+        enable_innovation=True if args.innovation else None,
         log_dir=args.log_dir,
         save_path=args.save,
         stop_on_extinction=not args.keep_going,

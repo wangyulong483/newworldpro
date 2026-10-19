@@ -147,3 +147,75 @@ civilization）；`World.load(path)` 重建，死亡个体不会被复活。
 硬约束（8 个累计创建上限）**不属于**消融开关：所有组都必须满足。
 关闭机制时，行为回退到原始实现（A 组仍保留 P0 的缺陷修复：食物再生、
 教师生存优先、受约束创建），差异在 `docs/experiment_protocol.md` 中说明。
+
+---
+
+## 7. v0.9.1 升级后的模块关系（鼠标交互 + 学习型决策）
+
+### 7.1 交互层（新增，鼠标主导）
+
+```
+app_tk.run_app
+  ├─ ui_state.Layout            区域隔离：top / world(画布) / panel / bottom
+  ├─ ui_state.Viewport          屏幕↔世界坐标、缩放锚点、平移 clamp、resize
+  ├─ ui_state.HitTester         包围盒优先→最近邻（死人不选；缩放平移后仍正确）
+  ├─ ui_state.SelectionModel    选中/切换/取消/死亡清理
+  ├─ ui_state.ControlState      开始/暂停/继续/单步/速度档位（单步仅暂停时)
+  ├─ ui_state.build_agent_detail / build_stats / build_event_log
+  │                             ↑ 全部只读真实世界状态（缺失显示"暂无数据"）
+  └─ 画布：世界背景 + 个体精灵 + 选中高亮环 + 任务标记（有活跃 Plan 的个体）
+```
+
+数据流：`Population.step()` → `World` 状态变化 → UI 每帧只更新画布几何
+（`_refresh_frame` 有 key 去重）、面板 0.25s 刷新、背景 0.8s 刷新；
+鼠标事件只改 `SelectionModel/ControlState/Viewport`，**不写世界状态**。
+
+### 7.2 决策层（三层职责，本轮明确化）
+
+```
+高层：highlevel.GoalPolicy（REINFORCE，可选）+ goals.GoalManager 的目标生成
+       ↓ 目标类型 / 目标生命周期（完成/失败/放弃/重规划）
+中层：goals.Planner → 结构化计划步骤；explore 步骤标记为 delegated
+       ↓
+底层：Population._decide
+        ├─ infrastructure 反射（低能量时去设施休息）
+        ├─ 规划步骤动作（gather/craft/experiment/build/...）
+        ├─ delegated → 直接调用 neural.NeuralInnerLife（BC 网络）
+        └─ 其它 → social.SocialLife 教师（生存优先）
+```
+
+- `Population.decision_counts` 记录每一帧由哪层做出决定，写入实验结果的
+  `decisions` / `share_*`，避免把规划器/教师的能力误报成"神经网络学会的能力"。
+- `low_level_mode ∈ {full, random, off}` 与 `goal_policy_mode ∈ {heuristic, neural, random}`
+  是决策链路的消融开关（同世界规则，仅切换决策模块）。
+
+### 7.3 创新层
+
+```
+population._maybe_innovate（每 5 世界秒，enable_innovation=True）
+  → innovation.InnovationLab.proposals(agent, knowledge, affordable_only=True)
+      （仅 verified 技术、tag 相容对、材料可负担）
+  → InnovationLab.attempt(agent, proposal, world)
+      真实扣材料 → 组合难度判定成败 → 成功时
+      technology.register_custom_effect(tool, effects)
+  → 效果由 Technology 消费：harvest/capacity/facility effects/craft 成功率
+```
+
+### 7.4 新增模块职责
+
+| 模块 | 职责 | 测试 |
+| --- | --- | --- |
+| `ui_state.py` | 视口/命中/选择/控制/布局/详情数据（纯逻辑） | 34 |
+| `app_tk.py`（重写） | 鼠标主导界面 + 状态栏 + 列表 + 详情 + 控制 + 日志 + `--ui-test` | 7（GUI，可 skip） |
+| `highlevel.py` | 30 维特征、GoalPolicy（MLP 30→32→8）、REINFORCE trainer、独立评估 | 23 |
+| `innovation.py` | 属性/规则表、提案、真实材料成本、效果注册、上限 3 | 42 |
+| `simulation.py`（扩展） | `GoalPolicyEnv` / `make_goal_policy_env`、策略模式/创新开关 | 决策链路 11 |
+| `training.py`（修复） | BC 数据在 Population 内采集（上下文特征非零方差） | 决策链路 11 |
+| `goals.py`（扩展） | `request_goal`/`has_active_goal`/`consume_delegation` | 37 |
+| `population.py`（扩展） | 决策来源计量、策略挂载/转移/奖励、创新集成、低层消融 | 41 + 决策链路 |
+
+### 7.5 硬约束仍然成立
+
+无论鼠标选择、策略挂载、创新、重置，创建智能体只有一条受约束路径
+（`World.create_agent → AgentRegistry.register`），实验 CSV 每行都记录
+`total_agents_created`，aggregate 检查 ≤8；UI 选择不创建个体；重置 = 新运行（新注册表）。

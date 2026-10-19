@@ -205,6 +205,21 @@ class Character:
         return True
 
     # ------------------------------------------------------------------
+    # civilization hooks
+    # ------------------------------------------------------------------
+    def can_innovate(self) -> bool:
+        """Minimum condition to experiment with combined techniques.
+
+        The limited combinatorial innovation prototype
+        (:mod:`newworld.innovation`) asks the individual this question.  The
+        world rule is: a tool in hand, **or** at least two units of raw material
+        to tinker with.  It is *not* a permission to skip materials or knowledge:
+        those are checked separately by the innovation rules and the technology
+        simulator, and the prototype cost is really deducted.
+        """
+        return self.inventory.tool is not None or self.inventory.load() >= 2
+
+    # ------------------------------------------------------------------
     # geometry / derived state
     # ------------------------------------------------------------------
     @property

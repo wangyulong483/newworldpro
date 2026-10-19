@@ -1107,6 +1107,11 @@ class StepResult:
     def fail(cls, error: str) -> "StepResult":
         return cls(None, False, str(error))
 
+    @classmethod
+    def delegated(cls) -> "StepResult":
+        """本层只决定"要探索"，具体移动交给底层策略（神经/教师）执行。"""
+        return cls(None, False, "")
+
 
 # ---------------------------------------------------------------------------
 # GoalManager
@@ -1149,6 +1154,9 @@ class GoalManager:
         #: agent_id(str) -> {goal_type: 冷却截止时间}（按个体冷却，避免一人放弃
         #: 导致所有个体的同类目标都被冻结）
         self._cooldowns: dict[str, dict[str, float]] = {}
+        #: agent_ids whose per-frame action is delegated to the low-level policy
+        #: this frame (semantic step chosen, primitive action left to BC network)
+        self._delegated: set[int] = set()
 
         self._stats: dict[str, float] = {
             "goals_created": 0.0,
@@ -1248,6 +1256,45 @@ class GoalManager:
         if plan is not None and plan.status == "active":
             return plan
         return None
+
+    # ------------------------------------------------------------------
+    # 外部（学习型高层策略）接口
+    # ------------------------------------------------------------------
+    def request_goal(self, world, agent, goal_type: str) -> Goal | None:
+        """由外部策略请求一个 **指定类型** 的新目标。
+
+        返回 ``None`` 表示该类型当前不可行（前置条件不满足 / 处于冷却 /
+        生成器没有该候选）。集成层据此回退到启发式并对策略给一个小负奖励，
+        因此学习型策略不会被"硬塞"一个无法执行的目标。
+        """
+        if not self._planning_enabled():
+            return None
+        if world is None or agent is None:
+            return None
+        if self.config is None:
+            self._runtime_config = _get(world, "civ_config", None)
+        now = _world_time(world)
+        if now is None:
+            now = self._clock
+        agent_id = int(_safe_float(_get(agent, "agent_id", 0), 0.0))
+        self._settle(world, agent, agent_id, now)
+        if not self._cooled(agent_id, str(goal_type), now):
+            return None
+        return self._generate_goal(world, agent, agent_id, now, preferred_type=str(goal_type))
+
+    def has_active_goal(self, agent_id: int) -> bool:
+        """该 agent 是否有活跃目标（用于判断是否需要请求新目标）。"""
+        return self._select_goal(int(agent_id)) is not None
+
+    def consume_delegation(self, agent_id: int) -> bool:
+        """本帧是否把逐帧动作委托给底层网络（消费一次标记）。"""
+        key = int(agent_id)
+        delegated = key in self._delegated
+        self._delegated.discard(key)
+        return delegated
+
+    def current_goal(self, agent_id: int) -> Goal | None:
+        return self._select_goal(int(agent_id))
 
     def stats(self) -> dict[str, float]:
         """规划层统计（契约 §4 的 9 个键）。"""
@@ -1464,8 +1511,14 @@ class GoalManager:
         until = float((entries or {}).get(str(goal_type), 0.0))
         return now + _EPS >= until
 
-    def _generate_goal(self, world, agent, agent_id: int, now: float) -> Goal | None:
-        """按当前状态生成新目标；没有可行动世界接口时返回 None。"""
+    def _generate_goal(
+        self, world, agent, agent_id: int, now: float, *, preferred_type: str | None = None
+    ) -> Goal | None:
+        """按当前状态生成新目标；没有可行动世界接口时返回 None。
+
+        ``preferred_type`` 是给"学习到的高层策略"用的：只接受该类型候选
+        （不可行时返回 None，由集成层回退/惩罚），不改变其余生成规则。
+        """
         tech = _tech(world)
         if tech is None:
             return None
@@ -1627,6 +1680,8 @@ class GoalManager:
         # 时的 socialize 目标）。只有真正需要行动的目标才值得占用计划层。
         usable: list[Goal] = []
         for candidate in candidates:
+            if preferred_type is not None and candidate.goal_type != preferred_type:
+                continue
             try:
                 if candidate.is_done(world, agent):
                     continue
@@ -1844,6 +1899,13 @@ class GoalManager:
                 plan.failure_reason = result.error
                 self._handle_plan_failure(world, agent, goal, plan, result.error, now)
             return result.decision
+
+        if result.decision is None and not result.done:
+            # “语义已定、逐帧动作委托底层”：标记给集成层，让它直接交给
+            # 行为克隆网络（而不是被求偶/建造教师接管后原地站立）。
+            self._delegated.add(int(agent_id))
+        else:
+            self._delegated.discard(int(agent_id))
 
         if result.done:
             step.status = "done"
@@ -2390,7 +2452,9 @@ class GoalManager:
             direction = self.rng.choice((-1, 1))
         _set_facing(agent, direction)
         _set_state(agent, "explore")
-        return StepResult.moving(Decision(direction, False, False))
+        # 语义层只声明"探索"，逐帧移动/跳跃/说话交给底层策略执行：
+        # 这样行为克隆网络才真正参与决策，而不是被规划器完全覆盖。
+        return StepResult.delegated()
 
     def _verb_observe(self, world, agent, goal, plan, step, dt, now) -> StepResult:
         duration = _num(_arg(step.args, "duration", 1.5), 1.5)
