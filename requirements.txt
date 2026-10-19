@@ -1,0 +1,10 @@
+# newworld 运行时依赖
+pillow>=10.1        # 图像合成 / 渲染 / PNG 预览
+numpy>=1.24         # RL 观测向量与数值运算
+
+# 仅工具 tools/extract_character.py 需要（从蓝图 PDF 重新提取角色精灵）：
+# pymupdf>=1.24
+
+# 可选：以后接入标准 RL 生态时安装
+# gymnasium>=0.29
+# torch>=2.0

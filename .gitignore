@@ -1,0 +1,19 @@
+# python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+
+# newworld outputs
+assets/_*.png
+examples/*.jsonl
+examples/frames/
+run.jsonl
+frames/
+*.log
+
+# local scratch
+.tmp/
+experiments/results/
+
