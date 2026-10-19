@@ -58,6 +58,18 @@ python -m unittest discover -s tests
 ```
 
 桌面快捷方式：`newworld 像素世界`（`start_world.bat`）。
+图标由角色蓝图 `ref/blueprint.pdf` 生成（16–256 px 多尺寸 `.ico`）：
+
+```powershell
+# 1) 从蓝图 PDF 重新生成图标（assets/newworld.ico + 预览 PNG）
+python tools/make_icon.py
+
+# 2) 创建/修复桌面快捷方式并绑定该图标（写入桌面，需要相应权限）
+powershell -ExecutionPolicy Bypass -File tools/update_shortcut.ps1
+```
+
+> 当前桌面上的 `newworld 像素世界.lnk` 已使用该图标；若项目目录移动，
+> 重新执行上面的第 1、2 步即可修复。
 鼠标操作完整说明见 `docs/USER_GUIDE.md`；决策架构见 `docs/IMPLEMENTATION_REPORT.md`；
 实验结果见 `docs/EXPERIMENT_REPORT.md`；审计见 `docs/PROJECT_AUDIT.md`。
 
@@ -146,12 +158,12 @@ experiments/
 ├── run_ablation.py                                        ← A/B/C/D × 多 seed
 └── results/                                               ← 实验产物（JSON/CSV/报告）
 docs/
-├── architecture_audit.md      ← P0 代码审计（含实测基线）
-├── civilization_design.md     ← 机制设计与接口契约
-├── implementation_plan.md     ← 分阶段改造记录
-├── experiment_protocol.md     ← 指标定义与实验协议
-├── architecture.md            ← 改造后模块关系与数据流
-└── final_report.md            ← 最终改造报告（已完成/未完成/风险/下一步）
+├── PROJECT_AUDIT.md         ← 本轮升级审计（含实测插桩数据）
+├── IMPLEMENTATION_REPORT.md ← 实施记录：鼠标交互 / 决策链路 / 组合式创新
+├── EXPERIMENT_REPORT.md     ← 10 seed × 6 配置实验与诚实结论
+├── USER_GUIDE.md            ← 鼠标操作与面板说明
+├── architecture.md          ← 模块关系与数据流（v0.9.1）
+└── upgrade_contracts_v1.md  ← 并行开发时冻结的接口契约
 ```
 
 ## 8. 测试
@@ -185,7 +197,7 @@ python experiments/run_ablation.py --seeds 0 1 2 --steps 24000 --dt 0.05
 Get-Content experiments\results\ablation_final\report.md
 ```
 
-指标定义见 `docs/experiment_protocol.md`；最终结论与局限见 `docs/final_report.md`。
+指标定义、实验数据与局限见 `docs/EXPERIMENT_REPORT.md`；实施与已知问题见 `docs/IMPLEMENTATION_REPORT.md`。
 
 ## 11. 已知限制（如实）
 
@@ -202,4 +214,4 @@ Get-Content experiments\results\ablation_final\report.md
 - Epstein & Axtell, *Growing Artificial Societies*: <https://books.google.com.sg/books?id=8sXENe8QrmYC>
 - *Multi-Agent, Human-Agent and Beyond: A Survey on Cooperation in Social Dilemmas*:
   <http://export.arxiv.org/pdf/2402.17270v2>
-- 既有人眼/物理/声学参考见 `ref/` 与 `docs/architecture_audit.md`。
+- 既有人眼/物理/声学与角色蓝图参考见 `ref/`。

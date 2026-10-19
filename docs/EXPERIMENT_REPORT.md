@@ -196,7 +196,7 @@ python -m newworld.simulation --group C --steps 14000 --dt 0.05 \
 | `python -m unittest tests.test_highlevel` | 23 tests OK |
 | `python -m unittest tests.test_innovation` | 42 tests OK（skipped=1） |
 | `python -m unittest tests.test_decision_chain` | 11 tests OK |
-| `python -m unittest discover -s tests` | **Ran 414 tests / OK (skipped=1)**（约 148s，含全部新旧测试） |
+| `python -m unittest discover -s tests` | **Ran 418 tests / OK (skipped=1)**（约 148s，含全部新旧测试） |
 | `python -m newworld --ui-test ...` | 13/13 PASS，exit 0 |
 | 每个实验 run | `total_agents_created ≤ 8`（CSV 列可直接核验） |
 

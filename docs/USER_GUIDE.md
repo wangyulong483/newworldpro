@@ -25,6 +25,9 @@ python -m newworld --windowed --size 1280x800 --screenshot .tmp\ui_shot.png
 python -m newworld --windowed --size 1280x800 --autoclose-ms 2500
 ```
 
+桌面快捷方式「newworld 像素世界」的图标由 `ref/blueprint.pdf` 生成
+（`python tools/make_icon.py`），可用 `tools/update_shortcut.ps1` 重新绑定；
+目标仍是 `start_world.bat --debug`。
 窗口以**物理像素**布局（`enable_dpi_awareness()`），高 DPI 屏上像素画不会模糊。
 窗口大小变化时通过 `<Configure>` 重建布局（`ui_state.Layout`），不会出现控件错位。
 

@@ -1,9 +1,8 @@
-# 架构说明：模块关系与数据流（改造后 v0.9）
+# 架构说明：模块关系与数据流（v0.9.1）
 
-> 改造前的审计见 `docs/architecture_audit.md`；机制设计见 `docs/civilization_design.md`；
-> 分阶段实施记录见 `docs/implementation_plan.md`；指标与实验协议见
-> `docs/experiment_protocol.md`。
-
+> 当前架构说明（v0.9.1：鼠标交互 + 学习型决策 + 组合式创新）。
+> 项目审计见 `docs/PROJECT_AUDIT.md`；实施记录见 `docs/IMPLEMENTATION_REPORT.md`；
+> 实验数据见 `docs/EXPERIMENT_REPORT.md`；鼠标操作见 `docs/USER_GUIDE.md`。
 ---
 
 ## 1. 总览：五层结构
@@ -146,7 +145,7 @@ civilization）；`World.load(path)` 重建，死亡个体不会被复活。
 
 硬约束（8 个累计创建上限）**不属于**消融开关：所有组都必须满足。
 关闭机制时，行为回退到原始实现（A 组仍保留 P0 的缺陷修复：食物再生、
-教师生存优先、受约束创建），差异在 `docs/experiment_protocol.md` 中说明。
+教师生存优先、受约束创建），差异在 `docs/EXPERIMENT_REPORT.md` 中说明。
 
 ---
 

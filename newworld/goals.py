@@ -19,7 +19,7 @@
    `knowledge.py` 尚未落地时独立验证。
 3. 执行器（:meth:`GoalManager._run_verb`）：把结构化 verb 映射为真实动作。
 
-公开接口（冻结契约见 ``docs/civilization_design.md`` §4）
+公开接口（冻结契约见 ``docs/IMPLEMENTATION_REPORT.md`` §4）
 -------------------------------------------------------
 ``Condition / Goal / PlanStep / Plan / Planner / GoalManager`` 的字段与签名
 必须保持兼容；本模块额外提供 ``Goal.to_dict/from_dict`` 等序列化小工具、

@@ -2,7 +2,7 @@
 pillow>=10.1        # 图像合成 / 渲染 / PNG 预览
 numpy>=1.24         # RL 观测向量与数值运算
 
-# 仅工具 tools/extract_character.py 需要（从蓝图 PDF 重新提取角色精灵）：
+# 仅工具 tools/extract_character.py 与 tools/make_icon.py 需要（从蓝图 PDF 提取角色/生成图标）：
 # pymupdf>=1.24
 
 # 可选：以后接入标准 RL 生态时安装

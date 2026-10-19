@@ -1,6 +1,6 @@
 """历史注册表 / 文明状态 / 公共设施（P3/P4）。
 
-契约来源：``docs/civilization_design.md`` §3（冻结接口）。本模块只依赖标准库，
+契约来源：``docs/IMPLEMENTATION_REPORT.md`` §3（冻结接口）。本模块只依赖标准库，
 **不** import ``knowledge`` / ``memory`` / ``world`` / ``population``：
 ``knowledge`` 与 ``memory`` 以 duck typing 形式从构造参数注入（只调用契约里的
 公开方法），避免循环依赖；对世界的读取也全部经 ``getattr`` 完成。

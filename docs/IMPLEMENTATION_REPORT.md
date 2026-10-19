@@ -263,7 +263,7 @@ python -m unittest discover -s tests
 
 ## 8. 回归测试方案与结果
 
-- 全量：`python -m unittest discover -s tests` → **Ran 414 tests / OK (skipped=1)**（约 148s）；
+- 全量：`python -m unittest discover -s tests` → **Ran 418 tests / OK (skipped=1)**（约 148s）；
 - 新增测试：`test_ui_state.py`(34)、`test_ui_app.py`(7)、`test_highlevel.py`(23)、
   `test_innovation.py`(42)、`test_decision_chain.py`(11)；
 - UI 程序化验证：`--ui-test` 13/13；

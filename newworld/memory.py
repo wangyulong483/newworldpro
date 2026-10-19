@@ -1,6 +1,6 @@
 """个体记忆（P3）：情节 / 程序 / 社会记忆、8 维摘要特征、代际传承与死亡档案。
 
-契约来源：``docs/civilization_design.md`` §6（冻结接口）。本模块只依赖
+契约来源：``docs/IMPLEMENTATION_REPORT.md`` §6（冻结接口）。本模块只依赖
 标准库 + numpy，**不** import ``population`` / ``world`` / ``character`` /
 ``civilization`` / ``knowledge``（避免循环依赖）；对世界的所有交互都由集成层
 （``population.py``）以参数形式注入，本模块只认识 ``agent_id`` 与记忆内容。
@@ -65,7 +65,7 @@ GOAL_ACTION_PREFIX = "goal:"
 class MemoryEntry:
     """一条个体记忆（情节 / 程序 / 社会）。
 
-    字段与 ``docs/civilization_design.md`` §6 完全一致；``action`` 与
+    字段与 ``docs/IMPLEMENTATION_REPORT.md`` §6 完全一致；``action`` 与
     ``outcome`` 都是机器可读短字符串（如 ``"gather:wood"`` / ``"ok:wood+1"``），
     便于集成层统计与追责，不做自然语言解析。
     """
