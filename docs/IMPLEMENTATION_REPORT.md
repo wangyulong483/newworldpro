@@ -1,8 +1,10 @@
 # 本轮升级实施报告（决策链路 + 鼠标交互 + 组合式创新）
 
+> **V3 注**：本文记录 V1/V2 时期的实施；文中 `python -m newworld` 交互命令在 V3 起需加 `--classic` 才能进入所述旧世界。V3 实施见 `UPGRADE_V3_REPORT.md`。
+
 - 项目：`newworldpro`（newworld v0.9.0，Python 3.14，numpy + pillow + tkinter）
 - 升级前基线：`git 7ff0b4f`，`python -m unittest discover -s tests` → 297 tests OK
-- 审计：`docs/PROJECT_AUDIT.md`（含实测插桩数据）
+- 审计数据：已并入本文 §3（原独立审计报告已删除）
 - 实验：`docs/EXPERIMENT_REPORT.md`（数据来自 `experiments/results/upgrade_final/`）
 - 用户操作：`docs/USER_GUIDE.md`
 
@@ -73,7 +75,7 @@ python -m newworld --windowed --size 1280x800 --autoclose-ms 2500 --screenshot .
 
 ## 3. P2：决策链路修复
 
-### 3.1 审计发现（实测，见 PROJECT_AUDIT）
+### 3.1 审计发现（实测）
 
 - 逐帧决策来源：goal 97.2%、infra 2.0%、teacher 0.6%、**neural 0.3%**；
 - BC 训练数据 16 维文明上下文 **16/16 标准差为 0**（死特征）；
@@ -173,11 +175,10 @@ python -m newworld --windowed --size 1280x800 --autoclose-ms 2500 --screenshot .
 
 | 交付物 | 路径 | 状态 |
 | --- | --- | --- |
-| 项目审计 | `docs/PROJECT_AUDIT.md` | ✅ 实测数据 |
 | 实施报告 | `docs/IMPLEMENTATION_REPORT.md` | ✅ 本文件 |
 | 实验报告 | `docs/EXPERIMENT_REPORT.md` | ✅ 10 seed × 6 配置 |
 | 用户指南 | `docs/USER_GUIDE.md` | ✅ 鼠标操作 + 限制 |
-| 接口契约 | `docs/upgrade_contracts_v1.md` | ✅ 冻结记录 |
+| 接口契约 | V1/V2 契约（文档已删除）| ✅ 冻结记录 |
 | 新模块 | `ui_state.py` / `highlevel.py` / `innovation.py` | ✅ |
 | UI 重写 | `app_tk.py` | ✅ |
 | 训练入口 | `tools/train_goal_policy.py` | ✅ |

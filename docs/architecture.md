@@ -1,8 +1,21 @@
-# 架构说明：模块关系与数据流（v0.9.1）
+# 架构说明：模块关系与数据流（V3 双世界）
 
-> 当前架构说明（v0.9.1：鼠标交互 + 学习型决策 + 组合式创新）。
-> 项目审计见 `docs/PROJECT_AUDIT.md`；实施记录见 `docs/IMPLEMENTATION_REPORT.md`；
-> 实验数据见 `docs/EXPERIMENT_REPORT.md`；鼠标操作见 `docs/USER_GUIDE.md`。
+> 当前架构说明（V3：默认世界 = 俯视地图世界盒子；`--classic` = 旧侧视文明）。
+> V3 新世界架构见 §9；旧世界（V1/V2）结构见 §1-§8（内容保留有效）。
+> V3 实施报告见 `docs/UPGRADE_V3_REPORT.md`；
+> V3 操作指南见 `docs/USER_GUIDE_V3.md`；旧世界操作见 `docs/USER_GUIDE.md`。
+
+## 0. V3 双世界总览
+
+```text
+python -m newworld             → 新世界（默认）：app_map.py 俯视地图 + 千人群伙
+python -m newworld --classic   → 旧世界：app_tk.py 侧视像素小人 + 8 人文明
+```
+
+两条世界线**共用**：materials 注册表思想、ui_state.Viewport（V3 暂整图可视）、
+telemetry/实验框架（simulation.py 只服务旧世界线，V3 的实验接入在二期）、
+测试基建。旧世界代码零删减，所有 V1/V2 测试保留运行。
+
 ---
 
 ## 1. 总览：五层结构
@@ -281,3 +294,62 @@ World._maybe_recenter（每帧 step 末尾）
 | `infinite_scene.py` | 无限世界确定性分块与窗口平移 | 27 |
 | `simulation.py`（扩展） | RunSpec visual/infinite/cap/lowlevel 策略 + RL env | 10 |
 | `population.py`（扩展） | 视觉刷新、RL 采样/转移/奖励、无限 recenter 联动 | — |
+
+---
+
+## 9. V3 新世界结构（俯视地图 · 世界盒子）
+
+### 9.1 五模块数据流
+
+```text
+MapEngine (map_engine.py)       地形真相：terrain/food/burning 三个 numpy 网格
+   ↑ update(dt, daylight)           值噪声生成（splitmesh64 格点哈希，确定性）
+   │                                食物再生 · 森林蔓延 · 火蔓延（亚临界 0.55/s）
+   │
+Swarm (swarm.py)                 千人群伙：SoA 结构化数组
+   ↑ update(dt)                      (x, y, hunger, age, breed_cd, tribe, alive)
+   │                                饥饿→死亡判定→进食→梯度移动→繁衍→压实
+   │                                （全向量化，8000 个体 1.9ms/帧）
+   │
+Catastrophes (catastrophes.py)  上帝之手：meteor / lightning / flood / heal
+   │                                作用真实网格与个体，history 可审计
+   ↓
+MapRenderer (map_render.py)     渲染：底图 PIL（地形色 + 食物明暗 + 火色）
+   │                                + agent_points（饱足度渐变散点）
+   ↓
+MapWorldApp (app_map.py)        GUI：整图 contain 适配 + 工具栏 + 右侧面板
+                                    + 底部控制（开始/单步/速度×16/重置）
+```
+
+### 9.2 关键不变量（与旧世界一脉相承）
+
+1. **网格即真相**：地形/食物/燃烧只经 `MapEngine` 公开方法修改
+   （`set_terrain`/`ignite`/`update`），灾害层也只能请求。
+2. **承载力涌现**：人口上限 = 食物再生流量 / 个体消耗（软约束），
+   不硬编码；实测 256×160 图稳定于 ≈5000。
+3. **确定性**：同 seed 同地图同轨迹（`test_generation_is_deterministic`
+   / `test_deterministic_trajectory` 断言）。
+4. **个体是数据不是对象**：一个居民 = 结构化数组一行；没有神经网络、
+   感知栈、记忆——这是与旧世界的根本取舍（用户决策：纯数据粒子）。
+
+### 9.3 新模块职责表
+
+| 模块 | 职责 | 测试 |
+| --- | --- | --- |
+| `map_engine.py` | 地形生成/食物/火 | 7 |
+| `swarm.py` | 千人群伙向量化人口动态 | 7（含千人性能门槛） |
+| `catastrophes.py` | 四种灾害 + 事件史 | 5 |
+| `map_render.py` | 底图 + 散点渲染数据 | （经 GUI 截图验证） |
+| `app_map.py` | GUI + 上帝之手工具栏 | （截图 + 像素统计断言） |
+
+### 9.4 复用与退役
+
+**复用**：`ui_state.Viewport`（一期整图可视，缩放平移二期接）；
+`materials` 注册表思想（地形色板 TERRAIN_INFO 同构）。
+**不迁移**（刻意）：per-agent 神经策略 / 类人感知栈 / 精灵渲染 /
+goals-knowledge-civilization 文明层——旧世界保留它们，新世界
+用统计规则替代个体智能（世界盒子的核心取舍）。
+
+**已知边界**：散点绘制 >6000 个体时隔点渲染；全管线 41FPS@8000 人
+（仿真仅 1.9ms，瓶颈在 tkinter Canvas）；tribe 列已预留未使用。
+详见 `docs/UPGRADE_V3_REPORT.md` §6。

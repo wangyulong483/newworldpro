@@ -1,12 +1,18 @@
-# newworld — 像素原子社会 · 微型文明（v0.9.2 感知进入决策 · 低层 RL · 无限世界）
+# newworld — 像素世界盒子（V3）+ 微型文明（v0.9.2）
 
-> **世界的原子就是像素。** 2560×1600 屏幕划分为 **512×320 个原子**（1 原子 = 5×5 px）；
-> 原子有材料与元素组成（水 H₂O、石头 SiO₂、草/叶/木纤维素、空气 N₂/O₂/Ar、肉体/骨骼）。
+> **V3 重构（当前默认）**：世界盒子风格的俯视地图世界——
+> 一张 512×320 的岛屿地图（值噪声确定性生成：深海/浅海/沙滩/草地/森林/山地/雪原），
+> **千人群伙**（numpy 结构化数组，纯数据粒子）在上面繁衍、迁徙、觅食，
+> 人口自然收敛到**动态承载力**（食物再生 vs 消耗的平衡，实测 ≈5000）。
+> 你是神：工具栏选 **陨石 / 闪电 / 洪水 / 治愈之雨**，点击地图施放。
 >
-> **v0.9 文明版**：在**最多创建 8 个 Agent** 的硬约束下，个体拥有
-> **目标规划 / 持久化记忆 / 技术发现与验证 / 知识传承 / 公共设施 / 社会合作 / 环境扰动**，
-> 文明的发展、停滞、崩溃与灭绝全部由世界规则 + 个体决策 + 知识积累产生，
-> **没有固定剧情**。
+> ```powershell
+> python -m newworld              # 新世界（俯视地图 + 上帝之手）
+> python -m newworld --classic    # 旧世界（侧视像素小人 + 8 人文明）
+> ```
+>
+> 旧的"微型文明"世界（目标规划/知识/记忆/神经策略）仍完整保留，
+> 加 `--classic` 进入——两条世界线共用一套测试与实验框架。
 >
 > **v0.9.1 本轮升级**：
 > - **鼠标主导交互**：点击个体选中/查看详情、右侧面板、底部控制栏（开始/暂停/继续/
@@ -44,19 +50,18 @@
 cd C:\Users\27826\Desktop\vscode_win_ws\ds_ws\newworld\newworldpro
 python -m pip install -r requirements.txt
 
-# 交互运行（鼠标主导；可加 --windowed --size 1280x800 开发）
-python -m newworld --windowed --size 1280x800
+# 新世界（默认）：俯视地图 + 千人群伙 + 上帝之手（陨石/闪电/洪水/治愈）
+python -m newworld
 
-# 无人工鼠标自检（程序化点击/缩放/按钮/列表，13 项断言，输出 JSON）
-python -m newworld --ui-test .tmp\ui_test.json --windowed --size 1280x800
+# 旧世界：侧视像素小人文明（V1/V2 机制全部保留）
+python -m newworld --classic --windowed --size 1280x800
 
-# 无窗口单个体仿真
-python -m newworld --headless --steps 600 --log run.jsonl
+# 旧世界：无人工鼠标自检（13 项断言，输出 JSON）
+python -m newworld --classic --ui-test .tmp\ui_test.json --windowed --size 1280x800
 
-# 无窗口文明实验（A/B/C/D 消融，或切学习型高层策略/创新）
+# 旧世界：无窗口单个体仿真 / 无窗口文明实验（A/B/C/D 消融）
+python -m newworld --classic --headless --steps 600 --log run.jsonl
 python -m newworld.simulation --group D --seed 0 --steps 24000 --dt 0.05
-python -m newworld.simulation --group C --steps 16000 --dt 0.05 --width 640 --height 400 `
-    --policy-mode neural --policy-path assets/goal_policy.npz --innovation
 
 # 训练高层目标策略（真实 REINFORCE）
 python tools/train_goal_policy.py --episodes 30 --steps 4000 `
@@ -71,8 +76,8 @@ python tools/train_lowlevel_rl.py --episodes 30 --steps 4000 --seeds 0 \
     --out assets/lowlevel_rl.npz --json experiments/results/lowlevel_rl_training.json
 python experiments/run_v2_experiments.py --seed-start 200 --num-seeds 6 --tag final
 
-# GUI 无限世界（屏幕只是窗口，人口迁移时自动滚动）
-python -m newworld --infinite --windowed --size 960x600
+# GUI 无限世界（旧世界线：屏幕只是窗口，人口迁移时自动滚动）
+python -m newworld --classic --infinite --windowed --size 960x600
 
 # 测试（沙箱环境请先设置可写 TEMP；见 §9）
 python -m unittest discover -s tests
@@ -92,11 +97,14 @@ powershell -ExecutionPolicy Bypass -File tools/update_shortcut.ps1
 > 当前桌面上的 `newworld 像素世界.lnk` 已使用该图标；若项目目录移动，
 > 重新执行上面的第 1、2 步即可修复。
 鼠标操作完整说明见 `docs/USER_GUIDE.md`；决策架构见 `docs/IMPLEMENTATION_REPORT.md`；
-实验结果见 `docs/EXPERIMENT_REPORT.md`；审计见 `docs/PROJECT_AUDIT.md`。
+实验结果见 `docs/EXPERIMENT_REPORT.md`。
 
 ---
 
-## 2. 硬约束：最多创建 8 个 Agent
+## 2. 硬约束：最多创建 8 个 Agent（旧世界 · --classic）
+
+> V3 新世界没有此约束（人口由食物承载力决定，实测可达数千）。
+> 以下内容适用于 `--classic` 的旧世界。
 
 - `CivilizationConfig.max_agents_created = 8` 约束的是**历史累计创建数**，
   不是当前存活数。`world.registry.total_created` 只增不减。
@@ -110,7 +118,7 @@ powershell -ExecutionPolicy Bypass -File tools/update_shortcut.ps1
 - "当前存活人口"（`registry.alive_count()`）与"历史累计创建人口"
   （`registry.total_created`）是两个独立指标，调试层与 telemetry 分别展示。
 
-## 3. 决策层：规划 → 教师 → 神经网络
+## 3. 决策层：规划 → 教师 → 神经网络（旧世界 · --classic）
 
 每个个体每帧按顺序尝试：
 
@@ -125,7 +133,7 @@ powershell -ExecutionPolicy Bypass -File tools/update_shortcut.ps1
 > 原始实现的缺陷修复：教师不再在社区建成后永久接管（原实现导致全员饿死，
 > 实测 t=537s 全族灭绝）；浆果被采空后能再生；小世界不再缺少浆果丛。
 
-## 4. 文明层：知识、技术、设施、传承
+## 4. 文明层：知识、技术、设施、传承（旧世界 · --classic）
 
 - **技术目录（世界规则，非剧情）**：石斧、纤维绳、背篓、篝火、水井、小屋、粮仓。
   每条都有前置技术与真实数值效果（采集×2、负重+4、夜间/休息恢复、取水半径、
@@ -141,14 +149,14 @@ powershell -ExecutionPolicy Bypass -File tools/update_shortcut.ps1
 - **社会合作**：饱食个体把能量分享给附近濒危个体（真实资源转移，计入
   `cooperation_benefit` 与 `cooperation_index`）。
 
-## 5. 观测与记忆（神经网络扩维）
+## 5. 观测与记忆（神经网络扩维 · 旧世界 --classic）
 
 - 输入 24 → **40**：原 24 维感知/生理 + 8 维记忆摘要 + 4 维目标/计划 + 4 维文明上下文。
 - 旧 24 维 checkpoint 自动迁移：新增输入列权重为 0，输出**逐比特一致**；
   `expanded_observation=False`（A/B 组）时上下文恒为 0。
 - 个体情景记忆 / 程序记忆保存在 `MemoryStore`，死亡后仍保留（`archive`）。
 
-## 6. 环境、昼夜、物理（原有能力）
+## 6. 环境、昼夜、物理（旧世界 --classic）
 
 - 昼夜（600 s/天）、太阳高度、气温、阴影；原子级破坏/生长、土壤水循环。
 - 力学（重力 9.80665、弹道跳跃）、声学（343.2 m/s、语言气泡）、热学、电磁学/黑体太阳、视觉（瞳孔/视网膜/扫视）、听觉。
@@ -159,38 +167,46 @@ powershell -ExecutionPolicy Bypass -File tools/update_shortcut.ps1
 
 ```text
 newworld/
-├── population.py    ← 集成层：决策顺序、创建/死亡/继承/教学/设施/指标
-├── goals.py         ← P1 目标/计划/规划器（反卡死、重规划）
-├── knowledge.py     ← P2 技术目录、验证状态机、依赖图
-├── memory.py        ← P3 情景/程序记忆、传承、死亡归档
-├── civilization.py  ← P3 历史注册表、设施、契约、collapse/灭绝
-├── telemetry.py     ← P0/P4 指标采集（19 指标）+ 事件 JSONL
-├── simulation.py    ← headless 文明运行器 + 环境扰动 + CLI
-├── world.py         ← 世界 + 注册表/知识/记忆/文明服务 + 存档
-├── technology.py    ← 数据驱动配方执行、验证、设施效果
-├── society.py       ← 关系图网络、生育/衰老/死亡（死亡回调归档）
-├── neural.py        ← 56 维输入 MLP（24 生理 + 16 文明 + 16 视觉）+ 旧迁移
-├── training.py      ← 行为克隆训练（保留原流程）
-├── social.py        ← 技能教师（生存优先）
-├── visual_features.py← V2：真实视网膜 16 维特征（光学/眼睛/视网膜路径）
-├── rewards.py       ← V2：低层 RL 的真实世界奖励（含反刷分）
-├── lowlevel_rl.py   ← V2：低层动作 REINFORCE（策略采样/手写梯度/训练器）
-├── infinite_scene.py← V2：无限世界确定性分块 + 窗口平移
-├── pixelworld.py / ecology.py / physiology.py / physics.py / daynight.py …
-└── app_tk.py / render.py / cli.py ← 交互与渲染（调试层显示人口/累计创建/知识）
+├── 【V3 新世界：俯视地图 · 世界盒子】
+│   ├── map_engine.py     ← 地形真相：terrain/food/burning 网格（值噪声确定性生成）
+│   ├── swarm.py          ← 千人群伙：SoA 结构化数组，全向量化（承载力涌现）
+│   ├── catastrophes.py   ← 上帝之手：陨石/闪电/洪水/治愈（作用真实网格）
+│   ├── map_render.py     ← 俯视渲染：底图 PIL + 饱足度渐变散点
+│   └── app_map.py        ← 新 GUI：工具栏 + 整图画布 + 右侧统计面板
+├── 【旧世界：侧视像素小人文明（--classic 进入）】
+│   ├── population.py    ← 集成层：决策顺序、创建/死亡/继承/教学/设施/指标
+│   ├── goals.py         ← P1 目标/计划/规划器（反卡死、重规划）
+│   ├── knowledge.py     ← P2 技术目录、验证状态机、依赖图
+│   ├── memory.py        ← P3 情景/程序记忆、传承、死亡归档
+│   ├── civilization.py  ← P3 历史注册表、设施、契约、collapse/灭绝
+│   ├── telemetry.py     ← P0/P4 指标采集（19 指标）+ 事件 JSONL
+│   ├── simulation.py    ← headless 文明运行器 + 环境扰动 + CLI
+│   ├── world.py         ← 世界 + 注册表/知识/记忆/文明服务 + 存档
+│   ├── technology.py    ← 数据驱动配方执行、验证、设施效果
+│   ├── society.py       ← 关系图网络、生育/衰老/死亡（死亡回调归档）
+│   ├── neural.py        ← 56 维输入 MLP（24 生理 + 16 文明 + 16 视觉）+ 旧迁移
+│   ├── training.py      ← 行为克隆训练（保留原流程）
+│   ├── social.py        ← 技能教师（生存优先）
+│   ├── visual_features.py← V2：真实视网膜 16 维特征（光学/眼睛/视网膜路径）
+│   ├── rewards.py       ← V2：低层 RL 的真实世界奖励（含反刷分）
+│   ├── lowlevel_rl.py   ← V2：低层动作 REINFORCE（minibatch/优势标准化/裁剪）
+│   ├── infinite_scene.py← V2：无限世界确定性分块 + 窗口平移
+│   └── pixelworld.py / ecology.py / physiology.py / physics.py / daynight.py …
+├── app_tk.py / render.py  ← 旧世界交互与渲染
+└── cli.py                 ← 入口分流：默认新世界，--classic 旧世界
 experiments/
 ├── probe_baseline.py / probe_long.py / probe_cap_path.py  ← P0 诊断
 ├── run_ablation.py                                        ← A/B/C/D × 多 seed
 └── results/                                               ← 实验产物（JSON/CSV/报告）
 docs/
-├── PROJECT_AUDIT.md         ← 本轮升级审计（含实测插桩数据）
-├── IMPLEMENTATION_REPORT.md ← 实施记录：鼠标交互 / 决策链路 / 组合式创新
-├── EXPERIMENT_REPORT.md     ← 10 seed × 6 配置实验与诚实结论
-├── USER_GUIDE.md            ← 鼠标操作与面板说明
-├── architecture.md          ← 模块关系与数据流（v0.9.2）
-├── UPGRADE_V2_REPORT.md     ← 感知/RL/上限/无限世界报告（含真实实验）
-├── upgrade_contracts_v1.md  ← 第一轮升级的接口契约
-└── upgrade_contracts_v2.md  ← V2 并行开发的接口契约
+├── UPGRADE_V3_REPORT.md     ← V3 重构报告（决策/实测数据/已知边界）
+├── USER_GUIDE_V3.md          ← 新世界操作指南（工具栏/灾害/面板）
+├── architecture.md           ← 双世界架构与数据流（V3 §0/§9 + 旧世界 §1-8）
+├── IMPLEMENTATION_REPORT.md  ← V1/V2 实施记录：鼠标交互 / 决策链路 / 组合式创新
+├── EXPERIMENT_REPORT.md      ← V1/V2 10 seed × 6 配置实验与诚实结论
+├── USER_GUIDE.md             ← 旧世界鼠标操作与面板说明（--classic）
+└── UPGRADE_V2_REPORT.md      ← V2 感知/RL/上限/无限世界报告（含真实实验）
+（V1 接口契约与 P0 审计报告已删除，历史见 git log）
 ```
 
 ## 8. 测试
@@ -201,10 +217,11 @@ $env:TEMP = (Resolve-Path .tmp).Path   # 沙箱/受限环境下需要（见 §9�
 python -m unittest discover -s tests
 ```
 
-当前 **516 个测试 / OK（skipped=1）**：原有世界/物理/生态/神经/训练/视觉/社会测试
-+ 目标规划、知识库、记忆、文明注册表/设施、指标、硬约束/死亡、存档、
-观测迁移（24→40→56 双链）、决策链、感知特征（21）、低层 RL（19）、奖励（11）、
-无限世界（27）、V2 集成（10）等。
+当前 **544 个测试 / OK（skipped=1）**：
+V3 新世界 19 个（地形/群伙/灾害，含千人性能门槛）+ RL 小批量训练 9 个 +
+原有世界/物理/生态/神经/训练/视觉/社会测试 + 目标规划、知识库、记忆、
+文明注册表/设施、指标、硬约束/死亡、存档、观测迁移（24→40→56 双链）、
+决策链、感知特征、低层 RL、奖励、无限世界、V2 集成等（旧世界线全保留）。
 
 ## 9. 沙箱 / Windows 临时目录说明
 
@@ -213,7 +230,7 @@ python -m unittest discover -s tests
 垫片（把 `mkdtemp` 替换为普通创建，语义不变），相关测试模块已引入；
 运行时建议把 `TEMP` 指到工作区内（如上）。
 
-## 10. 查看实验结果
+## 10. 查看实验结果（旧世界文明实验）
 
 ```powershell
 # 单次运行：完整指标 + 事件 + 知识/设施状态
@@ -234,6 +251,10 @@ Get-Content experiments\results\v2_final\report.md
 ```
 
 ## 11. 已知限制（如实）
+
+**V3 新世界**：全管线 41FPS@8000 人（瓶颈在散点绘制，仿真本身 1.9ms/帧）；
+整图可视暂无缩放平移；部落/战争/瘟疫未实现（二期）；详见
+`docs/UPGRADE_V3_REPORT.md` §6。以下是旧世界的限制：
 
 - 低层 RL 只训练 mode/move/jump/speak 四个决策头（语言头保持 argmax；
   规划/知识层仍用规则 + 代价搜索）。奖励只覆盖四类真实变化，仍有被"资源囤积"

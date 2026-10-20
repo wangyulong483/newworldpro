@@ -62,6 +62,8 @@ def build_parser() -> argparse.ArgumentParser:
 
     mode = parser.add_argument_group("运行模式")
     mode.add_argument("--info", action="store_true", help="打印屏幕识别与世界参数后退出")
+    mode.add_argument("--classic", action="store_true",
+                      help="旧世界（侧视像素小人）；默认是新世界（俯视地图，世界盒子风格）")
     mode.add_argument("--preview", nargs="?", const=str(PROJECT_ROOT / "assets"), metavar="DIR",
                       help="生成预览图（默认输出到 assets/）")
     mode.add_argument("--headless", action="store_true", help="无窗口运行仿真（用于记录/测试）")
@@ -73,6 +75,8 @@ def build_parser() -> argparse.ArgumentParser:
     geometry.add_argument("--windowed", action="store_true", help="以窗口方式运行（默认全屏）")
     geometry.add_argument("--infinite", action="store_true",
                           help="无限世界：横向无界，屏幕只是跟随人口的局部窗口")
+    geometry.add_argument("--no-infinite", dest="infinite", action="store_false",
+                          help="关闭无限世界，回到固定屏幕边界（覆盖 start_world.bat 的默认 --infinite）")
     geometry.add_argument("--window-atoms", type=int, default=0, metavar="N",
                           help="无限窗口宽度（原子数，0=自动=屏幕宽度）")
     geometry.add_argument("--debug", action="store_true", help="启动时显示调试信息层")
@@ -378,7 +382,22 @@ def run_headless(args: argparse.Namespace) -> int:
 
 
 def run_interactive(args: argparse.Namespace) -> int:
-    """默认模式：打开 tkinter 交互窗口（全屏或窗口化）。"""
+    """交互模式：默认打开俯视地图世界（V3）；``--classic`` 回到侧视世界。"""
+    if not getattr(args, "classic", False):
+        from .app_map import run_map_app
+
+        width = height = 0
+        if getattr(args, "size", None):
+            width, height = parse_size(args.size)
+        return run_map_app(
+            seed=args.seed,
+            width=width or 512,
+            height=height or 320,
+            cell_px=int(getattr(args, "cell", 0) or 3) or 3,
+            screenshot=args.screenshot,
+            autoclose_ms=args.autoclose_ms,
+        )
+
     from .app_tk import run_app
 
     if args.size or args.windowed:

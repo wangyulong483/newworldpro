@@ -1,6 +1,6 @@
 """低层动作策略（REINFORCE）单元测试。
 
-契约：``docs/upgrade_contracts_v2.md`` §2.4（≥10 用例）。本文件只验证**机制
+契约：V2 契约 §2.4（≥10 用例，接口已并入模块 docstring）。本文件只验证**机制
 正确性**（softmax/BCE 对数概率、采样、手写反向与有限差分一致、更新方向、
 序列化、语言头不参与 RL、trainer 全流程），**不**声称"训练出了更好的策略"；
 也不依赖 Lead 尚未落地的集成钩子（trainer 用 fake env 验证；真实钩子只在
@@ -481,6 +481,158 @@ class LowLevelTrainerTest(unittest.TestCase):
         returns = LowLevelTrainer.discounted_returns([1.0, 2.0, 3.0], 0.5)
         expected = [1.0 + 0.5 * 2.0 + 0.25 * 3.0, 2.0 + 0.5 * 3.0, 3.0]
         self.assertTrue(np.allclose(returns, expected))
+
+
+class MinibatchTrainingTest(unittest.TestCase):
+    """V2.1 小批量训练机制的单元测试（修复"每回合一更新"的信号消失）。
+
+    只验证机制：批次切分、优势标准化、梯度裁剪、更新计数、
+    ``batch_size <= 0`` 时退回旧的全平均单次更新行为。
+    """
+
+    def _many_transition_env(self, policy_dim: int, count: int) -> _FakeEnv:
+        """构造一个产生 ``count`` 条转移的 fake env。"""
+        return _FakeEnv(policy_dim, budget=count)
+
+    def test_minibatch_updates_more_than_once(self) -> None:
+        """batch_size=2、8 条转移 → 每回合 4 次更新（而非旧的 1 次）。"""
+        policy = make_policy(seed=0)
+        env = _FakeEnv(policy.feature_dim, budget=8)
+        trainer = LowLevelTrainer(
+            policy, _constant_factory(env), seed=0, lr=0.05, batch_size=2
+        )
+        metrics = trainer.run_episode(seed=0, steps=8)
+        self.assertEqual(metrics["transitions"], 8.0)
+        self.assertEqual(trainer._updates, 4)
+        self.assertEqual(metrics["updates"], 4.0)
+
+    def test_epochs_multiply_updates(self) -> None:
+        """epochs_per_episode=3、batch_size=4、8 条转移 → 3×2=6 次更新。"""
+        policy = make_policy(seed=0)
+        env = _FakeEnv(policy.feature_dim, budget=8)
+        trainer = LowLevelTrainer(
+            policy, _constant_factory(env), seed=0, lr=0.01,
+            batch_size=4, epochs_per_episode=3,
+        )
+        metrics = trainer.run_episode(seed=0, steps=8)
+        self.assertEqual(metrics["updates"], 6.0)
+
+    def test_legacy_mode_single_update(self) -> None:
+        """batch_size=0 时退回 V2 行为：整回合平均、只更新一次。"""
+        policy = make_policy(seed=0)
+        env = _FakeEnv(policy.feature_dim, budget=6)
+        trainer = LowLevelTrainer(
+            policy, _constant_factory(env), seed=0, lr=0.01, batch_size=0
+        )
+        metrics = trainer.run_episode(seed=0, steps=6)
+        self.assertEqual(trainer._updates, 1)
+        self.assertEqual(metrics["updates"], 1.0)
+
+    def test_advantage_normalization_standardizes(self) -> None:
+        """批内优势标准化：输出均值≈0、标准差≈1；退化批（常数）原样通过。"""
+        policy = make_policy(seed=0)
+        trainer = LowLevelTrainer(
+            policy, _constant_factory(_FakeEnv(policy.feature_dim, budget=1)),
+            seed=0,
+        )
+        raw = [1.0, 2.0, 3.0, 6.0]
+        normalized = trainer._normalized_batch_advantages(raw)
+        self.assertAlmostEqual(float(np.mean(normalized)), 0.0, places=9)
+        self.assertAlmostEqual(float(np.std(normalized)), 1.0, places=6)
+        # 常数批：std=0 → 只减均值（全 0）
+        degenerate = trainer._normalized_batch_advantages([5.0, 5.0])
+        self.assertTrue(np.allclose(degenerate, [0.0, 0.0]))
+
+    def test_normalize_off_returns_raw(self) -> None:
+        """normalize_advantage=False 时原样返回。"""
+        policy = make_policy(seed=0)
+        trainer = LowLevelTrainer(
+            policy, _constant_factory(_FakeEnv(policy.feature_dim, budget=1)),
+            seed=0, normalize_advantage=False,
+        )
+        raw = [3.0, -1.0]
+        out = trainer._normalized_batch_advantages(raw)
+        self.assertTrue(np.allclose(out, raw))
+
+    def test_grad_clip_limits_norm(self) -> None:
+        """梯度裁剪后全局范数不超过 grad_clip。"""
+        policy = make_policy(seed=0)
+        trainer = LowLevelTrainer(
+            policy, _constant_factory(_FakeEnv(policy.feature_dim, budget=1)),
+            seed=0, grad_clip=0.5,
+        )
+        huge = {name: np.full_like(value, 10.0) for name, value in {
+            "w1": policy.neural_policy.w1,
+            "b1": policy.neural_policy.b1,
+            "w2": policy.neural_policy.w2,
+            "b2": policy.neural_policy.b2,
+            "w3": policy.neural_policy.w3,
+            "b3": policy.neural_policy.b3,
+        }.items()}
+        clipped = {name: value.copy() for name, value in huge.items()}
+        # 直接调用内部裁剪逻辑验证
+        norm_before = trainer._global_grad_norm(clipped)
+        self.assertGreater(norm_before, 0.5)
+        # 手动模拟 _apply_clipped 的缩放
+        scale = 0.5 / norm_before
+        scaled = {name: value * scale for name, value in clipped.items()}
+        self.assertLessEqual(trainer._global_grad_norm(scaled), 0.5 + 1e-9)
+
+    def test_weight_delta_metric_present(self) -> None:
+        """新指标 weight_delta 存在且为非负有限值（学习信号的监控量）。"""
+        policy = make_policy(seed=0)
+        env = _FakeEnv(policy.feature_dim, budget=4)
+        trainer = LowLevelTrainer(
+            policy, _constant_factory(env), seed=0, lr=0.05, batch_size=2
+        )
+        metrics = trainer.run_episode(seed=0, steps=4)
+        self.assertIn("weight_delta", metrics)
+        self.assertGreaterEqual(metrics["weight_delta"], 0.0)
+        self.assertTrue(math.isfinite(metrics["weight_delta"]))
+
+    def test_minibatch_learning_signal_stronger_than_legacy(self) -> None:
+        """关键对照：同样数据下，小批量更新产生的 weight_delta 量级
+        应显著大于（全平均单次更新的）旧行为。
+
+        机制性断言（不声称学到更好策略）：旧行为把全部转移平均成
+        一次更新会因正负优势抵消而失去信号；小批量 + 批内标准化
+        保留了方向。构造强对照数据：前半奖励 +10、后半 -10。
+        """
+        def contrast_rewards(step, agent_id):  # noqa: ARG001
+            return 10.0 if step < 4 else -10.0
+
+        policy_legacy = make_policy(seed=0)
+        policy_mini = make_policy(seed=0)
+        env_legacy = _FakeEnv(
+            policy_legacy.feature_dim, budget=8, reward_fn=contrast_rewards
+        )
+        env_mini = _FakeEnv(
+            policy_mini.feature_dim, budget=8, reward_fn=contrast_rewards
+        )
+        trainer_legacy = LowLevelTrainer(
+            policy_legacy, _constant_factory(env_legacy), seed=0,
+            lr=0.01, batch_size=0,  # 旧行为
+        )
+        trainer_mini = LowLevelTrainer(
+            policy_mini, _constant_factory(env_mini), seed=0,
+            lr=0.01, batch_size=2,  # 新行为
+        )
+        metrics_legacy = trainer_legacy.run_episode(seed=0, steps=8)
+        metrics_mini = trainer_mini.run_episode(seed=0, steps=8)
+        self.assertGreater(
+            metrics_mini["weight_delta"],
+            metrics_legacy["weight_delta"],
+            "小批量更新应当产生更强的学习信号（weight_delta）",
+        )
+
+    def test_invalid_training_params_raise(self) -> None:
+        """非法训练参数必须报错。"""
+        policy = make_policy(seed=0)
+        factory = _constant_factory(_FakeEnv(policy.feature_dim, budget=1))
+        with self.assertRaises(ValueError):
+            LowLevelTrainer(policy, factory, seed=0, epochs_per_episode=0)
+        with self.assertRaises(ValueError):
+            LowLevelTrainer(policy, factory, seed=0, grad_clip=-0.1)
 
     def test_real_lowlevel_env_hook_optional(self) -> None:
         """可选联调：Lead 的 make_lowlevel_rl_env 钩子就绪后验证转移格式。

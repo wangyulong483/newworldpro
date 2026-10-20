@@ -2,7 +2,7 @@
 
 运行：``cd newworldpro; $env:TEMP=(Resolve-Path .tmp).Path; python -m unittest tests.test_ui_app -v``
 
-契约（docs/upgrade_contracts_v1.md §1.3）：>=6 个用例；若 ``tkinter.Tk()`` 可用
+契约（V1 契约 §1.3，接口见 app_tk/ui_state docstring）：>=6 个用例；若 ``tkinter.Tk()`` 可用
 （或环境变量 ``NEWWORLD_UI_TEST=1``）则构造 app 并调用
 ``run_app(..., ui_test_path=tmp)`` 断言 exit code 0 与 JSON 结果；否则 ``skipTest``。
 """

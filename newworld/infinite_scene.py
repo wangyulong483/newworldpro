@@ -1,6 +1,6 @@
 """无限世界：横向无界的确定性世界 + 局部窗口场景。
 
-契约出处：``docs/upgrade_contracts_v2.md`` §3（infinite-dev）。本模块只做
+契约出处：V2 契约 §3（infinite-dev，全局坐标持久化 + recenter）。本模块只做
 "场景的一半"（地形/物体/水/生态/光学/渲染），不含角色与文明；``World`` /
 ``Ecology`` / ``render`` / ``Technology`` / ``optics`` 通过
 :class:`InfiniteScene` 提供的**窗口化 API**工作，与

@@ -15,7 +15,7 @@
 * **学习**：采样目标 → 目标结束时取回 ``(features, action, reward)`` → 用折扣
   回报减基线得到 advantage → numpy 手写反向传播做 REINFORCE 更新。
 
-集成边界（冻结契约见 ``docs/upgrade_contracts_v1.md`` §2）
+集成边界（V1 契约 §2：trainer 挂自己的策略驱动仿真）
 ---------------------------------------------------------
 本模块**只**依赖 numpy + 标准库，不 import ``world`` / ``population`` /
 ``simulation``（避免循环依赖）。与集成层（Lead）的约定：

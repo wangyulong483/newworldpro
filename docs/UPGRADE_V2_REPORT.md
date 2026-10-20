@@ -1,11 +1,13 @@
 # V2 升级报告：感知进入决策、低层 RL、放开上限、无限世界
 
+> **V3 注**：V2 无限世界命令在 V3 起需加 `--classic`（`python -m newworld --classic --infinite ...`）。V3 见 `UPGRADE_V3_REPORT.md`。
+
 > 起因：用户通读源码后的评审指出三个结构性问题（感知与决策断开、底层 BC 有教师
 > 天花板、8 人上限使系统只是"衰亡微缩模型"），并明确"不局限于屏幕，创造一个
 > 无限的世界"。
 >
 > 本报告只写**真实实现 + 真实运行结果**，并按"已完成且测试通过 / 已实现未充分
-> 验证 / 只有设计 / 未完成"分开陈述。契约见 `docs/upgrade_contracts_v2.md`。
+> 验证 / 只有设计 / 未完成"分开陈述。契约见 V1/V2 契约（文档已删除）。
 > 上一轮（鼠标交互 + 高层策略 + 创新）见 `docs/IMPLEMENTATION_REPORT.md` 与
 > `docs/EXPERIMENT_REPORT.md`。
 

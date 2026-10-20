@@ -1,7 +1,10 @@
-# newworld 观察窗口用户指南（鼠标主导交互）
+# newworld 旧世界用户指南（侧视像素小人 · 需加 --classic）
 
+> **V3 起 `python -m newworld` 默认进入新世界（俯视地图世界盒子）**，
+> 本文描述的旧世界请加 `--classic` 进入。新世界指南：`docs/USER_GUIDE_V3.md`。
+>
 > 对应代码：`newworld/app_tk.py`（界面与交互）+ `newworld/ui_state.py`（纯逻辑）。
-> 契约：`docs/upgrade_contracts_v1.md` §1。本文只描述**已经实现并验证过**的行为；
+> 接口契约见模块 docstring。本文只描述**已经实现并验证过**的行为；
 > 未验证或受限的项目在 §8「已知限制」中明确标出。
 
 ## 1. 启动
@@ -9,20 +12,20 @@
 ```powershell
 cd newworldpro
 
-# 全屏（默认，世界尺寸=屏幕物理分辨率）
-python -m newworld
+# 全屏（世界尺寸=屏幕物理分辨率；V3 起须加 --classic）
+python -m newworld --classic
 
 # 窗口化（推荐开发/观察）
-python -m newworld --windowed --size 1280x800
+python -m newworld --classic --windowed --size 1280x800
 
 # 指定随机种子（个体行为/地形不同）
-python -m newworld --windowed --size 1280x800 --seed 7
+python -m newworld --classic --windowed --size 1280x800 --seed 7
 
 # 启动约 0.9 秒后截图并退出（用于验证渲染）
-python -m newworld --windowed --size 1280x800 --screenshot .tmp\ui_shot.png
+python -m newworld --classic --windowed --size 1280x800 --screenshot .tmp\ui_shot.png
 
 # 自动关闭（开发用）
-python -m newworld --windowed --size 1280x800 --autoclose-ms 2500
+python -m newworld --classic --windowed --size 1280x800 --autoclose-ms 2500
 ```
 
 桌面快捷方式「newworld 像素世界」的图标由 `ref/blueprint.pdf` 生成
@@ -126,7 +129,7 @@ Text）；画布物体坐标每帧更新；状态未变时整帧跳过，不会�
 cd newworldpro
 $env:TEMP=(Resolve-Path .tmp).Path
 
-python -m newworld --ui-test .tmp\ui_test.json --windowed --size 1280x800
+python -m newworld --classic --ui-test .tmp\ui_test.json --windowed --size 1280x800
 # 打印 13 项 PASS/FAIL，写 JSON，全部通过 exit code = 0，否则 = 1
 ```
 
@@ -245,7 +248,7 @@ clamp/resize、命中（bbox/最近/重叠/无命中/死人不选/缩放一致�
 ## 10. 无限世界（v0.9.2 `--infinite`）
 
 ```powershell
-python -m newworld --infinite --windowed --size 960x600
+python -m newworld --classic --infinite --windowed --size 960x600
 ```
 
 - 屏幕只是**当前窗口**；人口迁移到窗口边缘时世界自动滚动（每次平移 1/4 窗口），

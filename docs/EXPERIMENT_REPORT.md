@@ -1,5 +1,7 @@
 # 实验报告：基线与改进组（本轮升级）
 
+> **V3 注**：本文记录 V1/V2 时期的实验；文中 `python -m newworld` 交互命令在 V3 起需加 `--classic` 才能进入所述旧世界。
+
 - 目的：用**多随机种子**回答三个问题：
   1. 鼠标交互改造是否真实可用（不是静态 UI）；
   2. 决策链路修复（神经网络参与 + 学习型高层策略）是否改变行为/结果；
@@ -10,7 +12,7 @@
   - `experiments/results/upgrade_final/report.md`（自动生成的原始表）
   - `experiments/results/goal_policy_training.json`、`goal_policy_ablation.json`（高层策略训练/对照，来自 rl-dev 的独立脚本）
 - 随机种子：**10 个**（100–109，均未参与高层策略训练；训练见 §5）。
-- 审计与实施细节见 `docs/PROJECT_AUDIT.md`、`docs/IMPLEMENTATION_REPORT.md`。
+- 实施细节见 `docs/IMPLEMENTATION_REPORT.md`。
 
 ---
 

@@ -1,6 +1,6 @@
 """高层目标选择策略（REINFORCE）单元测试。
 
-契约：``docs/upgrade_contracts_v1.md`` §2.4（>=10 用例）。本文件只验证**机制
+契约：V1 契约 §2.4（>=10 用例，接口已并入模块 docstring）。本文件只验证**机制
 正确性**（softmax、采样、手写梯度、更新方向、序列化、特征、训练流程），
 **不**声称"已经训练出智能策略"，也不依赖 Lead 尚未落地的集成钩子
 （trainer 用 fake env / fake population 验证）。

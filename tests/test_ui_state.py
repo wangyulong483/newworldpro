@@ -2,7 +2,7 @@
 
 运行：``cd newworldpro; $env:TEMP=(Resolve-Path .tmp).Path; python -m unittest tests.test_ui_state -v``
 
-契约（docs/upgrade_contracts_v1.md §1.1 / §1.3）要求 >=14 个用例：
+契约（V1 契约 §1.1 / §1.3，接口见 ui_state docstring）要求 >=14 个用例：
 视口往返、缩放锚点、平移 clamp、resize；命中（bbox/最近/重叠/无命中/死人不选）；
 选择切换/取消/死亡清理；控制状态机（暂停时单步、运行时不单步、速度档位）；
 布局区域判定（UI 点击不判为 world）；detail 构建（真实字段 + 缺失显示“暂无数据”）；

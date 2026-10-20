@@ -25,7 +25,7 @@
 :meth:`LowLevelPolicy.decode_move` 或 :data:`MOVE_VALUES` 转成 ``Decision`` 的
 move 值。``mode`` 是 :data:`MODE_NAMES` 的下标（explore/forage/drink/sleep/rest）。
 
-契约（``docs/upgrade_contracts_v2.md`` §2.2）
+契约（V2 契约 §2.2：签名冻结、转移格式、采样语义）
 ----------------------------------------------
 ``ActionSample / LowLevelPolicy / LowLevelTrainer`` 的签名按冻结契约实现；
 ``LowLevelPolicy`` 额外提供 ``feature_dim / logprob / probability / flat_weights /
@@ -593,7 +593,30 @@ class LowLevelTrainer:
         lr: float = 0.01,
         gamma: float = 0.95,
         baseline_decay: float = 0.9,
+        batch_size: int = 256,
+        epochs_per_episode: int = 1,
+        normalize_advantage: bool = True,
+        grad_clip: float = 0.0,
     ) -> None:
+        """初始化训练器。
+
+        参数
+        ----
+        batch_size:
+            小批量更新的批量大小（V2.1：修复"每回合一更新、梯度按
+            全部转移平均"导致学习信号消失的问题）。``<= 0`` 表示退回
+            旧的"整回合一次更新"行为（兼容旧实验）。
+        epochs_per_episode:
+            每个回合的转移数据过几遍（>1 即在同一批数据上多次更新；
+            REINFORCE 是 on-policy 的，多 epoch 有轻微 off-policy
+            漂移，通常 1–4 之间安全）。
+        normalize_advantage:
+            批内优势标准化（减均值除以标准差，std<1e-8 时跳过）。
+            这是策略梯度的标准做法：奖励量纲大（本世界 ±23）时，
+            未标准化的优势会淹没梯度方向。
+        grad_clip:
+            全局梯度范数裁剪上限；``<= 0`` 不裁剪。
+        """
         if not callable(env_factory):
             raise TypeError("env_factory 必须可调用")
         for method in ("sample", "deterministic", "logprob_and_grads", "apply_grads"):
@@ -608,12 +631,25 @@ class LowLevelTrainer:
             raise ValueError("gamma 必须在 [0, 1]")
         if not 0.0 <= baseline_decay < 1.0:
             raise ValueError("baseline_decay 必须在 [0, 1)")
+        batch_size = int(batch_size)
+        epochs_per_episode = int(epochs_per_episode)
+        grad_clip = float(grad_clip)
+        if epochs_per_episode < 1:
+            raise ValueError("epochs_per_episode 必须 >= 1")
+        if grad_clip < 0.0 or not math.isfinite(grad_clip):
+            raise ValueError("grad_clip 必须是非负有限数")
         self.policy = policy
         self.env_factory = env_factory
         self.seed = int(seed)
         self.lr = lr
         self.gamma = gamma
         self.baseline_decay = baseline_decay
+        #: V2.1 小批量训练参数（默认 batch_size=256 → 每回合 ~75 次更新
+        #: 于 1.9 万条转移，权重增量从 1e-4 量级进入可学习量级）
+        self.batch_size = batch_size
+        self.epochs_per_episode = epochs_per_episode
+        self.normalize_advantage = bool(normalize_advantage)
+        self.grad_clip = grad_clip
         #: 每个 agent 的回报指数滑动基线（首次出现时用该 agent 的回报均值初始化）
         self._baselines: dict[int, float] = {}
         self._baseline_samples: dict[int, int] = {}
@@ -776,13 +812,90 @@ class LowLevelTrainer:
             )
         self._baseline_samples[agent_id] = self._baseline_samples.get(agent_id, 0) + 1
 
+    # ------------------------------------------------------------------
+    # V2.1：小批量多 epoch 更新（修复"每回合一更新"的学习信号消失）
+    # ------------------------------------------------------------------
+    def _global_grad_norm(self, grads: dict[str, np.ndarray]) -> float:
+        """拼接全部梯度后的全局 L2 范数。"""
+        total = 0.0
+        for value in grads.values():
+            total += float(np.sum(np.asarray(value, dtype=np.float64) ** 2))
+        return math.sqrt(max(0.0, total))
+
+    def _apply_clipped(self, grads: dict[str, np.ndarray], lr: float) -> None:
+        """按全局范数裁剪后应用一步梯度下降。"""
+        if self.grad_clip > 0.0:
+            norm = self._global_grad_norm(grads)
+            if norm > self.grad_clip and norm > 0.0:
+                scale = self.grad_clip / norm
+                grads = {name: value * scale for name, value in grads.items()}
+        self.policy.apply_grads(grads, lr)
+
+    def _advantages_for(
+        self, transitions: list[tuple[int, np.ndarray, ActionSample, float]]
+    ) -> tuple[list[np.ndarray], list[np.ndarray], list[float]]:
+        """按 agent 分组计算（基线）优势；返回 (优势列表, 回报列表, 展平优势)。
+
+        优势 = 折扣回报 − 每 agent 指数滑动基线（先裁剪到 ±50 防
+        离群），基线随后按本回合回报更新。批内标准化在
+        :meth:`_normalized_batch_advantages` 里按批进行。
+        """
+        grouped: dict[int, list[tuple[np.ndarray, ActionSample, float]]] = {}
+        for agent_id, features, action, reward in transitions:
+            grouped.setdefault(agent_id, []).append((features, action, reward))
+        advantages: list[np.ndarray] = []
+        returns_list: list[np.ndarray] = []
+        flat: list[float] = []
+        for agent_id in sorted(grouped):
+            items = grouped[agent_id]
+            rewards = [reward for _, _, reward in items]
+            returns = self.discounted_returns(rewards, self.gamma)
+            baseline = self._baseline_for(agent_id)
+            advantages_agent = np.clip(returns - baseline, -50.0, 50.0)
+            advantages.append(advantages_agent)
+            returns_list.append(returns)
+            flat.extend(float(value) for value in advantages_agent)
+            self._update_baseline(agent_id, returns)
+        return advantages, returns_list, flat
+
+    def _normalized_batch_advantages(
+        self, advantages: list[float]
+    ) -> np.ndarray:
+        """批内优势标准化：减均值除以标准差（std < 1e-8 时原样返回）。
+
+        参考实践：OpenAI Spinning Up / Stable-Baselines3 的 VPG/PPO 均
+        对 advantage 做批内标准化以稳定梯度量级（本世界回报量纲
+        ±23，未标准化时正负梯度几乎完全抵消——V2 实测 30 次更新后
+        ``max|Δw|`` 仅 1e-4 的直接原因）。
+        """
+        array = np.asarray(advantages, dtype=np.float64)
+        if not self.normalize_advantage or array.size < 2:
+            return array
+        mean = float(np.mean(array))
+        std = float(np.std(array))
+        if std < 1e-8:
+            return array - mean
+        return (array - mean) / (std + 1e-8)
+
     # -- 单回合：采样 + 更新 -------------------------------------------
     def run_episode(self, *, seed: int, steps: int, dt: float = 0.05) -> dict[str, float]:
-        """跑一个训练回合（采样，并用该回合转移做一次策略梯度更新）。
+        """跑一个训练回合（采样，并用该回合转移做策略梯度更新）。
+
+        V2.1 更新策略（由构造参数控制，默认启用）：
+        1. 按转移顺序切 ``batch_size`` 大小的批次；
+        2. 每批先做批内优势标准化，再平均梯度、按 ``grad_clip``
+           裁剪全局范数后更新一次（每回合 ~len/batch_size 次）；
+        3. 同一批数据可重复 ``epochs_per_episode`` 遍（温的重用，
+           REINFORCE 是 on-policy 的，>1 引入轻微 off-policy 偏差，
+           通常 1–4 安全）。
+
+        ``batch_size <= 0`` 时退回 V2 行为：整回合梯度取平均、只更新
+        一次（用于与旧实验对比）。
 
         返回真实指标：``return``（奖励之和）、``steps``（实际世界步数）、
         ``transitions``（低层样本数）、``agents``（有转移的 agent 数）、
-        ``mean_advantage``、``baseline``，以及 ``env.result()`` 的数值快照。
+        ``mean_advantage``、``baseline``、``updates``（本回合参数更新
+        次数）、``weight_delta``（本回合权重最大变化，监控学习信号）。
         """
         budget = int(steps)
         if budget <= 0:
@@ -805,43 +918,37 @@ class LowLevelTrainer:
         total_reward = float(sum(item[3] for item in transitions))
         mean_advantage = 0.0
         agent_count = 0.0
+        episode_updates = 0
+        weight_before = self.policy.flat_weights()
         if transitions:
+            agent_count = float(len({item[0] for item in transitions}))
+            # 每 agent 计算折扣回报与基线优势（同时更新基线），
+            # 再按转移原始顺序展开，保持时间对应关系
             grouped: dict[int, list[tuple[np.ndarray, ActionSample, float]]] = {}
             for agent_id, features, action, reward in transitions:
                 grouped.setdefault(agent_id, []).append((features, action, reward))
-            agent_count = float(len(grouped))
-            grad_sum = {
-                "w1": np.zeros_like(self.policy.neural_policy.w1),
-                "b1": np.zeros_like(self.policy.neural_policy.b1),
-                "w2": np.zeros_like(self.policy.neural_policy.w2),
-                "b2": np.zeros_like(self.policy.neural_policy.b2),
-                "w3": np.zeros_like(self.policy.neural_policy.w3),
-                "b3": np.zeros_like(self.policy.neural_policy.b3),
-            }
-            advantage_values: list[float] = []
+            grouped_adv: dict[int, list[float]] = {}
             for agent_id in sorted(grouped):
                 items = grouped[agent_id]
                 rewards = [reward for _, _, reward in items]
                 returns = self.discounted_returns(rewards, self.gamma)
                 baseline = self._baseline_for(agent_id)
-                advantages = returns - baseline
-                advantages = np.clip(advantages, -50.0, 50.0)
-                advantage_values.extend(float(value) for value in advantages)
-                for (features, action, _reward), advantage in zip(items, advantages):
-                    _loss, grads = self.policy.logprob_and_grads(
-                        features, action, float(advantage)
-                    )
-                    for name in grad_sum:
-                        grad_sum[name] += grads[name]
+                adv = np.clip(returns - baseline, -50.0, 50.0)
+                grouped_adv[agent_id] = [float(v) for v in adv]
                 self._update_baseline(agent_id, returns)
+            flat_items: list[tuple[np.ndarray, ActionSample, float]] = []
+            pointer: dict[int, int] = {}
+            for (agent_id, features, action, _reward) in transitions:
+                index = pointer.get(agent_id, 0)
+                pointer[agent_id] = index + 1
+                flat_items.append((features, action, grouped_adv[agent_id][index]))
             mean_advantage = (
-                float(np.mean(advantage_values)) if advantage_values else 0.0
+                float(np.mean([item[2] for item in flat_items])) if flat_items else 0.0
             )
-            scale = 1.0 / float(len(transitions))
-            averaged = {name: value * scale for name, value in grad_sum.items()}
-            self.policy.apply_grads(averaged, self.lr)
-            self._updates += 1
+            episode_updates = self._apply_minibatch_updates(flat_items)
 
+        weight_after = self.policy.flat_weights()
+        weight_delta = float(np.max(np.abs(weight_after - weight_before))) if transitions else 0.0
         baseline_mean = (
             float(np.mean([self._baselines[agent] for agent in self._baselines]))
             if self._baselines
@@ -854,9 +961,51 @@ class LowLevelTrainer:
             "agents": agent_count,
             "mean_advantage": mean_advantage,
             "baseline": baseline_mean,
+            "updates": float(episode_updates),
+            "weight_delta": weight_delta,
         }
         self._env_metrics(env, metrics)
         return metrics
+
+    # ------------------------------------------------------------------
+    def _apply_minibatch_updates(
+        self, flat_items: list[tuple[np.ndarray, ActionSample, float]]
+    ) -> int:
+        """按批切分并做小批量多 epoch 更新；返回本回合更新次数。"""
+        count = len(flat_items)
+        batch = self.batch_size if self.batch_size > 0 else count
+        updates_done = 0
+        if count == 0:
+            return 0
+        rng = np.random.default_rng(self.seed + self._updates * 31 + 7)
+        for _epoch in range(self.epochs_per_episode):
+            order = rng.permutation(count)
+            for start in range(0, count, batch):
+                index = order[start : start + batch]
+                chunk = [flat_items[i] for i in index]
+                advantages = self._normalized_batch_advantages(
+                    [item[2] for item in chunk]
+                )
+                grad_sum = {
+                    "w1": np.zeros_like(self.policy.neural_policy.w1),
+                    "b1": np.zeros_like(self.policy.neural_policy.b1),
+                    "w2": np.zeros_like(self.policy.neural_policy.w2),
+                    "b2": np.zeros_like(self.policy.neural_policy.b2),
+                    "w3": np.zeros_like(self.policy.neural_policy.w3),
+                    "b3": np.zeros_like(self.policy.neural_policy.b3),
+                }
+                for (features, action, _adv), advantage in zip(chunk, advantages):
+                    _loss, grads = self.policy.logprob_and_grads(
+                        features, action, float(advantage)
+                    )
+                    for name in grad_sum:
+                        grad_sum[name] += grads[name]
+                scale = 1.0 / float(len(chunk))
+                averaged = {name: value * scale for name, value in grad_sum.items()}
+                self._apply_clipped(averaged, self.lr)
+                updates_done += 1
+                self._updates += 1
+        return updates_done
 
     # -- 评估（不更新参数）--------------------------------------------
     def evaluate(self, *, seeds, steps: int, dt: float = 0.05) -> dict[str, float]:
