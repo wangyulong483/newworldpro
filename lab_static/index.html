@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>newworld 实验平台</title>
+<style>
+  :root { --bg:#0e1116; --panel:#161b24; --border:#232b38; --fg:#c8d0da; --accent:#4a8fd4; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { background:var(--bg); color:var(--fg); font:13px/1.5 "Segoe UI","Microsoft YaHei",sans-serif; display:flex; flex-direction:column; height:100vh; }
+  header { display:flex; align-items:center; gap:12px; padding:8px 16px; background:var(--panel); border-bottom:1px solid var(--border); }
+  header h1 { font-size:15px; color:#e8ecf2; }
+  #toolbar { display:flex; gap:6px; margin-left:auto; }
+  .tool { padding:4px 12px; background:#2a3140; border:none; color:var(--fg); cursor:pointer; border-radius:4px; }
+  .tool.active { background:var(--accent); color:#fff; }
+  main { flex:1; display:flex; min-height:0; }
+  #world { flex:1; position:relative; background:#07090c; }
+  canvas { display:block; width:100%; height:100%; }
+  #sidebar { width:300px; background:var(--panel); border-left:1px solid var(--border); padding:10px; overflow-y:auto; }
+  footer { display:flex; align-items:center; gap:14px; padding:6px 16px; background:var(--panel); border-top:1px solid var(--border); }
+  .stat { color:#8a94a6; }
+  .stat b { color:#e8ecf2; font-weight:600; }
+  #controls { display:flex; gap:6px; }
+  .btn { padding:4px 14px; background:#2f5940; border:none; color:#fff; cursor:pointer; border-radius:4px; }
+  .btn.gray { background:#2a3140; } .btn.red { background:#5a3040; }
+  h3 { font-size:12px; color:#8a94a6; margin:12px 0 4px; text-transform:uppercase; letter-spacing:.5px; }
+  #chart { width:100%; height:110px; background:#0b0e13; border:1px solid var(--border); border-radius:4px; }
+  .kv { display:grid; grid-template-columns:auto 1fr; gap:2px 10px; font-family:Consolas,monospace; font-size:12px; }
+  .kv span:nth-child(odd) { color:#8a94a6; }
+  #hint { position:absolute; bottom:10px; left:10px; background:rgba(10,13,18,.85); padding:6px 10px; border-radius:4px; font-size:12px; color:#8a94a6; pointer-events:none; }
+</style>
+</head>
+<body>
+<header>
+  <h1>newworld 实验平台 <span id="seed-label" style="color:#8a94a6;font-weight:400"></span></h1>
+  <div id="toolbar">
+    <button class="tool active" data-tool="none"> 观察 </button>
+    <button class="tool" data-tool="meteor"> ☄ 陨石 </button>
+    <button class="tool" data-tool="lightning"> ⚡ 闪电 </button>
+    <button class="tool" data-tool="flood"> 🌊 洪水 </button>
+    <button class="tool" data-tool="heal"> ✚ 治愈 </button>
+  </div>
+</header>
+<main>
+  <div id="world"><canvas id="cv"></canvas><div id="hint">拖动平移 · 滚轮缩放 · 点击个体查看详情 · 选择工具后点击地图施放</div></div>
+  <div id="sidebar">
+    <h3>实时统计</h3>
+    <canvas id="chart" width="278" height="108"></canvas>
+    <h3>世界状态</h3>
+    <div class="kv" id="stats"></div>
+    <h3>个体详情</h3>
+    <div class="kv" id="agent-detail"><span style="color:#8a94a6">点击地图上的个体</span></div>
+    <h3>干预记录（实验审计）</h3>
+    <div id="interventions" style="font-family:Consolas,monospace;font-size:11px;color:#8a94a6"></div>
+  </div>
+</main>
+<footer>
+  <div id="controls">
+    <button class="btn" id="play">▶ 开始</button>
+    <button class="btn gray" id="step">单步</button>
+    <button class="btn gray" id="slower">−</button>
+    <span id="speed-label" class="stat">×4</span>
+    <button class="btn gray" id="faster">+</button>
+    <button class="btn red" id="reset">重置</button>
+  </div>
+  <span class="stat">t=<b id="t">0</b>s</span>
+  <span class="stat">人口 <b id="pop">0</b></span>
+  <span class="stat">食物 <b id="food">0</b></span>
+  <span class="stat">燃烧 <b id="burn">0</b></span>
+  <span class="stat">饱足 <b id="sat">0</b></span>
+  <span class="stat" id="fps" style="margin-left:auto"></span>
+</footer>
+<script src="https://cdn.jsdelivr.net/npm/pixi.js@8/dist/pixi.min.js"></script>
+<script>
+"use strict";
+// ============================================================
+// newworld 实验平台前端：PixiJS 地图 + WS 帧流 + 实验控制
+// ============================================================
+const COLORS = {1:[24,46,88],2:[46,92,138],3:[214,194,140],4:[96,148,66],5:[46,104,52],6:[122,116,110],7:[232,236,240]};
+const app = new PIXI.Application();
+let mapTex=null, agentGfx=null, cam={x:0,y:0,scale:3}, snap=null, tool="none";
+let selectedIdx=-1, hoverIdx=-1;
+
+(async () => {
+  await app.init({canvas:document.getElementById("cv"), background:0x07090c, antialias:false, resolution:1});
+  document.getElementById("cv").getContext("webgl");
+  agentGfx = new PIXI.Graphics();
+  app.stage.addChild(agentGfx);
+  await fetchSnapshot();
+  setupStream(); setupControls(); setupCanvasEvents(); setupToolbar();
+  app.ticker.add(render);
+})();
+
+async function api(path, opts) {
+  const r = await fetch(path, opts);
+  return r.json();
+}
+async function post(kind, params={}) {
+  return api("/api/command", {method:"POST", headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({kind, ...params})});
+}
+
+async function fetchSnapshot() {
+  snap = await api("/api/snapshot");
+  document.getElementById("seed-label").textContent = `(seed ${snap.seed} · 稀缺世界)`;
+  buildMapTexture();
+  renderSidebar();
+}
+
+// ---------- 地图纹理（terrain hex → canvas → texture） ----------
+function buildMapTexture() {
+  const {width:w, height:h} = snap.map;
+  const bytes = new Uint8Array(atobHex(snap.terrain));
+  const rgba = new Uint8ClampedArray(w*h*4);
+  for (let i=0;i<w*h;i++) {
+    const c = COLORS[bytes[i]] || [10,12,16];
+    rgba[i*4]=c[0]; rgba[i*4+1]=c[1]; rgba[i*4+2]=c[2]; rgba[i*4+3]=255;
+  }
+  const cnv = document.createElement("canvas"); cnv.width=w; cnv.height=h;
+  const ctx = cnv.getContext("2d");
+  ctx.putImageData(new ImageData(rgba,w,h),0,0);
+  if (mapTex) mapTex.destroy();
+  mapTex = PIXI.Texture.from(cnv);
+}
+
+// ---------- 个体与交互渲染 ----------
+let lastFrame=null, fpsCount=0, fpsTime=performance.now();
+function render() {
+  if (!mapTex || !lastFrame) return;
+  const canvas = app.canvas;
+  const view = new PIXI.Container();
+  // 地图
+  if (!render.mapSprite) { render.mapSprite = new PIXI.Sprite(mapTex); app.stage.addChildAt(render.mapSprite,0); }
+  render.mapSprite.texture = mapTex;
+  render.mapSprite.scale.set(cam.scale);
+  render.mapSprite.position.set(cam.x, cam.y);
+  // 个体（散点）
+  const g = agentGfx; g.clear();
+  const size = Math.max(1.5, cam.scale*0.9);
+  const n = lastFrame.x.length;
+  for (let i=0;i<n;i++) {
+    const hu = lastFrame.h[i];
+    const colour = hu<0.3?0xd43a3a:hu<0.55?0xc87128:hu<0.75?0xe1b43c:hu<0.9?0x78c878:0x3ce6dc;
+    g.rect(cam.x+lastFrame.x[i]*cam.scale, cam.y+lastFrame.y[i]*cam.scale, size, size);
+    g.fill(colour);
+  }
+  // 选中环
+  if (selectedIdx>=0 && selectedIdx<n) {
+    const sx = cam.x+lastFrame.x[selectedIdx]*cam.scale, sy = cam.y+lastFrame.y[selectedIdx]*cam.scale;
+    g.circle(sx+size/2, sy+size/2, size+3); g.stroke({width:1.5, color:0xffffff});
+  }
+  // FPS
+  fpsCount++;
+  const now = performance.now();
+  if (now-fpsTime>1000) { document.getElementById("fps").textContent = `${fpsCount} FPS`; fpsCount=0; fpsTime=now; }
+}
+
+// ---------- WS 帧流 ----------
+function setupStream() {
+  const proto = location.protocol==="https:"?"wss":"ws";
+  const ws = new WebSocket(`${proto}://${location.host}/api/stream`);
+  ws.onmessage = (e) => { lastFrame = JSON.parse(e.data);
+    document.getElementById("t").textContent = lastFrame.t.toFixed(1);
+    document.getElementById("pop").textContent = lastFrame.pop;
+    document.getElementById("food").textContent = Math.round(lastFrame.food);
+    document.getElementById("burn").textContent = lastFrame.burn;
+    document.getElementById("sat").textContent = lastFrame.sat.toFixed(2);
+  };
+}
+
+// ---------- 侧栏 / 图表 ----------
+function renderSidebar() {
+  const stats = document.getElementById("stats");
+  stats.innerHTML = "";
+  [["seed", snap.seed],["人口", snap.population],["累计出生", snap.births],
+   ["累计死亡", snap.deaths],["食物总量", Math.round(snap.food_total)],
+   ["平均饱足", snap.saturation]].forEach(([k,v])=>{
+    stats.innerHTML += `<span>${k}</span><span>${v}</span>`;
+  });
+  const iv = document.getElementById("interventions");
+  iv.innerHTML = snap.interventions.slice(-12).reverse().map(r =>
+    `[${r.t}s] ${r.kind}`).join("<br>") || "（无）";
+  drawChart();
+}
+
+function drawChart() {
+  const cnv = document.getElementById("chart"), ctx = cnv.getContext("2d");
+  ctx.fillStyle = "#0b0e13"; ctx.fillRect(0,0,cnv.width,cnv.height);
+  if (!snap || snap.series.length<2) return;
+  const series = snap.series.slice(-90);
+  const maxPop = Math.max(...series.map(s=>s.population), 10);
+  const W=cnv.width, H=cnv.height;
+  // 人口线
+  ctx.strokeStyle = "#4a8fd4"; ctx.lineWidth = 1.5; ctx.beginPath();
+  series.forEach((s,i) => {
+    const x = i/(series.length-1)*W, y = H - (s.population/maxPop)*(H-8) - 4;
+    i===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
+  });
+  ctx.stroke();
+  // 饱足线（第二条刻度）
+  ctx.strokeStyle = "#3ce6dc"; ctx.lineWidth = 1; ctx.beginPath();
+  series.forEach((s,i)=>{
+    const x = i/(series.length-1)*W, y = H - s.satiation*(H-8) - 4;
+    i===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
+  });
+  ctx.stroke();
+  ctx.fillStyle = "#8a94a6"; ctx.font = "10px Consolas";
+  ctx.fillText(`人口(max ${Math.round(maxPop)})`, 6, 12);
+  ctx.fillText(`饱足`, 6, 24);
+}
+
+// ---------- 控制 ----------
+function setupControls() {
+  const play = document.getElementById("play");
+  play.onclick = async () => {
+    const r = await post(snap && lastFrame && lastFrame.running ? "pause":"resume");
+    if (r.ok) { play.textContent = lastFrame&&lastFrame.running ? "⏸ 暂停":"▶ 开始";
+      play.style.background = lastFrame&&lastFrame.running ? "#5a4a2f":"#2f5940"; }
+  };
+  document.getElementById("step").onclick = () => post("step",{steps:50});
+  let speedIdx = 2;
+  const speedLabel = document.getElementById("speed-label");
+  document.getElementById("faster").onclick = async ()=>{ speedIdx=Math.min(4,speedIdx+1);
+    await post("speed",{index:speedIdx}); speedLabel.textContent = "×"+[1,2,4,8,16][speedIdx]; };
+  document.getElementById("slower").onclick = async ()=>{ speedIdx=Math.max(0,speedIdx-1);
+    await post("speed",{index:speedIdx}); speedLabel.textContent = "×"+[1,2,4,8,16][speedIdx]; };
+  document.getElementById("reset").onclick = async ()=>{ await post("reset",{seed:snap.seed+1});
+    selectedIdx=-1; await fetchSnapshot(); };
+}
+
+// ---------- 工具栏（上帝之手 → 实验干预，全部入审计） ----------
+function setupToolbar() {
+  document.querySelectorAll(".tool").forEach(btn => {
+    btn.onclick = () => {
+      document.querySelectorAll(".tool").forEach(b=>b.classList.remove("active"));
+      btn.classList.add("active");
+      tool = btn.dataset.tool;
+    };
+  });
+}
+
+// ---------- 画布事件：平移/缩放/点选/施放 ----------
+function setupCanvasEvents() {
+  const cv = document.getElementById("cv");
+  let dragging=false, lastPt=null;
+  cv.addEventListener("mousedown", e => { dragging=true; lastPt=[e.clientX,e.clientY]; });
+  window.addEventListener("mouseup", ()=> dragging=false);
+  window.addEventListener("mousemove", e => {
+    if (dragging && lastPt) { cam.x+=e.clientX-lastPt[0]; cam.y+=e.clientY-lastPt[1]; lastPt=[e.clientX,e.clientY]; }
+  });
+  cv.addEventListener("wheel", e => {
+    e.preventDefault();
+    const factor = e.deltaY<0?1.15:1/1.15;
+    const rect = cv.getBoundingClientRect();
+    const mx=e.clientX-rect.left, my=e.clientY-rect.top;
+    const wx=(mx-cam.x)/cam.scale, wy=(my-cam.y)/cam.scale;
+    cam.scale = Math.min(24, Math.max(0.8, cam.scale*factor));
+    cam.x = mx-wx*cam.scale; cam.y = my-wy*cam.scale;
+  }, {passive:false});
+  cv.addEventListener("click", async e => {
+    const rect = cv.getBoundingClientRect();
+    const mx=e.clientX-rect.left, my=e.clientY-rect.top;
+    const wx=Math.floor((mx-cam.x)/cam.scale), wy=Math.floor((my-cam.y)/cam.scale);
+    if (tool!=="none") {
+      await post("catastrophe",{name:tool, x:wx, y:wy, radius:12});
+      return;
+    }
+    // 点选最近个体
+    if (!lastFrame) return;
+    let best=-1, bestD=1e9;
+    for (let i=0;i<lastFrame.x.length;i++) {
+      const dx=lastFrame.x[i]-wx, dy=lastFrame.y[i]-wy;
+      const d=dx*dx+dy*dy;
+      if (d<bestD){bestD=d;best=i;}
+    }
+    if (best>=0 && bestD<25/Math.max(1,cam.scale*cam.scale)) {
+      selectedIdx=best;
+      const d = await api(`/api/agent/${best}`);
+      if (d.ok) {
+        const el = document.getElementById("agent-detail");
+        el.innerHTML = `<span>#${d.row}</span><span>x=${d.x} y=${d.y}</span>`+
+          `<span>饱足</span><span>${d.hunger}</span>`+
+          `<span>年龄</span><span>${d.age}s</span>`+
+          `<span>观测</span><span style="font-size:10px">${d.observation.join(", ")}</span>`;
+      }
+    }
+  });
+}
+
+// hex 解码（不用 BigInt 链：逐字节）
+function atobHex(hex) {
+  const out = new Uint8Array(hex.length/2);
+  for (let i=0;i<out.length;i++) out[i] = parseInt(hex.substr(i*2,2),16);
+  return out;
+}
+// 定时刷新侧栏（图表/审计 2s 一次）
+setInterval(async ()=>{ if (snap) { const s = await api("/api/snapshot");
+  const keep = snap.terrain; snap = s; snap.terrain = keep; renderSidebar(); } }, 2000);
+</script>
+</body>
+</html>

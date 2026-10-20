@@ -53,6 +53,9 @@ python -m pip install -r requirements.txt
 # 新世界（默认）：俯视地图 + 千人群伙 + 上帝之手（陨石/闪电/洪水/治愈）
 python -m newworld
 
+# 实验平台（P2 推荐）：浏览器界面 + 实时统计 + 个体详情 + 干预审计
+python -m newworld.lab_server          # 打开 http://127.0.0.1:8600
+
 # 旧世界：侧视像素小人文明（V1/V2 机制全部保留）
 python -m newworld --classic --windowed --size 1280x800
 
