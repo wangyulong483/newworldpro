@@ -1,18 +1,18 @@
-"""Re-derive the inhabitant sprite from the blueprint PDF and verify art.py.
+"""从蓝图 PDF 重新提取居民精灵，并校验 art.py 的内嵌数据。
 
-The blueprint (``ref/blueprint.pdf``) embeds a 480x480 PNG of the creature on a
-green screen.  This tool:
+蓝图（``ref/blueprint.pdf``）内嵌一张 480×480 的绿幕生物 PNG。
+本工具：
 
-1. extracts that PNG from the PDF (requires ``pymupdf``),
-2. removes the green background,
-3. reconstructs the 36x36 pixel-art grid (pitch 13.25 px, y offset 3.3125 px),
-4. trims it to the sprite (23x29 art pixels),
-5. compares the result with ``newworld/art.py`` and writes the asset PNGs.
+1. 从 PDF 中抽出该 PNG（需要 ``pymupdf``）；
+2. 去除绿色背景；
+3. 重建 36×36 像素画网格（间距 13.25 px，y 偏移 3.3125 px）；
+4. 裁剪到精灵包围盒（23×29 艺术像素）；
+5. 与 ``newworld/art.py`` 比对并写出资源 PNG。
 
-Usage::
+用法::
 
-    python tools/extract_character.py            # verify + write assets
-    python tools/extract_character.py --check    # verify only (no writes)
+    python tools/extract_character.py            # 校验 + 写资源
+    python tools/extract_character.py --check    # 只校验（不写文件）
     python tools/extract_character.py --pdf other.pdf
 """
 

@@ -1,19 +1,16 @@
-"""World environment: sun, air and the body's heat balance.
+"""世界环境：太阳、空气与身体热平衡。
 
-The world has physical *fields* rather than painted decorations:
+世界拥有的是物理**场**，而不是画上去的装饰：
 
-* a **sun** (black-body radiator at ~5772 K) above the world that supplies both
-  visible light (used by the eyes, see :mod:`newworld.electromagnetism`) and
-  radiative heat (used here);
-* **air** at a temperature and pressure, which carries sound
-  (:mod:`newworld.acoustics`) and applies drag;
-* a lumped **body heat balance** for the inhabitant: metabolic heat, solar
-  absorption, radiative exchange (Stefan-Boltzmann), convection, and a simple
-  physiological regulation term that pulls the core temperature back to 37 C.
-  This is a physical-thermoregulation hybrid (real homeostasis involves
-  vasomotion and sweating); the physical terms use the standard constants.
+* **太阳**：悬在世界上方的一个 ~5772 K 黑体辐射源，同时提供可见光
+  （给眼睛用，见 :mod:`newworld.electromagnetism`）与辐射热（本模块）；
+* **空气**：有一定温度与气压的介质，传声（:mod:`newworld.acoustics`）
+  并施加空气阻力；
+* **集总身体热平衡**：代谢产热、太阳吸收、辐射交换（斯特藩-玻尔兹曼）、
+  对流，以及把核心温度拉回 37 C 的简化生理调节项。这是物理-体温调节
+  混合模型（真实的稳态涉及血管收缩与出汗）；物理项都取标准常数。
 
-Nothing here is painted: the world stays visually pure white.
+这里没有任何绘制：世界保持视觉纯白。
 """
 
 from __future__ import annotations
@@ -24,42 +21,44 @@ from dataclasses import dataclass
 from . import electromagnetism as em
 from . import physics
 
-#: effective surface temperature of the Sun (K); Wien peak ~502 nm
+#: 太阳的有效表面温度（K）；维恩峰值 ~502 nm（可见光绿段）
 SUN_SURFACE_TEMPERATURE_K = 5772.0
 
 
 @dataclass
 class Sun:
-    """A black-body sun above the world."""
+    """世界上方的黑体太阳。"""
 
     elevation_deg: float = 55.0
     azimuth_deg: float = 20.0
-    irradiance: float = physics.SOLAR_CONSTANT  # W/m^2 at normal incidence
+    irradiance: float = physics.SOLAR_CONSTANT  # 垂直入射辐照度 W/m^2
     temperature_k: float = SUN_SURFACE_TEMPERATURE_K
 
     @property
     def sin_elevation(self) -> float:
+        """高度角正弦（夜间按 0 处理）。"""
         return max(0.0, math.sin(math.radians(self.elevation_deg)))
 
     @property
     def horizontal_irradiance(self) -> float:
-        """Irradiance on a horizontal surface (``E = S * sin(elevation)``)."""
+        """水平面上的辐照度（``E = S * sin(高度角)``）。"""
         return self.irradiance * self.sin_elevation
 
     @property
     def visible_irradiance(self) -> float:
-        """Visible part of the irradiance (W/m^2)."""
+        """辐照度中的可见光部分（W/m^2）。"""
         return self.horizontal_irradiance * em.solar_visible_fraction(self.temperature_k)
 
     @property
     def peak_wavelength_nm(self) -> float:
+        """黑体辐射的维恩峰值波长（nm）。"""
         return em.wien_peak_wavelength_m(self.temperature_k) * 1e9
 
     def light_direction(self) -> tuple[float, float]:
-        """Unit vector pointing *from the sun into the world* (screen coords)."""
+        """从太阳指向世界的单位向量（屏幕坐标，y 轴向下）。"""
         elevation = math.radians(self.elevation_deg)
         azimuth = math.radians(self.azimuth_deg)
-        # 2-D projection: the sun is up and to one side; y axis points down
+        # 2-D 投影：太阳在上方偏一侧
         horizontal = math.sin(azimuth) * math.cos(elevation)
         vertical = -math.sin(elevation)
         length = math.hypot(horizontal, vertical) or 1.0
@@ -68,7 +67,7 @@ class Sun:
 
 @dataclass
 class Air:
-    """The medium around the world (participates in sound and drag)."""
+    """世界周围的介质（参与传声与阻力）。"""
 
     temperature_k: float = physics.AIR_TEMPERATURE_K
     density_kg_m3: float = physics.AIR_DENSITY
@@ -76,20 +75,23 @@ class Air:
 
     @property
     def temperature_c(self) -> float:
+        """气温（摄氏度）。"""
         return self.temperature_k - 273.15
 
     @property
     def speed_of_sound_m_s(self) -> float:
+        """当前温度下的声速（m/s，理想气体公式）。"""
         return physics.sound_speed(self.temperature_k)
 
     @property
     def speed_of_sound_px_s(self) -> float:
+        """声速（像素/秒）。"""
         return self.speed_of_sound_m_s * physics.PIXELS_PER_METER
 
 
 @dataclass
 class HeatBalance:
-    """The terms of the lumped body heat-balance equation (all in watts)."""
+    """集总身体热平衡方程的各项（单位全是瓦特）。"""
 
     metabolic_w: float
     solar_w: float
@@ -99,6 +101,7 @@ class HeatBalance:
 
     @property
     def net_w(self) -> float:
+        """净热流（正 = 身体升温）。"""
         return (
             self.metabolic_w
             + self.solar_w
@@ -115,13 +118,13 @@ def body_heat_balance(
     *,
     activity: float = 1.0,
 ) -> HeatBalance:
-    """Heat balance of the lumped body model.
+    """集总身体模型的热平衡。
 
-    * metabolism: ``Q_met = 100 W * activity``
-    * solar absorption: ``Q_sun = E * absorptivity * absorbing area``
-    * radiation: ``sigma * epsilon * A * (T_body^4 - T_env^4)``
-    * convection: ``h * A * (T_body - T_air)``
-    * regulation: ``-K * (T_body - 37 C)`` (simplified homeostasis)
+    * 代谢：``Q_met = 100 W * activity``
+    * 太阳吸收：``Q_sun = E * 吸收率 * 受照面积``
+    * 辐射：``sigma * epsilon * A * (T_body^4 - T_env^4)``
+    * 对流：``h * A * (T_body - T_air)``
+    * 调节：``-K * (T_body - 37 C)``（简化的体温稳态）
     """
     temperature = max(100.0, body_temperature_k)
     environment = max(100.0, air_temperature_k)
@@ -158,7 +161,7 @@ def step_body_temperature(
     *,
     activity: float = 1.0,
 ) -> HeatBalance:
-    """Integrate the lumped body temperature by one physical step."""
+    """按一个物理步长积分身体温度（写入 character.body_temperature_k）。"""
     balance = body_heat_balance(
         character.body_temperature_k,
         air.temperature_k,
@@ -166,6 +169,7 @@ def step_body_temperature(
         activity=activity,
     )
     heat_capacity = physics.BODY_MASS_KG * physics.BODY_SPECIFIC_HEAT
+    # 夹在 200..450 K，避免数值发散
     character.body_temperature_k = min(
         450.0,
         max(200.0, character.body_temperature_k + balance.net_w / heat_capacity * dt),

@@ -218,3 +218,66 @@ population._maybe_innovate（每 5 世界秒，enable_innovation=True）
 无论鼠标选择、策略挂载、创新、重置，创建智能体只有一条受约束路径
 （`World.create_agent → AgentRegistry.register`），实验 CSV 每行都记录
 `total_agents_created`，aggregate 检查 ≤8；UI 选择不创建个体；重置 = 新运行（新注册表）。
+
+---
+
+## 8. v0.9.2（V2）新增结构：感知进入决策、低层 RL、无限世界
+
+### 8.1 观测：40 → 56 维
+
+```
+neural.features(world, agent)
+  ├─ 24 维：位置/速度/朝向/生理/昼夜/最近浆果/池塘/温度/跳跃/说话（v0.8）
+  ├─ 16 维：文明上下文（记忆摘要/目标计划/知识/设施/人口/合作，P3）
+  └─ 16 维：真实视网膜特征（V2.1）
+        ↑ character.visual_features（Population 每 perception_stride 帧刷新）
+        ↑ visual_features.VisualFeatureExtractor
+            → VisualSystem.perceive（真实 optics/eye/retina/gaze）
+```
+
+迁移链：24 →（零初始化 16 上下文）→ 40 →（零初始化 16 视觉）→ 56；
+`NeuralPolicy.from_legacy_weights` / `from_v2_weights` 分别处理旧 checkpoint，
+新增权重为 0 时输出逐比特一致。
+
+### 8.2 低层动作策略的 RL 回路
+
+```
+Population._low_level_decision
+  mode="rl" → LowLevelPolicy.sample(56 维特征)
+        → Decision(move=MOVE_VALUES[move_index], jump, speak)
+        → 本帧待结算在 _pending_lowlevel
+  step 结束 → LowLevelReward.observe(真实世界前后差值)
+        → (agent_id, features, action, reward) 进入 lowlevel_transitions
+        → 训练器 drain → 折扣回报 + 基线 → 手写梯度更新
+        → 语言头 argmax 不变（不参与 RL）
+```
+
+奖励只来自真实变化（Δ技术/Δ设施/净资源/Δ知识/Δ合作 − 时间成本 − 死亡），
+原地站立/粮仓挂机/重复失败动作 ≤0（见 `newworld/rewards.py` 与测试）。
+
+### 8.3 无限世界：窗口化场景
+
+```
+World._make_scene → InfiniteScene（config.infinite=True）
+    确定性分块：材料/对象/池塘/浆果 = f(seed, 全局原子坐标)
+    修改持久化：全局坐标稀疏字典
+World._maybe_recenter（每帧 step 末尾）
+    人口进入窗口边缘 25% → 平移 25% 窗口
+    → InfiniteScene.recenter(delta)   （重建局部 grid/objects/berries/pond）
+    → World._shift_world_x(-delta_px) （agents/facilities/community 同步平移）
+    → window_origin_px 记录全局偏移
+```
+
+局部坐标体系保持不变，因此 `render`/`ui_state`/`Technology` 无需感知无限世界；
+有限世界（默认）路径完全不变。
+
+### 8.4 新增模块与测试
+
+| 模块 | 职责 | 测试 |
+| --- | --- | --- |
+| `visual_features.py` | 真实视网膜 16 维特征（低分辨率学习档） | 21 |
+| `rewards.py` | 低层 RL 真实奖励 + 反刷分 | 11 |
+| `lowlevel_rl.py` | 策略采样/手写策略梯度/训练器 | 19 |
+| `infinite_scene.py` | 无限世界确定性分块与窗口平移 | 27 |
+| `simulation.py`（扩展） | RunSpec visual/infinite/cap/lowlevel 策略 + RL env | 10 |
+| `population.py`（扩展） | 视觉刷新、RL 采样/转移/奖励、无限 recenter 联动 | — |

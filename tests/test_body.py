@@ -1,4 +1,6 @@
-"""Tests for the pixel body (original blueprint sprite, articulated)."""
+"""身体渲染器测试：姿态/关节/交互点/朝向镜像。
+
+Tests for the pixel body (original blueprint sprite, articulated)."""
 
 from __future__ import annotations
 

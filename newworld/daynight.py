@@ -1,10 +1,9 @@
-"""Day/night cycle: time of day, solar elevation, sky colour and daylight.
+"""昼夜循环：时刻、太阳高度、天空颜色与日照强度。
 
-The world has a virtual clock.  A full day lasts ``day_length_s`` real seconds
-(default 10 minutes).  The sun rises at 06:00, culminates at 12:00 with
-``max_elevation_deg`` and sets at 18:00; at night the elevation is negative.
-Solar elevation drives illumination, shadows, sky colour and (through the
-environment) air temperature and the inhabitant's circadian physiology.
+世界有一个虚拟时钟。一整天 = ``day_length_s`` 秒仿真时间（默认 10 分钟）。
+太阳 06:00 升起、12:00 达到最大高度角 ``max_elevation_deg``、18:00 落下；
+夜晚高度角为负。太阳高度角驱动光照、阴影、天空颜色，并（经由环境模块）
+影响气温与角色的昼夜生理（体温/睡眠压力）。
 """
 
 from __future__ import annotations
@@ -14,10 +13,12 @@ from dataclasses import dataclass
 
 
 def _lerp(a: float, b: float, t: float) -> float:
+    """线性插值。"""
     return a + (b - a) * t
 
 
 def _lerp_rgb(a: tuple[int, int, int], b: tuple[int, int, int], t: float) -> tuple[int, int, int]:
+    """RGB 三通道各自线性插值。"""
     return (
         int(round(_lerp(a[0], b[0], t))),
         int(round(_lerp(a[1], b[1], t))),
@@ -25,7 +26,7 @@ def _lerp_rgb(a: tuple[int, int, int], b: tuple[int, int, int], t: float) -> tup
     )
 
 
-#: sky colour keyframes: (hour, colour)
+#: 天空颜色关键帧：(小时, 颜色)。黎明/黄昏是暖色，正午是亮蓝，深夜近黑。
 _SKY_KEYS = (
     (0.0, (8, 12, 26)),
     (4.5, (10, 16, 34)),
@@ -40,7 +41,7 @@ _SKY_KEYS = (
 
 
 def sky_colour_at(hour: float) -> tuple[int, int, int]:
-    """Interpolate the sky colour for a given hour (0..24)."""
+    """按小时（0..24）在关键帧之间插值出天空颜色。"""
     hour = hour % 24.0
     for index in range(len(_SKY_KEYS) - 1):
         h0, c0 = _SKY_KEYS[index]
@@ -53,7 +54,7 @@ def sky_colour_at(hour: float) -> tuple[int, int, int]:
 
 @dataclass
 class DayCycle:
-    """Virtual clock and solar geometry."""
+    """虚拟时钟与太阳几何（一天的长短、日出日落实由常数决定）。"""
 
     day_length_s: float = 600.0
     start_hour: float = 8.0
@@ -61,44 +62,48 @@ class DayCycle:
 
     # ------------------------------------------------------------------
     def hour(self, time_s: float) -> float:
+        """仿真秒数 → 一天中的小时（0..24，含 start_hour 偏移）。"""
         return (self.start_hour + time_s / self.day_length_s * 24.0) % 24.0
 
     def day_index(self, time_s: float) -> int:
+        """仿真秒数 → 第几天（从 0 开始）。"""
         return int((self.start_hour + time_s / self.day_length_s * 24.0) // 24.0)
 
     def sun_elevation_deg(self, hour: float) -> float:
-        """Solar elevation: sinusoid between sunrise (06) and sunset (18)."""
+        """太阳高度角：白天（06-18 点）是正弦，夜晚在地平线下为负。"""
         if 6.0 <= hour <= 18.0:
             return self.max_elevation_deg * math.sin(math.pi * (hour - 6.0) / 12.0)
-        # below the horizon at night
+        # 夜晚在地平线之下
         if hour < 6.0:
-            night_phase = (hour + 18.0) / 12.0  # 0 at 18:00, 1 at 06:00
+            night_phase = (hour + 18.0) / 12.0  # 18:00 为 0，06:00 为 1
         else:
             night_phase = (hour - 18.0) / 12.0
         return -self.max_elevation_deg * math.sin(math.pi * night_phase)
 
     def daylight(self, hour: float) -> float:
-        """Direct sunlight strength 0..1 (sin of elevation, clamped)."""
+        """直射阳光强度 0..1（高度角正弦，夜间为 0）。"""
         elevation = self.sun_elevation_deg(hour)
         if elevation <= 0.0:
             return 0.0
         return math.sin(math.radians(min(90.0, elevation)))
 
     def sun_horizontal_frac(self, hour: float) -> float:
-        """Where the sun sits across the sky: 0 = left, 1 = right."""
+        """太阳在天幕上的水平位置：0 = 最左，1 = 最右。"""
         if 6.0 <= hour <= 18.0:
             return 0.5 - 0.5 * math.cos(math.pi * (hour - 6.0) / 12.0)
         return 0.5
 
     def ambient_light(self, hour: float) -> float:
-        """Ambient illumination 0..1 (night ~0.08 moonlight, day ~1)."""
+        """环境光 0..1（夜晚 ~0.08 的月光，白天 ~1）。"""
         daylight = self.daylight(hour)
         return 0.08 + 0.92 * daylight
 
     def is_day(self, hour: float) -> bool:
+        """现在是否白天（太阳在地平线上）。"""
         return self.sun_elevation_deg(hour) > 0.0
 
     def phase_name_zh(self, hour: float) -> str:
+        """按时段返回中文名（黎明/上午/正午/下午/黄昏/夜晚）。"""
         if 5.0 <= hour < 7.0:
             return "黎明"
         if 7.0 <= hour < 11.0:
@@ -112,16 +117,17 @@ class DayCycle:
         return "夜晚"
 
     def sky_colour(self, hour: float) -> tuple[int, int, int]:
+        """当前天空颜色（关键帧插值）。"""
         return sky_colour_at(hour)
 
     # ------------------------------------------------------------------
     def sun_screen_fraction(self, hour: float) -> tuple[float, float]:
-        """Approximate screen-space sun position (x_frac, y_frac)."""
+        """太阳在屏幕上的近似位置 (x_frac, y_frac)，两者都在 0..1。"""
         x = self.sun_horizontal_frac(hour)
         elevation = max(0.0, self.sun_elevation_deg(hour))
         y = 0.42 - 0.30 * math.sin(math.radians(elevation))
         return x, y
 
     def sun_direction(self, hour: float) -> int:
-        """-1 if the sun is left of centre, +1 if right (for shadows)."""
+        """太阳在屏幕中线哪一侧：左 -1 / 右 +1（阴影方向用）。"""
         return -1 if self.sun_horizontal_frac(hour) < 0.5 else 1

@@ -1,0 +1,1322 @@
+{
+  "spec": {
+    "seeds": [
+      200,
+      201,
+      202,
+      203,
+      204,
+      205
+    ],
+    "steps": "config default (6000)",
+    "dt": 0.05,
+    "size": "640x400",
+    "infinite_window_atoms": 128,
+    "perception_stride": 8,
+    "elapsed_s": 554.2,
+    "runs": 42
+  },
+  "configs": {
+    "c_bc_vision_off": {
+      "steps_run": {
+        "mean": 6000.0,
+        "std": 0.0,
+        "min": 6000.0,
+        "max": 6000.0,
+        "n": 6
+      },
+      "world_time_s": {
+        "mean": 300.0,
+        "std": 0.0,
+        "min": 300.0,
+        "max": 300.0,
+        "n": 6
+      },
+      "total_agents_created": {
+        "mean": 8.0,
+        "std": 0.0,
+        "min": 8.0,
+        "max": 8.0,
+        "n": 6
+      },
+      "total_deaths": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0,
+        "n": 6
+      },
+      "alive_count": {
+        "mean": 8.0,
+        "std": 0.0,
+        "min": 8.0,
+        "max": 8.0,
+        "n": 6
+      },
+      "tech_verified": {
+        "mean": 4.166666666666667,
+        "std": 0.8975274678557507,
+        "min": 3.0,
+        "max": 5.0,
+        "n": 6
+      },
+      "tech_graph_depth": {
+        "mean": 1.0,
+        "std": 0.0,
+        "min": 1.0,
+        "max": 1.0,
+        "n": 6
+      },
+      "facilities_active": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0,
+        "n": 6
+      },
+      "innovations": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0,
+        "n": 6
+      },
+      "goal_completion_rate": {
+        "mean": 0.9616769213530496,
+        "std": 0.009697174380935442,
+        "min": 0.948220064724919,
+        "max": 0.9730769230769231,
+        "n": 6
+      },
+      "repeat_run_max": {
+        "mean": 825.5,
+        "std": 153.83730583530988,
+        "min": 603.0,
+        "max": 1127.0,
+        "n": 6
+      },
+      "no_progress_repeat_ratio": {
+        "mean": 0.5616148519823472,
+        "std": 0.0684300087589804,
+        "min": 0.487408808430154,
+        "max": 0.6787198782906354,
+        "n": 6
+      },
+      "knowledge_retention": {
+        "mean": 1.0,
+        "std": 0.0,
+        "min": 1.0,
+        "max": 1.0,
+        "n": 6
+      },
+      "cooperation_index": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0,
+        "n": 6
+      },
+      "survival_rate": {
+        "mean": 1.0,
+        "std": 0.0,
+        "min": 1.0,
+        "max": 1.0,
+        "n": 6
+      },
+      "extinction_time": {
+        "mean": -1.0,
+        "std": 0.0,
+        "min": -1.0,
+        "max": -1.0,
+        "n": 6
+      },
+      "wall_s": {
+        "mean": 5.6905,
+        "std": 0.17655476015484084,
+        "min": 5.429,
+        "max": 5.956,
+        "n": 6
+      },
+      "visual_active_dims": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0,
+        "n": 6
+      },
+      "lowlevel_transitions": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0,
+        "n": 6
+      },
+      "lowlevel_mean_reward": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0,
+        "n": 6
+      },
+      "extinct_runs": 0,
+      "n_runs": 6,
+      "extinction_rate": 0.0,
+      "extinction_causes": {},
+      "cap_violations": 0
+    },
+    "c_bc_vision_on": {
+      "steps_run": {
+        "mean": 6000.0,
+        "std": 0.0,
+        "min": 6000.0,
+        "max": 6000.0,
+        "n": 6
+      },
+      "world_time_s": {
+        "mean": 300.0,
+        "std": 0.0,
+        "min": 300.0,
+        "max": 300.0,
+        "n": 6
+      },
+      "total_agents_created": {
+        "mean": 8.0,
+        "std": 0.0,
+        "min": 8.0,
+        "max": 8.0,
+        "n": 6
+      },
+      "total_deaths": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0,
+        "n": 6
+      },
+      "alive_count": {
+        "mean": 8.0,
+        "std": 0.0,
+        "min": 8.0,
+        "max": 8.0,
+        "n": 6
+      },
+      "tech_verified": {
+        "mean": 4.166666666666667,
+        "std": 0.8975274678557507,
+        "min": 3.0,
+        "max": 5.0,
+        "n": 6
+      },
+      "tech_graph_depth": {
+        "mean": 1.0,
+        "std": 0.0,
+        "min": 1.0,
+        "max": 1.0,
+        "n": 6
+      },
+      "facilities_active": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0,
+        "n": 6
+      },
+      "innovations": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0,
+        "n": 6
+      },
+      "goal_completion_rate": {
+        "mean": 0.9616769213530496,
+        "std": 0.009697174380935442,
+        "min": 0.948220064724919,
+        "max": 0.9730769230769231,
+        "n": 6
+      },
+      "repeat_run_max": {
+        "mean": 825.5,
+        "std": 153.83730583530988,
+        "min": 603.0,
+        "max": 1127.0,
+        "n": 6
+      },
+      "no_progress_repeat_ratio": {
+        "mean": 0.5616148519823472,
+        "std": 0.0684300087589804,
+        "min": 0.487408808430154,
+        "max": 0.6787198782906354,
+        "n": 6
+      },
+      "knowledge_retention": {
+        "mean": 1.0,
+        "std": 0.0,
+        "min": 1.0,
+        "max": 1.0,
+        "n": 6
+      },
+      "cooperation_index": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0,
+        "n": 6
+      },
+      "survival_rate": {
+        "mean": 1.0,
+        "std": 0.0,
+        "min": 1.0,
+        "max": 1.0,
+        "n": 6
+      },
+      "extinction_time": {
+        "mean": -1.0,
+        "std": 0.0,
+        "min": -1.0,
+        "max": -1.0,
+        "n": 6
+      },
+      "wall_s": {
+        "mean": 11.535499999999999,
+        "std": 0.18743776745007054,
+        "min": 11.203,
+        "max": 11.834,
+        "n": 6
+      },
+      "visual_active_dims": {
+        "mean": 16.0,
+        "std": 0.0,
+        "min": 16.0,
+        "max": 16.0,
+        "n": 6
+      },
+      "lowlevel_transitions": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0,
+        "n": 6
+      },
+      "lowlevel_mean_reward": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0,
+        "n": 6
+      },
+      "extinct_runs": 0,
+      "n_runs": 6,
+      "extinction_rate": 0.0,
+      "extinction_causes": {},
+      "cap_violations": 0
+    },
+    "c_rl_policy": {
+      "steps_run": {
+        "mean": 6000.0,
+        "std": 0.0,
+        "min": 6000.0,
+        "max": 6000.0,
+        "n": 6
+      },
+      "world_time_s": {
+        "mean": 300.0,
+        "std": 0.0,
+        "min": 300.0,
+        "max": 300.0,
+        "n": 6
+      },
+      "total_agents_created": {
+        "mean": 8.0,
+        "std": 0.0,
+        "min": 8.0,
+        "max": 8.0,
+        "n": 6
+      },
+      "total_deaths": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0,
+        "n": 6
+      },
+      "alive_count": {
+        "mean": 8.0,
+        "std": 0.0,
+        "min": 8.0,
+        "max": 8.0,
+        "n": 6
+      },
+      "tech_verified": {
+        "mean": 4.166666666666667,
+        "std": 1.2133516482134197,
+        "min": 3.0,
+        "max": 6.0,
+        "n": 6
+      },
+      "tech_graph_depth": {
+        "mean": 1.0,
+        "std": 0.0,
+        "min": 1.0,
+        "max": 1.0,
+        "n": 6
+      },
+      "facilities_active": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0,
+        "n": 6
+      },
+      "innovations": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0,
+        "n": 6
+      },
+      "goal_completion_rate": {
+        "mean": 0.9657342724577981,
+        "std": 0.007530464829342938,
+        "min": 0.9520295202952029,
+        "max": 0.9735849056603774,
+        "n": 6
+      },
+      "repeat_run_max": {
+        "mean": 151.66666666666666,
+        "std": 54.12228951386131,
+        "min": 79.0,
+        "max": 225.0,
+        "n": 6
+      },
+      "no_progress_repeat_ratio": {
+        "mean": 0.3910887492921062,
+        "std": 0.12135692042202581,
+        "min": 0.21544426847250286,
+        "max": 0.5548337581887455,
+        "n": 6
+      },
+      "knowledge_retention": {
+        "mean": 1.0,
+        "std": 0.0,
+        "min": 1.0,
+        "max": 1.0,
+        "n": 6
+      },
+      "cooperation_index": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0,
+        "n": 6
+      },
+      "survival_rate": {
+        "mean": 1.0,
+        "std": 0.0,
+        "min": 1.0,
+        "max": 1.0,
+        "n": 6
+      },
+      "extinction_time": {
+        "mean": -1.0,
+        "std": 0.0,
+        "min": -1.0,
+        "max": -1.0,
+        "n": 6
+      },
+      "wall_s": {
+        "mean": 12.574833333333332,
+        "std": 0.3947621295019178,
+        "min": 11.89,
+        "max": 13.031,
+        "n": 6
+      },
+      "visual_active_dims": {
+        "mean": 15.666666666666666,
+        "std": 0.7453559924999299,
+        "min": 14.0,
+        "max": 16.0,
+        "n": 6
+      },
+      "lowlevel_transitions": {
+        "mean": 35198.0,
+        "std": 2699.0012350250354,
+        "min": 29225.0,
+        "max": 37006.0,
+        "n": 6
+      },
+      "lowlevel_mean_reward": {
+        "mean": 0.0008,
+        "std": 0.00039157800414902434,
+        "min": 0.0004,
+        "max": 0.0015,
+        "n": 6
+      },
+      "extinct_runs": 0,
+      "n_runs": 6,
+      "extinction_rate": 0.0,
+      "extinction_causes": {},
+      "cap_violations": 0
+    },
+    "c_rl_random": {
+      "steps_run": {
+        "mean": 6000.0,
+        "std": 0.0,
+        "min": 6000.0,
+        "max": 6000.0,
+        "n": 6
+      },
+      "world_time_s": {
+        "mean": 300.0,
+        "std": 0.0,
+        "min": 300.0,
+        "max": 300.0,
+        "n": 6
+      },
+      "total_agents_created": {
+        "mean": 8.0,
+        "std": 0.0,
+        "min": 8.0,
+        "max": 8.0,
+        "n": 6
+      },
+      "total_deaths": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0,
+        "n": 6
+      },
+      "alive_count": {
+        "mean": 8.0,
+        "std": 0.0,
+        "min": 8.0,
+        "max": 8.0,
+        "n": 6
+      },
+      "tech_verified": {
+        "mean": 4.0,
+        "std": 1.0,
+        "min": 3.0,
+        "max": 5.0,
+        "n": 6
+      },
+      "tech_graph_depth": {
+        "mean": 1.0,
+        "std": 0.0,
+        "min": 1.0,
+        "max": 1.0,
+        "n": 6
+      },
+      "facilities_active": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0,
+        "n": 6
+      },
+      "innovations": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0,
+        "n": 6
+      },
+      "goal_completion_rate": {
+        "mean": 0.9469718444686018,
+        "std": 0.023858359016873762,
+        "min": 0.9035087719298246,
+        "max": 0.9715639810426541,
+        "n": 6
+      },
+      "repeat_run_max": {
+        "mean": 127.33333333333333,
+        "std": 21.320308523929842,
+        "min": 117.0,
+        "max": 175.0,
+        "n": 6
+      },
+      "no_progress_repeat_ratio": {
+        "mean": 0.6133591651647695,
+        "std": 0.008138005145901342,
+        "min": 0.6048568070100449,
+        "max": 0.629105473965287,
+        "n": 6
+      },
+      "knowledge_retention": {
+        "mean": 1.0,
+        "std": 0.0,
+        "min": 1.0,
+        "max": 1.0,
+        "n": 6
+      },
+      "cooperation_index": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0,
+        "n": 6
+      },
+      "survival_rate": {
+        "mean": 1.0,
+        "std": 0.0,
+        "min": 1.0,
+        "max": 1.0,
+        "n": 6
+      },
+      "extinction_time": {
+        "mean": -1.0,
+        "std": 0.0,
+        "min": -1.0,
+        "max": -1.0,
+        "n": 6
+      },
+      "wall_s": {
+        "mean": 7.512833333333333,
+        "std": 0.3670269820538477,
+        "min": 6.833,
+        "max": 7.878,
+        "n": 6
+      },
+      "visual_active_dims": {
+        "mean": 14.0,
+        "std": 0.0,
+        "min": 14.0,
+        "max": 14.0,
+        "n": 6
+      },
+      "lowlevel_transitions": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0,
+        "n": 6
+      },
+      "lowlevel_mean_reward": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0,
+        "n": 6
+      },
+      "extinct_runs": 0,
+      "n_runs": 6,
+      "extinction_rate": 0.0,
+      "extinction_causes": {},
+      "cap_violations": 0
+    },
+    "cap32_finite": {
+      "steps_run": {
+        "mean": 6000.0,
+        "std": 0.0,
+        "min": 6000.0,
+        "max": 6000.0,
+        "n": 6
+      },
+      "world_time_s": {
+        "mean": 300.0,
+        "std": 0.0,
+        "min": 300.0,
+        "max": 300.0,
+        "n": 6
+      },
+      "total_agents_created": {
+        "mean": 32.0,
+        "std": 0.0,
+        "min": 32.0,
+        "max": 32.0,
+        "n": 6
+      },
+      "total_deaths": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0,
+        "n": 6
+      },
+      "alive_count": {
+        "mean": 32.0,
+        "std": 0.0,
+        "min": 32.0,
+        "max": 32.0,
+        "n": 6
+      },
+      "tech_verified": {
+        "mean": 4.333333333333333,
+        "std": 0.9428090415820634,
+        "min": 3.0,
+        "max": 5.0,
+        "n": 6
+      },
+      "tech_graph_depth": {
+        "mean": 1.0,
+        "std": 0.0,
+        "min": 1.0,
+        "max": 1.0,
+        "n": 6
+      },
+      "facilities_active": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0,
+        "n": 6
+      },
+      "innovations": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0,
+        "n": 6
+      },
+      "goal_completion_rate": {
+        "mean": 0.9270257953347584,
+        "std": 0.006041281295899178,
+        "min": 0.9156378600823045,
+        "max": 0.9321663019693655,
+        "n": 6
+      },
+      "repeat_run_max": {
+        "mean": 1333.1666666666667,
+        "std": 129.94154668756084,
+        "min": 1105.0,
+        "max": 1464.0,
+        "n": 6
+      },
+      "no_progress_repeat_ratio": {
+        "mean": 0.50992217765013,
+        "std": 0.04464261587729295,
+        "min": 0.46711326777458095,
+        "max": 0.6009563042518759,
+        "n": 6
+      },
+      "knowledge_retention": {
+        "mean": 1.0,
+        "std": 0.0,
+        "min": 1.0,
+        "max": 1.0,
+        "n": 6
+      },
+      "cooperation_index": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0,
+        "n": 6
+      },
+      "survival_rate": {
+        "mean": 1.0,
+        "std": 0.0,
+        "min": 1.0,
+        "max": 1.0,
+        "n": 6
+      },
+      "extinction_time": {
+        "mean": -1.0,
+        "std": 0.0,
+        "min": -1.0,
+        "max": -1.0,
+        "n": 6
+      },
+      "wall_s": {
+        "mean": 20.887166666666666,
+        "std": 0.44910110838825085,
+        "min": 20.174,
+        "max": 21.522,
+        "n": 6
+      },
+      "visual_active_dims": {
+        "mean": 16.0,
+        "std": 0.0,
+        "min": 16.0,
+        "max": 16.0,
+        "n": 6
+      },
+      "lowlevel_transitions": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0,
+        "n": 6
+      },
+      "lowlevel_mean_reward": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0,
+        "n": 6
+      },
+      "extinct_runs": 0,
+      "n_runs": 6,
+      "extinction_rate": 0.0,
+      "extinction_causes": {},
+      "cap_violations": 0
+    },
+    "cap32_infinite": {
+      "steps_run": {
+        "mean": 6000.0,
+        "std": 0.0,
+        "min": 6000.0,
+        "max": 6000.0,
+        "n": 6
+      },
+      "world_time_s": {
+        "mean": 300.0,
+        "std": 0.0,
+        "min": 300.0,
+        "max": 300.0,
+        "n": 6
+      },
+      "total_agents_created": {
+        "mean": 29.833333333333332,
+        "std": 2.733536577809454,
+        "min": 26.0,
+        "max": 32.0,
+        "n": 6
+      },
+      "total_deaths": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0,
+        "n": 6
+      },
+      "alive_count": {
+        "mean": 29.833333333333332,
+        "std": 2.733536577809454,
+        "min": 26.0,
+        "max": 32.0,
+        "n": 6
+      },
+      "tech_verified": {
+        "mean": 4.0,
+        "std": 1.0,
+        "min": 3.0,
+        "max": 5.0,
+        "n": 6
+      },
+      "tech_graph_depth": {
+        "mean": 1.0,
+        "std": 0.0,
+        "min": 1.0,
+        "max": 1.0,
+        "n": 6
+      },
+      "facilities_active": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0,
+        "n": 6
+      },
+      "innovations": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0,
+        "n": 6
+      },
+      "goal_completion_rate": {
+        "mean": 0.8844747735625247,
+        "std": 0.08346343362199811,
+        "min": 0.6998087954110899,
+        "max": 0.9389002036659878,
+        "n": 6
+      },
+      "repeat_run_max": {
+        "mean": 195.66666666666666,
+        "std": 176.86215599223658,
+        "min": 69.0,
+        "max": 584.0,
+        "n": 6
+      },
+      "no_progress_repeat_ratio": {
+        "mean": 0.039825774797911294,
+        "std": 0.015647195890390105,
+        "min": 0.015778095960021336,
+        "max": 0.06251054971023462,
+        "n": 6
+      },
+      "knowledge_retention": {
+        "mean": 1.0,
+        "std": 0.0,
+        "min": 1.0,
+        "max": 1.0,
+        "n": 6
+      },
+      "cooperation_index": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0,
+        "n": 6
+      },
+      "survival_rate": {
+        "mean": 1.0,
+        "std": 0.0,
+        "min": 1.0,
+        "max": 1.0,
+        "n": 6
+      },
+      "extinction_time": {
+        "mean": -1.0,
+        "std": 0.0,
+        "min": -1.0,
+        "max": -1.0,
+        "n": 6
+      },
+      "wall_s": {
+        "mean": 20.797666666666668,
+        "std": 2.4045775558759224,
+        "min": 16.921,
+        "max": 22.728,
+        "n": 6
+      },
+      "visual_active_dims": {
+        "mean": 16.0,
+        "std": 0.0,
+        "min": 16.0,
+        "max": 16.0,
+        "n": 6
+      },
+      "lowlevel_transitions": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0,
+        "n": 6
+      },
+      "lowlevel_mean_reward": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0,
+        "n": 6
+      },
+      "extinct_runs": 0,
+      "n_runs": 6,
+      "extinction_rate": 0.0,
+      "extinction_causes": {},
+      "cap_violations": 0
+    },
+    "cap8_infinite": {
+      "steps_run": {
+        "mean": 6000.0,
+        "std": 0.0,
+        "min": 6000.0,
+        "max": 6000.0,
+        "n": 6
+      },
+      "world_time_s": {
+        "mean": 300.0,
+        "std": 0.0,
+        "min": 300.0,
+        "max": 300.0,
+        "n": 6
+      },
+      "total_agents_created": {
+        "mean": 8.0,
+        "std": 0.0,
+        "min": 8.0,
+        "max": 8.0,
+        "n": 6
+      },
+      "total_deaths": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0,
+        "n": 6
+      },
+      "alive_count": {
+        "mean": 8.0,
+        "std": 0.0,
+        "min": 8.0,
+        "max": 8.0,
+        "n": 6
+      },
+      "tech_verified": {
+        "mean": 4.0,
+        "std": 1.0,
+        "min": 3.0,
+        "max": 5.0,
+        "n": 6
+      },
+      "tech_graph_depth": {
+        "mean": 1.0,
+        "std": 0.0,
+        "min": 1.0,
+        "max": 1.0,
+        "n": 6
+      },
+      "facilities_active": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0,
+        "n": 6
+      },
+      "innovations": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0,
+        "n": 6
+      },
+      "goal_completion_rate": {
+        "mean": 0.9294888794721943,
+        "std": 0.06418527303941174,
+        "min": 0.7933333333333333,
+        "max": 0.9777777777777777,
+        "n": 6
+      },
+      "repeat_run_max": {
+        "mean": 199.33333333333334,
+        "std": 175.43628156367453,
+        "min": 69.0,
+        "max": 584.0,
+        "n": 6
+      },
+      "no_progress_repeat_ratio": {
+        "mean": 0.11034367124792649,
+        "std": 0.060090359854880364,
+        "min": 0.050307076101468624,
+        "max": 0.23450744019589376,
+        "n": 6
+      },
+      "knowledge_retention": {
+        "mean": 1.0,
+        "std": 0.0,
+        "min": 1.0,
+        "max": 1.0,
+        "n": 6
+      },
+      "cooperation_index": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0,
+        "n": 6
+      },
+      "survival_rate": {
+        "mean": 1.0,
+        "std": 0.0,
+        "min": 1.0,
+        "max": 1.0,
+        "n": 6
+      },
+      "extinction_time": {
+        "mean": -1.0,
+        "std": 0.0,
+        "min": -1.0,
+        "max": -1.0,
+        "n": 6
+      },
+      "wall_s": {
+        "mean": 13.335666666666667,
+        "std": 0.8549539298829043,
+        "min": 12.006,
+        "max": 14.73,
+        "n": 6
+      },
+      "visual_active_dims": {
+        "mean": 16.0,
+        "std": 0.0,
+        "min": 16.0,
+        "max": 16.0,
+        "n": 6
+      },
+      "lowlevel_transitions": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0,
+        "n": 6
+      },
+      "lowlevel_mean_reward": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0,
+        "n": 6
+      },
+      "extinct_runs": 0,
+      "n_runs": 6,
+      "extinction_rate": 0.0,
+      "extinction_causes": {},
+      "cap_violations": 0
+    }
+  },
+  "paired": {
+    "感知开 vs 关 :: tech_verified": {
+      "mean": 0.0,
+      "low": 0.0,
+      "high": 0.0,
+      "wins": 0,
+      "losses": 0,
+      "ties": 6,
+      "n": 6
+    },
+    "感知开 vs 关 :: facilities_active": {
+      "mean": 0.0,
+      "low": 0.0,
+      "high": 0.0,
+      "wins": 0,
+      "losses": 0,
+      "ties": 6,
+      "n": 6
+    },
+    "感知开 vs 关 :: alive_count": {
+      "mean": 0.0,
+      "low": 0.0,
+      "high": 0.0,
+      "wins": 0,
+      "losses": 0,
+      "ties": 6,
+      "n": 6
+    },
+    "感知开 vs 关 :: goal_completion_rate": {
+      "mean": 0.0,
+      "low": 0.0,
+      "high": 0.0,
+      "wins": 0,
+      "losses": 0,
+      "ties": 6,
+      "n": 6
+    },
+    "感知开 vs 关 :: visual_active_dims": {
+      "mean": 16.0,
+      "low": 16.0,
+      "high": 16.0,
+      "wins": 6,
+      "losses": 0,
+      "ties": 0,
+      "n": 6
+    },
+    "感知开 vs 关 :: cooperation_index": {
+      "mean": 0.0,
+      "low": 0.0,
+      "high": 0.0,
+      "wins": 0,
+      "losses": 0,
+      "ties": 6,
+      "n": 6
+    },
+    "RL 低层 vs BC :: tech_verified": {
+      "mean": 0.0,
+      "low": -1.0496,
+      "high": 1.0496,
+      "wins": 2,
+      "losses": 1,
+      "ties": 3,
+      "n": 6
+    },
+    "RL 低层 vs BC :: facilities_active": {
+      "mean": 0.0,
+      "low": 0.0,
+      "high": 0.0,
+      "wins": 0,
+      "losses": 0,
+      "ties": 6,
+      "n": 6
+    },
+    "RL 低层 vs BC :: alive_count": {
+      "mean": 0.0,
+      "low": 0.0,
+      "high": 0.0,
+      "wins": 0,
+      "losses": 0,
+      "ties": 6,
+      "n": 6
+    },
+    "RL 低层 vs BC :: goal_completion_rate": {
+      "mean": 0.0041,
+      "low": -0.0076,
+      "high": 0.0157,
+      "wins": 3,
+      "losses": 3,
+      "ties": 0,
+      "n": 6
+    },
+    "RL 低层 vs BC :: visual_active_dims": {
+      "mean": -0.3333,
+      "low": -1.1157,
+      "high": 0.449,
+      "wins": 0,
+      "losses": 1,
+      "ties": 5,
+      "n": 6
+    },
+    "RL 低层 vs BC :: cooperation_index": {
+      "mean": 0.0,
+      "low": 0.0,
+      "high": 0.0,
+      "wins": 0,
+      "losses": 0,
+      "ties": 6,
+      "n": 6
+    },
+    "随机低层 vs BC :: tech_verified": {
+      "mean": -0.1667,
+      "low": -1.1087,
+      "high": 0.7754,
+      "wins": 1,
+      "losses": 1,
+      "ties": 4,
+      "n": 6
+    },
+    "随机低层 vs BC :: facilities_active": {
+      "mean": 0.0,
+      "low": 0.0,
+      "high": 0.0,
+      "wins": 0,
+      "losses": 0,
+      "ties": 6,
+      "n": 6
+    },
+    "随机低层 vs BC :: alive_count": {
+      "mean": 0.0,
+      "low": 0.0,
+      "high": 0.0,
+      "wins": 0,
+      "losses": 0,
+      "ties": 6,
+      "n": 6
+    },
+    "随机低层 vs BC :: goal_completion_rate": {
+      "mean": -0.0147,
+      "low": -0.0416,
+      "high": 0.0122,
+      "wins": 2,
+      "losses": 4,
+      "ties": 0,
+      "n": 6
+    },
+    "随机低层 vs BC :: visual_active_dims": {
+      "mean": -2.0,
+      "low": -2.0,
+      "high": -2.0,
+      "wins": 0,
+      "losses": 6,
+      "ties": 0,
+      "n": 6
+    },
+    "随机低层 vs BC :: cooperation_index": {
+      "mean": 0.0,
+      "low": 0.0,
+      "high": 0.0,
+      "wins": 0,
+      "losses": 0,
+      "ties": 6,
+      "n": 6
+    },
+    "32 人上限 vs 8 人（无限世界） :: tech_verified": {
+      "mean": 0.0,
+      "low": 0.0,
+      "high": 0.0,
+      "wins": 0,
+      "losses": 0,
+      "ties": 6,
+      "n": 6
+    },
+    "32 人上限 vs 8 人（无限世界） :: facilities_active": {
+      "mean": 0.0,
+      "low": 0.0,
+      "high": 0.0,
+      "wins": 0,
+      "losses": 0,
+      "ties": 6,
+      "n": 6
+    },
+    "32 人上限 vs 8 人（无限世界） :: alive_count": {
+      "mean": 21.8333,
+      "low": 18.9642,
+      "high": 24.7025,
+      "wins": 6,
+      "losses": 0,
+      "ties": 0,
+      "n": 6
+    },
+    "32 人上限 vs 8 人（无限世界） :: goal_completion_rate": {
+      "mean": -0.045,
+      "low": -0.0701,
+      "high": -0.0199,
+      "wins": 0,
+      "losses": 6,
+      "ties": 0,
+      "n": 6
+    },
+    "32 人上限 vs 8 人（无限世界） :: visual_active_dims": {
+      "mean": 0.0,
+      "low": 0.0,
+      "high": 0.0,
+      "wins": 0,
+      "losses": 0,
+      "ties": 6,
+      "n": 6
+    },
+    "32 人上限 vs 8 人（无限世界） :: cooperation_index": {
+      "mean": 0.0,
+      "low": 0.0,
+      "high": 0.0,
+      "wins": 0,
+      "losses": 0,
+      "ties": 6,
+      "n": 6
+    },
+    "32 人上限（有限世界） vs 8 人（无限世界） :: tech_verified": {
+      "mean": 0.3333,
+      "low": -0.449,
+      "high": 1.1157,
+      "wins": 1,
+      "losses": 0,
+      "ties": 5,
+      "n": 6
+    },
+    "32 人上限（有限世界） vs 8 人（无限世界） :: facilities_active": {
+      "mean": 0.0,
+      "low": 0.0,
+      "high": 0.0,
+      "wins": 0,
+      "losses": 0,
+      "ties": 6,
+      "n": 6
+    },
+    "32 人上限（有限世界） vs 8 人（无限世界） :: alive_count": {
+      "mean": 24.0,
+      "low": 24.0,
+      "high": 24.0,
+      "wins": 6,
+      "losses": 0,
+      "ties": 0,
+      "n": 6
+    },
+    "32 人上限（有限世界） vs 8 人（无限世界） :: goal_completion_rate": {
+      "mean": -0.0025,
+      "low": -0.0712,
+      "high": 0.0662,
+      "wins": 1,
+      "losses": 5,
+      "ties": 0,
+      "n": 6
+    },
+    "32 人上限（有限世界） vs 8 人（无限世界） :: visual_active_dims": {
+      "mean": 0.0,
+      "low": 0.0,
+      "high": 0.0,
+      "wins": 0,
+      "losses": 0,
+      "ties": 6,
+      "n": 6
+    },
+    "32 人上限（有限世界） vs 8 人（无限世界） :: cooperation_index": {
+      "mean": 0.0,
+      "low": 0.0,
+      "high": 0.0,
+      "wins": 0,
+      "losses": 0,
+      "ties": 6,
+      "n": 6
+    }
+  }
+}

@@ -1,6 +1,6 @@
-"""Generate the documentation preview images.
+"""生成文档用的预览图。
 
-Usage::
+用法::
 
     python tools/make_preview.py
     python tools/make_preview.py --outdir assets --size 2560x1600

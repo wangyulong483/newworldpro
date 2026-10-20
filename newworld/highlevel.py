@@ -195,6 +195,7 @@ def _num(value, default: float = 0.0) -> float:
 
 
 def _clip01(value: float) -> float:
+    """把数值夹在 [0, 1]。"""
     if value < 0.0:
         return 0.0
     if value > 1.0:
@@ -203,6 +204,7 @@ def _clip01(value: float) -> float:
 
 
 def _mean(values) -> float:
+    """安全求均值（空序列为 0.0）。"""
     items = [float(value) for value in values]
     if not items:
         return 0.0
@@ -210,6 +212,7 @@ def _mean(values) -> float:
 
 
 def _inventory(agent):
+    """读 agent 的库存（duck-typed，可为 None）。"""
     return _get(agent, "inventory", None)
 
 
@@ -229,6 +232,7 @@ def _inventory_number(agent, kind: str) -> float:
 
 
 def _inventory_capacity(agent) -> float:
+    """读库存上限：支持 ``capacity()`` 方法、属性，兜底 DEFAULT_INVENTORY_CAPACITY。"""
     inventory = _inventory(agent)
     capacity = _get(inventory, "capacity", None)
     if callable(capacity):
@@ -245,12 +249,14 @@ def _inventory_capacity(agent) -> float:
 
 
 def _inventory_load(agent) -> float:
+    """当前原料负重（木+石+纤维+绳）。"""
     return sum(
         _inventory_number(agent, kind) for kind in ("wood", "stone", "fiber", "cord")
     )
 
 
 def _knowledge_store(world, population):
+    """读知识库：先 world 再 population（任一可缺失）。"""
     store = _get(world, "knowledge", None)
     if store is None:
         store = _get(population, "knowledge", None)
@@ -279,6 +285,7 @@ def _tech_total(store) -> float:
 
 
 def _tech_verified_count(store) -> float:
+    """已验证技术数量（无 verified_ids 时为 0）。"""
     getter = _get(store, "verified_ids", None)
     if not callable(getter):
         return 0.0
@@ -289,6 +296,7 @@ def _tech_verified_count(store) -> float:
 
 
 def _tech_depth(store) -> float:
+    """已验证技术依赖图的深度（无 depth 方法时为 0）。"""
     depth = _get(store, "depth", None)
     if not callable(depth):
         return 0.0
@@ -320,6 +328,7 @@ def _agent_known_verified(store, agent) -> float:
 
 
 def _civilization(world, population):
+    """读文明层：先 world 再 population（任一可缺失）。"""
     civilization = _get(world, "civilization", None)
     if civilization is None:
         civilization = _get(population, "civilization", None)
@@ -343,6 +352,7 @@ def _facility_stats(civilization) -> tuple[float, float]:
 
 
 def _world_agents(world, population) -> list:
+    """读居民列表：先 world.agents 再 population.world.agents。"""
     agents = _get(world, "agents", None)
     if agents is None:
         agents = _get(_get(population, "world", None), "agents", None)
@@ -464,6 +474,7 @@ def _day_stats(world) -> tuple[float, float]:
 
 
 def _x_position(world, agent) -> float:
+    """个体 x 位置按可走跨度归一化到 0..1（无跨度时 0.5）。"""
     x = _num(_get(agent, "x", 0.0))
     config = _get(world, "config", None)
     min_x = _num(_get(config, "min_x", 0.0))
@@ -475,6 +486,7 @@ def _x_position(world, agent) -> float:
 
 
 def _age_norm(world, agent) -> float:
+    """年龄按寿命归一化到 0..1（无配置时按默认寿命）。"""
     age = max(0.0, _num(_get(agent, "age", 0.0)))
     lifespan = _opt_num(_get(_get(world, "civ_config", None), "lifespan_s", None))
     if lifespan is None or lifespan <= 0.0:
@@ -613,6 +625,7 @@ class GoalPolicy:
     HIDDEN: int = 32
 
     def __init__(self, seed: int = 0) -> None:
+        """按 seed 初始化两层网络权重（Xavier 风格尺度）。"""
         self.seed = int(seed)
         self._rng = np.random.default_rng(self.seed)
         rng = np.random.default_rng(self.seed)
@@ -630,6 +643,7 @@ class GoalPolicy:
     # -- 参数视图 ------------------------------------------------------
     @property
     def parameter_names(self) -> tuple[str, ...]:
+        """参数名元组（存档与训练共用）。"""
         return ("W1", "b1", "W2", "b2")
 
     def parameters(self) -> dict[str, np.ndarray]:
@@ -650,6 +664,7 @@ class GoalPolicy:
     # -- 前向 ----------------------------------------------------------
     @staticmethod
     def _as_features(features) -> np.ndarray:
+        """校验特征形状 (FEATURE_DIM,) 且全有限，转成 float64 一维数组。"""
         vector = np.asarray(features, dtype=np.float64).ravel()
         if vector.shape != (FEATURE_DIM,):
             raise ValueError(
@@ -800,6 +815,7 @@ class GoalPolicy:
     # -- 序列化：npz ---------------------------------------------------
     @staticmethod
     def _normalize_path(path) -> Path:
+        """规范 checkpoint 路径：确保以 ``.npz`` 结尾。"""
         resolved = Path(path)
         if resolved.suffix.lower() != ".npz":
             if resolved.suffix:
@@ -944,6 +960,7 @@ class GoalPolicyTrainer:
         gamma: float = 0.95,
         baseline_decay: float = 0.9,
     ) -> None:
+        """校验参数并初始化训练器（基线从 0 开始）。"""
         if not callable(env_factory):
             raise TypeError("env_factory 必须可调用")
         for method in ("probabilities", "sample", "loss_and_grads", "apply_grads"):
@@ -1040,6 +1057,7 @@ class GoalPolicyTrainer:
 
     @staticmethod
     def _ended(env) -> bool:
+        """问环境是否已结束（灭绝）；读不到或出错按未结束处理。"""
         ended = _get(env, "ended", None)
         if not callable(ended):
             return False

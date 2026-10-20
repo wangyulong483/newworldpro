@@ -1,18 +1,16 @@
-"""The world: geometry, inhabitants, physics (mechanics, acoustics, heat).
+"""世界：几何、居民、物理（力学/声学/热学）。
 
-``World`` is the pure simulation.  It knows nothing about tkinter, PIL or
-rendering, which makes it cheap to import, easy to test and safe to run in a
-headless training loop.
+``World`` 是纯仿真核心。它对 tkinter、PIL、渲染一无所知，因此
+导入便宜、易测试、也能安全地跑在 headless 训练循环里。
 
-Besides the inhabitants it carries the physical environment:
+除了居民，它还携带物理环境：
 
-* **gravity** — every inhabitant falls with ``g = 9.80665 m/s^2``
-* **sun** — a black-body source of light and radiative heat
-* **air** — a medium at 20 C that carries sound and applies drag
-* **sound field** — pressure waves (speech, future environmental sounds)
+* **重力** —— 每个居民以 ``g = 9.80665 m/s^2`` 下落
+* **太阳** —— 一个提供光与辐射热的黑体光源
+* **空气** —— 20 C 的介质，传声并施加阻力
+* **声场** —— 压力波（说话，以及未来的环境声）
 
-Rendering lives in :mod:`newworld.render`; the reinforcement-learning wrapper
-lives in :mod:`newworld.env`.
+渲染在 :mod:`newworld.render`；强化学习封装在 :mod:`newworld.env`。
 """
 
 from __future__ import annotations
@@ -30,35 +28,34 @@ from .knowledge import KnowledgeStore
 from .memory import MemoryStore
 from .optics import Scene, Shape
 from .physiology import Physiology
+from .materials import ATOM_SIZE
 from .pixelworld import PixelScene
 from .technology import Technology
 
 
 class NoAgentsError(RuntimeError):
-    """Raised when code asks for ``world.agent`` but nobody is alive.
+    """代码访问 ``world.agent`` 但没有存活居民时抛出。
 
-    The original world silently spawned a replacement inhabitant on attribute
-    access, which would let a civilization "resurrect" itself after extinction
-    and bypass the 8-agent creation budget.  Creation must be explicit now
-    (:meth:`World.create_agent`).
+    原始实现会在属性访问时悄悄生成一个替补居民，这会让文明在灭绝后
+    "复活"自己、绕过 8 个创建预算。现在创建必须显式进行
+    （:meth:`World.create_agent`）。
     """
 
 
 class World:
-    """A screen-sized physical world inhabited by :class:`Character`\\ s.
+    """一个屏幕大小、由 :class:`Character` 居住的物理世界。
 
     Parameters
     ----------
     config:
-        Geometry / physics / palette.  Defaults to :class:`WorldConfig` with
-        the current screen resolution.
+        几何 / 物理 / 调色配置。缺省为按当前屏幕分辨率生成的
+        :class:`WorldConfig`。
     seed:
-        Seed for the internal :class:`random.Random`, used to place
-        inhabitants and to make up speech.
+        内部 :class:`random.Random` 的种子，用于摆放居民与编造话语。
     civ_config:
-        Civilization-layer switches and the **hard** creation budget
-        (:class:`~newworld.config.CivilizationConfig`).  Defaults to all
-        mechanisms on with ``max_agents_created = 8``.
+        文明层开关与**硬性**创建预算
+        （:class:`~newworld.config.CivilizationConfig`）。
+        缺省为全部机制开启、``max_agents_created = 8``。
     """
 
     def __init__(
@@ -68,40 +65,49 @@ class World:
         *,
         civ_config: CivilizationConfig | None = None,
     ) -> None:
+        """组装世界各服务层并创建第一个居民。"""
         self.config = config if config is not None else WorldConfig()
         self.rng = random.Random(seed)
         self.seed_value = seed
         self.civ_config = civ_config if civ_config is not None else CivilizationConfig(seed=seed or 0)
         self.agents: list[Character] = []
-        #: visible 2-D objects added manually (natural objects live in pixel_scene)
+        #: 手动添加的可见 2-D 物体（天然物体在 pixel_scene 里）
         self.objects: list[Shape] = []
-        #: pixel-atom world: terrain, rocks, trees, bushes, pond
-        self.pixel_scene = PixelScene(self.config, self.seed_value or 0)
-        #: community/tool layer (gathering, crafting, building)
+        #: V2 无限世界：窗口左边缘的全局像素偏移（有限世界恒为 0）
+        self.window_origin_px = 0.0
+        #: InfiniteScene 不可用时的降级原因（空字符串 = 正常）
+        self.infinite_fallback_reason = ""
+        #: 像素原子世界：地形、岩石、树、浆果丛、池塘（无限模式为窗口化场景）
+        self.pixel_scene = self._make_scene(self.seed_value or 0)
+        #: 社区/工具层（采集、制作、建造）
         self.technology = Technology(self.config, self.pixel_scene, seed=self.seed_value or 0)
-        #: historical registry: every agent ever created (dead ones are archived)
+        #: 历史注册表：创建过的每个 agent（死亡的会被归档）
         self.registry = AgentRegistry(self.civ_config.max_agents_created)
-        #: individual episodic / procedural memory (kept after death)
+        #: 个体情景/程序记忆（死后保留）
         self.memory = MemoryStore()
-        #: persistent, verifiable knowledge (recipes, status, validation history)
+        #: 持久的、可验证的知识（配方、状态、验证历史）
         self.knowledge = KnowledgeStore(
             seed=self.seed_value or 0,
             bootstrap=bool(self.civ_config.enable_knowledge),
         )
-        #: civilization-level state: facilities, contracts, collapse, extinction
+        #: 文明级状态：设施、契约、崩溃、灭绝
         self.civilization = CivilizationState(
             self.registry,
             knowledge=self.knowledge,
             memory=self.memory,
             config=self.civ_config,
         )
-        #: whether the neural observation is expanded to 40 inputs (P3)
+        #: 神经观测是否扩到 40 维输入（P3）
         self.expanded_observation = bool(self.civ_config.expanded_observation)
-        #: set by Population: the goal manager, so features() can read plan state
+        #: V2.1：真实视网膜特征是否进入观测（16 维，FEATURE_DIM 40 -> 56）
+        self.enable_visual_features = bool(
+            getattr(self.civ_config, "enable_visual_features", True)
+        )
+        #: 由 Population 设置：目标管理器，features() 读计划状态用
         self.goal_manager = None
-        #: virtual clock and solar geometry
+        #: 虚拟时钟与太阳几何
         self.day = DayCycle()
-        #: physical environment
+        #: 物理环境
         self.sun = Sun()
         self.air = Air()
         self.sound = SoundField()
@@ -110,45 +116,45 @@ class World:
         self.t: float = 0.0
         self.steps: int = 0
         self._next_id = 0
-        #: denied creation attempts (budget exhausted), for telemetry
+        #: 被拒绝的创建尝试（预算用尽），供 telemetry 用
         self.creation_denied: list[dict[str, object]] = []
-        #: deliberate, budget-checked creation of the first inhabitant
+        #: 有预算检查地创建第一个居民
         self.create_agent()
 
     # ------------------------------------------------------------------
-    # scene / light field
+    # 场景 / 光场
     # ------------------------------------------------------------------
     def scene(self) -> Scene:
-        """The visible world for the inhabitant's eyes (pixel objects + extras)."""
+        """居民眼睛看到的可见世界（像素物体 + 额外附加的物体）。"""
         base = self.pixel_scene.optics_scene()
         return Scene(objects=tuple(base.objects) + tuple(self.objects))
 
     def _update_environment(self) -> None:
-        """Advance the solar clock and the air temperature."""
+        """推进太阳钟与气温。"""
         self.hour = self.day.hour(self.t)
         self.daylight = self.day.daylight(self.hour)
         self.sun.elevation_deg = self.day.sun_elevation_deg(self.hour)
-        # simple diurnal air temperature: 10 C at night, 24 C at noon
+        # 简单的昼夜气温：夜晚 10 C，正午 24 C
         self.air.temperature_k = 283.15 + 14.0 * self.daylight
 
     def add_object(self, obj: Shape) -> Shape:
-        """Add a visible object to the world (used by future experiments)."""
+        """向世界添加一个可见物体（预留给未来的实验）。"""
         self.objects.append(obj)
         return obj
 
     def clear_objects(self) -> None:
+        """清空手动添加的可见物体。"""
         self.objects.clear()
 
     # ------------------------------------------------------------------
-    # inhabitants
+    # 居民
     # ------------------------------------------------------------------
     @property
     def agent(self) -> Character:
-        """First inhabitant.
+        """第一个居民。
 
-        Raises :class:`NoAgentsError` when nobody is alive: the world never
-        spawns an inhabitant implicitly, because that would let an extinct
-        civilization resurrect itself and bypass the creation budget.
+        没有存活居民时抛出 :class:`NoAgentsError`：世界从不隐式生成
+        居民，否则灭绝的文明能"复活"自己、绕过创建预算。
         """
         if not self.agents:
             raise NoAgentsError(
@@ -158,10 +164,12 @@ class World:
 
     @property
     def n_agents(self) -> int:
+        """当前居民总数（含濒死者）。"""
         return len(self.agents)
 
     @property
     def alive_agents(self) -> list[Character]:
+        """存活居民列表。"""
         return [character for character in self.agents if character.alive]
 
     def spawn(
@@ -177,11 +185,10 @@ class World:
         body_scale: float = 1.0,
         parents: tuple[int, ...] = (),
     ) -> Character:
-        """Low-level *geometric* spawn (tests, previews, tooling).
+        """底层*几何*生成（测试、预览、工具用）。
 
-        **This does not simulate a creation event**: it bypasses the registry and
-        the 8-agent budget.  Everything inside the simulation must use
-        :meth:`create_agent` instead.
+        **这不算一次创建事件**：它绕过注册表与 8 个预算。仿真内部
+        一律改用 :meth:`create_agent`。
         """
         cfg = self.config
         if x is None:
@@ -217,12 +224,11 @@ class World:
         parent_id: int | None = None,
         cause: str = "birth",
     ) -> Character | None:
-        """Simulation-authoritative creation: respects the **total** budget.
+        """仿真权威的创建路径：遵守**累计**预算。
 
-        Returns ``None`` when the historical creation budget
-        (``civ_config.max_agents_created``) is exhausted; the denial is recorded
-        in :attr:`civilization` so telemetry can report it.  This is the *only*
-        legal way to add an inhabitant during a simulation.
+        历史创建预算（``civ_config.max_agents_created``）用尽时返回
+        ``None``；拒绝会被记录到 :attr:`civilization`，telemetry 可以
+        上报。这是仿真过程中添加居民的*唯一*合法方式。
         """
         if not self.registry.can_create():
             self.creation_denied.append(
@@ -247,10 +253,10 @@ class World:
         return character
 
     def adopt_agent(self, character: Character, *, t: float | None = None) -> None:
-        """Register a pre-existing (geometrically spawned) inhabitant.
+        """补登记一个已存在的（几何方式生成的）居民。
 
-        Used by :class:`~newworld.population.Population` when it takes over a
-        world that was built before the registry existed (tests, previews).
+        :class:`~newworld.population.Population` 接管一个在注册表出现
+        之前建好的世界时使用（测试、预览场景）。
         """
         if self.registry.record(character.agent_id) is not None:
             return
@@ -258,36 +264,96 @@ class World:
         self.registry.register(character, t=character.created_at, parent_id=character.parent_id)
 
     def remove_agent(self, agent_id: int) -> None:
-        """Remove an inhabitant from the *live* list (death/emigration).
+        """把居民从*存活*列表移除（死亡/离开）。
 
-        The historical record is **not** deleted: call
-        :meth:`~newworld.civilization.AgentRegistry.mark_dead` first (or use
-        :meth:`Population.report_death`) so the agent stays in the archive.
+        历史记录**不会**被删除：请先调用
+        :meth:`~newworld.civilization.AgentRegistry.mark_dead`
+        （或用 :meth:`Population.report_death`），agent 才能留在档案里。
         """
         self.agents = [character for character in self.agents if character.agent_id != agent_id]
 
     def agent_by_id(self, agent_id: int) -> Character | None:
+        """按 id 查存活居民，没有返回 None。"""
         for character in self.agents:
             if character.agent_id == agent_id:
                 return character
         return None
+
+    # ------------------------------------------------------------------
+    # V2：无限世界（窗口化场景 + 自动跟随平移）
+    # ------------------------------------------------------------------
+    def _make_scene(self, seed: int):
+        """按 ``config.infinite`` 构建有限 PixelScene 或无限窗口场景。"""
+        if not bool(getattr(self.config, "infinite", False)):
+            return PixelScene(self.config, seed)
+        try:
+            from .infinite_scene import InfiniteScene
+
+            window = int(getattr(self.config, "window_atoms", 0) or 0)
+            if window <= 0:
+                # 默认窗口 = 屏幕宽度（1:1 渲染，不横向压缩）；实验可显式放大
+                window = max(16, int(getattr(self.config, "width", 640)) // ATOM_SIZE)
+            return InfiniteScene(self.config, seed, window_atoms=window)
+        except Exception as exc:  # 防御：模块缺失/构造失败时退回有限世界
+            self.infinite_fallback_reason = f"{type(exc).__name__}: {exc}"
+            return PixelScene(self.config, seed)
+
+    def _shift_world_x(self, shift_px: float) -> None:
+        """把全部动态 x 坐标平移，使局部坐标窗口保持一致。"""
+        for character in self.agents:
+            character.x = float(character.x) + shift_px
+        community = getattr(getattr(self, "technology", None), "community", None)
+        if community is not None:
+            community.x_screen = float(community.x_screen) + shift_px
+        for facility in list(getattr(self.civilization, "facilities", ()) or ()):
+            facility.x_screen = float(facility.x_screen) + shift_px
+
+    def _maybe_recenter(self) -> None:
+        """无限世界：人口接近窗口边缘时平移窗口（世界无界，屏幕只是窗口）。"""
+        scene = self.pixel_scene
+        if not bool(getattr(self.config, "infinite", False)):
+            return
+        if not hasattr(scene, "recenter"):
+            return
+        alive = [agent for agent in self.agents if agent.alive]
+        if not alive:
+            return
+        cfg = self.config
+        margin = cfg.width * 0.25
+        positions = [float(agent.x) for agent in alive]
+        if min(positions) > margin and max(positions) < cfg.width - margin:
+            return
+        center = sum(positions) / len(positions)
+        step_px = cfg.width * 0.25
+        direction = 1.0 if center > cfg.width / 2.0 else -1.0
+        delta_px = step_px * direction
+        delta_atoms = int(round(delta_px / ATOM_SIZE))
+        if delta_atoms == 0:
+            return
+        try:
+            scene.recenter(delta_atoms)
+        except Exception as exc:  # 不因单次平移失败而中断仿真
+            self.infinite_fallback_reason = f"recenter failed: {type(exc).__name__}: {exc}"
+            return
+        self._shift_world_x(-delta_px)
+        self.window_origin_px = float(
+            getattr(scene, "window_start_px", self.window_origin_px + delta_px)
+        )
 
     def reset(
         self,
         seed: int | None = None,
         positions: list[float] | None = None,
     ) -> list[tuple[float, ...]]:
-        """Reset the world to ``t = 0`` and return the initial observations.
+        """把世界重置到 ``t = 0`` 并返回初始观测。
 
-        ``positions`` optionally fixes the x position of every inhabitant
-        (length must match the number of inhabitants).  Without it, each
-        inhabitant is placed at a random legal location.
+        ``positions`` 可选地固定每个居民的 x 位置（长度必须与居民数
+        一致）。缺省时每个居民被随机放在一个合法位置。
 
         .. note::
-           This is a **development / test helper** (re-positioning and re-seeding
-           the terrain), not a civilization reset: the historical registry,
-           knowledge and memory deliberately survive it.  A fresh experiment
-           should construct a new :class:`World` instead.
+           这是**开发/测试辅助**（重摆位置、重播种地形），不是文明
+           重置：历史注册表、知识与记忆有意保留。全新实验应当新建
+           一个 :class:`World`。
         """
         if seed is not None:
             self.seed_value = seed
@@ -300,12 +366,15 @@ class World:
         self.steps = 0
         self.sound = SoundField()
         if seed is not None:
-            self.pixel_scene = PixelScene(self.config, seed)
+            self.pixel_scene = self._make_scene(seed)
+            self.window_origin_px = float(
+                getattr(self.pixel_scene, "window_start_px", 0.0)
+            )
             self.technology = Technology(self.config, self.pixel_scene, seed=seed)
         self.technology.pending_facilities.clear()
         self._update_environment()
         for index, character in enumerate(self.agents):
-            character.attach(self.config)  # config may have been resized
+            character.attach(self.config)  # config 可能被调整过尺寸
             character.x = (
                 float(positions[index])
                 if positions is not None
@@ -329,10 +398,11 @@ class World:
         return self.observations()
 
     # ------------------------------------------------------------------
-    # simulation
+    # 仿真
     # ------------------------------------------------------------------
     @staticmethod
     def _split_action(action) -> tuple[int, bool]:
+        """把 int 或 Decision 拆成 (move, jump)。"""
         move = getattr(action, "move", action)
         jump = bool(getattr(action, "jump", False))
         return int(move), jump
@@ -342,13 +412,13 @@ class World:
         dt: float | None = None,
         actions: int | list | None = None,
     ) -> list[tuple[float, ...]]:
-        """Advance the world by ``dt`` seconds.
+        """把世界推进 ``dt`` 秒。
 
-        ``actions`` may be a single action (applied to every inhabitant) or one
-        action per inhabitant.  An action is either an integer ``-1/0/+1`` or an
-        object with ``.move`` and ``.jump`` attributes
-        (:class:`newworld.autonomy.Decision`).  Returns the normalised
-        observation of every inhabitant.
+        ``actions`` 可以是单个动作（作用于所有居民），也可以是每个
+        居民一个动作。动作要么是整数 ``-1/0/+1``，要么是带
+        ``.move``/``.jump`` 属性的对象
+        （:class:`newworld.autonomy.Decision`）。返回所有居民的归一化
+        观测。
         """
         dt = self.config.fixed_dt if dt is None else float(dt)
         count = len(self.agents)
@@ -376,6 +446,7 @@ class World:
         for character, action in zip(self.agents, action_list):
             move, jump = self._split_action(action)
             character.update(dt, move, self.config, jump=jump)
+            # 逐居民推进物理热平衡与生理
             step_body_temperature(
                 character,
                 self.air,
@@ -391,20 +462,22 @@ class World:
                 jumped=jump,
                 body_temperature_c=character.body_temperature_c,
             )
-        # ecology: soil-water cycle, growth and atomic destruction
+        # 生态：土壤水循环、生长与原子级破坏
         self.pixel_scene.update_ecology(dt, self.day, self.hour)
         if abs(self.agent.vx) > 40.0 and self.rng.random() < dt * 0.45:
+            # 跑得快时偶尔踩坏地面
             feet = self.agent.y if self.agent.y is not None else self.config.ground_y
             self.pixel_scene.trample(self.agent.x, feet, force=1.4)
         self.steps += 1
         self.sound.advance(dt)
+        self._maybe_recenter()
         return self.observations()
 
     # ------------------------------------------------------------------
-    # acoustics
+    # 声学
     # ------------------------------------------------------------------
     def speak(self, character: Character, text: str | None = None) -> SpeechEvent:
-        """Make the inhabitant say something (default: a made-up word)."""
+        """让居民说点什么（默认：随机编一个"词"）。"""
         from .acoustics import random_word
 
         phrase = text if text is not None else random_word(self.rng)
@@ -425,16 +498,18 @@ class World:
         return event
 
     def sound_pressure_at(self, x: float, y: float) -> float:
-        """Current sound pressure at a world point (Pa)."""
+        """世界某点当前的瞬时声压（Pa）。"""
         return self.sound.pressure_at(x, y, self.t)
 
     def sound_rms_at(self, x: float, y: float) -> float:
+        """世界某点当前的 RMS 声压（Pa，听觉/分贝用）。"""
         return self.sound.rms_pressure_at(x, y, self.t)
 
     # ------------------------------------------------------------------
-    # environment snapshot
+    # 环境快照
     # ------------------------------------------------------------------
     def environment_state(self) -> dict[str, float]:
+        """环境物理量快照（重力/时刻/光照/气温/声速等）。"""
         return {
             "gravity_m_s2": physics.STANDARD_GRAVITY,
             "hour": self.hour,
@@ -449,13 +524,14 @@ class World:
         }
 
     def observations(self) -> list[tuple[float, ...]]:
+        """所有居民的归一化观测（8 维）。"""
         return [character.observation(self.config) for character in self.agents]
 
     # ------------------------------------------------------------------
-    # introspection
+    # 自省
     # ------------------------------------------------------------------
     def state(self) -> dict[str, object]:
-        """Serialisable snapshot (handy for JSONL research logs)."""
+        """可序列化的世界快照（JSONL 研究日志用）。"""
         return {
             "t": round(self.t, 6),
             "steps": self.steps,
@@ -486,16 +562,20 @@ class World:
                 "graph_depth": self.knowledge.depth(),
             },
             "facilities": [facility.to_dict() for facility in self.civilization.facilities],
+            "infinite": bool(getattr(self.config, "infinite", False)),
+            "window_origin_px": round(float(self.window_origin_px), 2),
+            "infinite_fallback": self.infinite_fallback_reason,
         }
 
     # ------------------------------------------------------------------
-    # serialisation (world state save / load)
+    # 序列化（世界状态存/取档）
     # ------------------------------------------------------------------
     def to_dict(self) -> dict[str, object]:
-        """Full serialisable world state (used by save/load tests)."""
-        # Snapshot living agents into the registry first: otherwise inventory /
-        # knowledge / skills of *living* individuals would not be part of the
-        # historical record and a save/load round trip would lose them.
+        """完整可序列化的世界状态（存/取档测试用）。
+
+        先把存活居民的库存/知识/技能快照进注册表，否则*活人*的数据
+        不进历史记录，存取档一个来回就会丢失。
+        """
         for character in self.agents:
             record = self.registry.record(character.agent_id)
             if record is None:
@@ -518,7 +598,7 @@ class World:
         }
 
     def save(self, path: str | Path) -> Path:
-        """Write the world state to a JSON file."""
+        """把世界状态写入 JSON 文件。"""
         import json
         from pathlib import Path as _Path
 
@@ -532,7 +612,7 @@ class World:
 
     @classmethod
     def load(cls, path: str | Path, config: WorldConfig | None = None) -> "World":
-        """Rebuild a world from :meth:`save` output (registry + knowledge + civ)."""
+        """从 :meth:`save` 的输出重建世界（注册表 + 知识 + 文明）。"""
         import json
         from pathlib import Path as _Path
 
@@ -552,7 +632,7 @@ class World:
             knowledge=world.knowledge,
             memory=world.memory,
         )
-        # live inhabitants: only the ones still registered as alive
+        # 存活居民：只重建注册表里仍标记为存活的那些
         world.agents.clear()
         for record in world.registry.records():
             if not record.alive:
@@ -579,7 +659,8 @@ class World:
         world.steps = int(state.get("steps") or 0)
         return world
 
-    def __repr__(self) -> str:  # pragma: no cover - debugging aid
+    def __repr__(self) -> str:  # pragma: no cover - 调试辅助
+        """调试表示。"""
         return (
             f"<World {self.config.width}x{self.config.height} "
             f"agents={len(self.agents)} t={self.t:.2f}>"

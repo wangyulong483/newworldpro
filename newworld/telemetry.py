@@ -279,6 +279,7 @@ class _Accumulator:
     )
 
     def __init__(self) -> None:
+        """清零一个统计窗口的全部累计器。"""
         self.steps = 0
         self.agent_steps = 0
         self.alive_person_s = 0.0
@@ -337,6 +338,7 @@ class Telemetry:
         seed: int = 0,
         group: str = "",
     ) -> None:
+        """初始化采集器（窗口长度、日志路径、事件/累积器状态）。"""
         self.window_s = max(1e-6, float(window_s))
         self.log_path = Path(log_path) if log_path is not None else None
         self.seed = int(seed)
@@ -594,6 +596,7 @@ class Telemetry:
         alive_count: int,
         dt: float,
     ) -> None:
+        """把一步的存活/时间/目标计数累进指定的窗口累积器。"""
         if acc.first:
             acc.first = False
             acc.start_alive = int(alive_count)
@@ -914,12 +917,14 @@ class Telemetry:
         return progress
 
     def _add_coop_output(self, amount: float) -> None:
+        """把一笔合作产出（资源转移量）累进全程与当前窗口。"""
         if amount <= 0.0:
             return
         self._run.coop_output += amount
         self._win.coop_output += amount
 
     def _add_solo_output(self, amount: float) -> None:
+        """把一笔独力产出（个人资源产出）累进全程与当前窗口。"""
         if amount <= 0.0:
             return
         self._run.solo_output += amount
@@ -1142,12 +1147,15 @@ class Telemetry:
 
     # -- 上下文管理（便利，不属于冻结接口） -----------------------------
     def __enter__(self) -> "Telemetry":
+        """``with`` 进入：返回自身。"""
         return self
 
     def __exit__(self, exc_type, exc, tb) -> None:
+        """``with`` 退出：确保日志文件被关闭。"""
         self.close()
 
     def __repr__(self) -> str:  # pragma: no cover - 调试用
+        """调试用的简要表示。"""
         return (
             f"<Telemetry steps={self._run.steps} t={self._t:.2f} "
             f"window_s={self.window_s:g} seed={self.seed} group={self.group!r}>"

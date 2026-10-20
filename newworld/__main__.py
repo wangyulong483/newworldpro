@@ -1,4 +1,4 @@
-"""Allow ``python -m newworld``."""
+"""支持 ``python -m newworld`` 的入口（直接转到 CLI）。"""
 
 from .cli import main
 

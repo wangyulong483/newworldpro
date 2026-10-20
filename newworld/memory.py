@@ -162,6 +162,7 @@ class MemoryStore:
     """
 
     def __init__(self, capacity_per_agent: int = CAPACITY_PER_AGENT) -> None:
+        """初始化空仓库；``capacity_per_agent`` 是每个 agent 的容量上限。"""
         self.capacity_per_agent = max(1, int(capacity_per_agent))
         #: agent_id -> 记忆条目列表（写入顺序，即 t 升序）
         self._entries: dict[int, list[MemoryEntry]] = {}
@@ -535,6 +536,7 @@ class MemoryStore:
             self._evicted[agent_id] = self._evicted.get(agent_id, 0) + 1
 
     def _kind_counts(self, agent_id: int) -> dict[str, int]:
+        """统计某 agent 各类别（episode/procedural/social…）的记忆条数。"""
         counts: dict[str, int] = {}
         for entry in self._entries.get(int(agent_id), ()):
             counts[entry.kind] = counts.get(entry.kind, 0) + 1

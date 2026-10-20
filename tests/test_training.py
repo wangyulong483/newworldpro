@@ -1,4 +1,6 @@
-"""Tests for teacher-imitation pretraining and continuous fine-tuning."""
+"""行为克隆训练冒烟测试。
+
+Tests for teacher-imitation pretraining and continuous fine-tuning."""
 
 from __future__ import annotations
 

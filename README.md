@@ -1,4 +1,4 @@
-# newworld — 像素原子社会 · 微型文明（v0.9.1 鼠标交互 + 学习型决策）
+# newworld — 像素原子社会 · 微型文明（v0.9.2 感知进入决策 · 低层 RL · 无限世界）
 
 > **世界的原子就是像素。** 2560×1600 屏幕划分为 **512×320 个原子**（1 原子 = 5×5 px）；
 > 原子有材料与元素组成（水 H₂O、石头 SiO₂、草/叶/木纤维素、空气 N₂/O₂/Ar、肉体/骨骼）。
@@ -20,6 +20,18 @@
 >
 > 底层动作策略仍是行为克隆 MLP（输入 40 → 64 → 32 → 58）；旧 24 维 checkpoint
 > **零初始化迁移**，行为逐比特一致。
+>
+> **v0.9.2 V2 升级**（回应"感知与决策断开 / BC 天花板 / 8 人上限 / 屏幕即世界"）：
+> - **感知进入决策**：观测 **40 → 56 维**，新增 16 维**真实视网膜特征**
+>   （低分辨率学习档，可注入视网膜参数）；`perception_stride` 控制刷新；
+>   旧 24/40 维 checkpoint 双链零初始化迁移、逐比特一致。
+> - **低层动作策略从 BC 升级为真实 RL**：新增 `rewards.py`（只奖励真实世界变化，
+>   含反刷分测试）与 `lowlevel_rl.py`（REINFORCE，手写梯度经有限差分校验），
+>   语言头保持 argmax 不参与 RL；训练脚本 `tools/train_lowlevel_rl.py`。
+> - **人口上限可控**：`--cap` / `RunSpec.max_agents_created` 可放开做对照实验
+>   （硬约束语义不变：累计创建、死亡不退还）。
+> - **无限世界**：`--infinite` 开启确定性分块 `InfiniteScene`，屏幕只是局部窗口，
+>   人口迁移时世界自动滚动（`window_origin_px` 可审计）。
 
 ![社会世界](assets/gui_pixel_world.png)
 
@@ -52,6 +64,15 @@ python tools/train_goal_policy.py --episodes 30 --steps 4000 `
 
 # 本轮升级的 6 配置 × 10 seed 正式实验
 python experiments/run_upgrade_experiments.py --seed-start 100 --num-seeds 10
+
+# V2：低层 RL 训练 + 感知/RL/cap/无限世界实验矩阵
+python tools/train_lowlevel_rl.py --episodes 30 --steps 4000 --seeds 0 \
+    --eval-seeds 100,101,102,103,104,105,106,107,108,109 --eval-steps 4000 \
+    --out assets/lowlevel_rl.npz --json experiments/results/lowlevel_rl_training.json
+python experiments/run_v2_experiments.py --seed-start 200 --num-seeds 6 --tag final
+
+# GUI 无限世界（屏幕只是窗口，人口迁移时自动滚动）
+python -m newworld --infinite --windowed --size 960x600
 
 # 测试（沙箱环境请先设置可写 TEMP；见 §9）
 python -m unittest discover -s tests
@@ -148,9 +169,13 @@ newworld/
 ├── world.py         ← 世界 + 注册表/知识/记忆/文明服务 + 存档
 ├── technology.py    ← 数据驱动配方执行、验证、设施效果
 ├── society.py       ← 关系图网络、生育/衰老/死亡（死亡回调归档）
-├── neural.py        ← 40 维输入的 MLP + 旧 checkpoint 迁移
+├── neural.py        ← 56 维输入 MLP（24 生理 + 16 文明 + 16 视觉）+ 旧迁移
 ├── training.py      ← 行为克隆训练（保留原流程）
 ├── social.py        ← 技能教师（生存优先）
+├── visual_features.py← V2：真实视网膜 16 维特征（光学/眼睛/视网膜路径）
+├── rewards.py       ← V2：低层 RL 的真实世界奖励（含反刷分）
+├── lowlevel_rl.py   ← V2：低层动作 REINFORCE（策略采样/手写梯度/训练器）
+├── infinite_scene.py← V2：无限世界确定性分块 + 窗口平移
 ├── pixelworld.py / ecology.py / physiology.py / physics.py / daynight.py …
 └── app_tk.py / render.py / cli.py ← 交互与渲染（调试层显示人口/累计创建/知识）
 experiments/
@@ -162,8 +187,10 @@ docs/
 ├── IMPLEMENTATION_REPORT.md ← 实施记录：鼠标交互 / 决策链路 / 组合式创新
 ├── EXPERIMENT_REPORT.md     ← 10 seed × 6 配置实验与诚实结论
 ├── USER_GUIDE.md            ← 鼠标操作与面板说明
-├── architecture.md          ← 模块关系与数据流（v0.9.1）
-└── upgrade_contracts_v1.md  ← 并行开发时冻结的接口契约
+├── architecture.md          ← 模块关系与数据流（v0.9.2）
+├── UPGRADE_V2_REPORT.md     ← 感知/RL/上限/无限世界报告（含真实实验）
+├── upgrade_contracts_v1.md  ← 第一轮升级的接口契约
+└── upgrade_contracts_v2.md  ← V2 并行开发的接口契约
 ```
 
 ## 8. 测试
@@ -174,10 +201,10 @@ $env:TEMP = (Resolve-Path .tmp).Path   # 沙箱/受限环境下需要（见 §9�
 python -m unittest discover -s tests
 ```
 
-覆盖：原有世界/物理/生态/神经/训练/视觉/社会测试（111 个）+ 新增
-目标规划（37）、知识库（40）、记忆（14）、文明注册表/设施（28）、指标（34）、
-硬约束/死亡（8）、知识集成（8）、传承（7）、存档（2）、观测迁移（8）、
-实验脚本等。
+当前 **516 个测试 / OK（skipped=1）**：原有世界/物理/生态/神经/训练/视觉/社会测试
++ 目标规划、知识库、记忆、文明注册表/设施、指标、硬约束/死亡、存档、
+观测迁移（24→40→56 双链）、决策链、感知特征（21）、低层 RL（19）、奖励（11）、
+无限世界（27）、V2 集成（10）等。
 
 ## 9. 沙箱 / Windows 临时目录说明
 
@@ -197,14 +224,26 @@ python experiments/run_ablation.py --seeds 0 1 2 --steps 24000 --dt 0.05
 Get-Content experiments\results\ablation_final\report.md
 ```
 
-指标定义、实验数据与局限见 `docs/EXPERIMENT_REPORT.md`；实施与已知问题见 `docs/IMPLEMENTATION_REPORT.md`。
+指标定义、实验数据与局限见 `docs/EXPERIMENT_REPORT.md`；实施与已知问题见
+`docs/IMPLEMENTATION_REPORT.md`；V2（感知/RL/无限世界）见 `docs/UPGRADE_V2_REPORT.md`。
+
+```powershell
+# V2 矩阵：感知开/关、BC/RL/随机、cap 8/32、有限/无限世界
+python experiments/run_v2_experiments.py --seed-start 200 --num-seeds 6 --tag final
+Get-Content experiments\results\v2_final\report.md
+```
 
 ## 11. 已知限制（如实）
 
-- 主路径没有奖励函数（原项目是监督式行为克隆），因此**没有**引入 PPO/DQN；
-  规划/知识层用规则 + 代价搜索实现。
-- 8 人累计创建上限意味着单个生命周期最终必然灭绝（约 900–1050 世界秒）；
-  "文明延续"只能体现为知识档案、代际继承与积累速度，而不是人口增长。
+- 低层 RL 只训练 mode/move/jump/speak 四个决策头（语言头保持 argmax；
+  规划/知识层仍用规则 + 代价搜索）。奖励只覆盖四类真实变化，仍有被"资源囤积"
+  利用的空间（库存满后不再增益，已测）；大规模训练前应做奖励敏感性实验。
+- 8 人累计创建上限是**默认值**，现在可用 `--cap` 放开做对照；但放开只有创建预算，
+  不是人口学模型（没有生育压力/年龄结构/资源承载的标定）。
+- 视觉特征是**低分辨率学习档**（不是 GUI 高保真档），且每 `perception_stride`
+  帧刷新一次（默认 4，实验 8）；短预算训练**不足以**证明视觉显著改变行为。
+- 无限世界是"横向无界 + 窗口跟随"的最小实现：纵向固定，不跨窗口保存远距离
+  设施历史；长跑/大人口的墙钟成本未充分验证。
 - `deliver` 目前是 contribute 别名；维护仅在设施失效后触发；环境扰动只有三种。
 - 时间尺度为可观测性压缩（寿命 900 世界秒），不是人口学标定。
 

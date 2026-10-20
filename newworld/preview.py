@@ -1,4 +1,9 @@
-"""Documentation preview images: day/night world, creature, Chinese debug."""
+"""文档用的预览图：昼/夜世界、生物、中文调试面板。
+
+生成四张图到 ``assets/``：
+白天世界、夜晚世界、带调试面板与语言气泡的动作抓帧、
+以及黎明/正午/夜晚的三联画条带。
+"""
 
 from __future__ import annotations
 
@@ -22,15 +27,18 @@ DEFAULT_OUTDIR = Path(__file__).resolve().parent.parent / "assets"
 
 
 def _at_hour(world: World, hour: float) -> None:
+    """把世界时钟拨到指定小时（不动居民）。"""
     world.t = ((hour - world.day.start_hour) % 24.0) / 24.0 * world.day.day_length_s
     world._update_environment()
 
 
 def _downscale(frame: Image.Image, width: int) -> Image.Image:
+    """按宽度等比缩小（LANCZOS）。"""
     return frame.resize((width, round(width * frame.height / frame.width)), Image.LANCZOS)
 
 
 def _caption_panel(frame: Image.Image, caption: str, width: int = 900) -> Image.Image:
+    """给画面顶部加一条中文说明文字。"""
     panel = _downscale(frame, width)
     strip = max(38, round(width * 0.05))
     canvas = Image.new("RGB", (width, panel.height + strip), (14, 16, 20))
@@ -43,6 +51,7 @@ def _caption_panel(frame: Image.Image, caption: str, width: int = 900) -> Image.
 
 
 def generate_previews(config: WorldConfig, outdir: str | Path | None = None) -> dict[str, Path]:
+    """生成全部预览图，返回 {名字: 路径}。"""
     out = Path(outdir) if outdir is not None else DEFAULT_OUTDIR
     out.mkdir(parents=True, exist_ok=True)
 
@@ -51,7 +60,7 @@ def generate_previews(config: WorldConfig, outdir: str | Path | None = None) -> 
     world.reset(seed=0, positions=[(config.min_x + config.max_x) / 2.0])
     population = Population(world, seed=0)
 
-    # -- daytime world (ender + ender-2) --------------------------------
+    # -- 白天的世界（ender + ender-2） ----------------------------------
     _at_hour(world, 12.0)
     for _ in range(240):
         population.step(1.0 / 60.0)
@@ -61,7 +70,7 @@ def generate_previews(config: WorldConfig, outdir: str | Path | None = None) -> 
         _downscale(clean, min(1280, config.width)), out / "world_preview_1280.png"
     )
 
-    # -- night world (both sleep) --------------------------------------
+    # -- 夜晚的世界（两个都在睡） ---------------------------------------
     for agent in world.agents:
         agent.physiology.sleep()
         agent.behavior_state = "sleep"
@@ -71,11 +80,12 @@ def generate_previews(config: WorldConfig, outdir: str | Path | None = None) -> 
         _downscale(night, min(1280, config.width)), out / "world_night_preview.png"
     )
 
-    # -- debug / action shot -------------------------------------------
+    # -- 调试 / 动作抓帧 ------------------------------------------------
     for agent in world.agents:
         agent.physiology.wake()
         agent.behavior_state = "explore"
     _at_hour(world, 12.0)
+    # 跑到有人说话（或跳起来）的那一帧为止
     for _ in range(2200):
         population.step(1.0 / 60.0)
         active = [
@@ -106,7 +116,7 @@ def generate_previews(config: WorldConfig, outdir: str | Path | None = None) -> 
     )
     paths["world_debug_preview"] = save_png(debug_frame, out / "world_debug_preview.png")
 
-    # -- day/night strip -------------------------------------------------
+    # -- 昼/夜三联画 ----------------------------------------------------
     panels = []
     for hour, caption in ((6.6, "黎明 06:36"), (12.0, "正午 12:00"), (20.5, "夜晚 20:30")):
         for agent in world.agents:

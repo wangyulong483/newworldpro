@@ -1,4 +1,6 @@
-"""Tests for atomic destruction/growth and the soil-water cycle."""
+"""生态模块测试：土壤水循环、生长与破坏。
+
+Tests for atomic destruction/growth and the soil-water cycle."""
 
 from __future__ import annotations
 

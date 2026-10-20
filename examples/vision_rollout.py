@@ -1,10 +1,9 @@
-"""Run the inhabitant for a while and inspect his perception.
+"""让居民自主活动一段时间并检查他的感知。
 
     python examples/vision_rollout.py
 
-He acts on his own (no keyboard, no reward) and looks around with human-like
-saccades.  The script prints the perceptual state and saves one debug frame
-showing his position, his eye and his gaze direction.
+他自己行动（没有键盘、没有奖励），用类人的扫视四处张望。脚本
+打印感知状态，并保存一帧调试画面（他的位置、眼睛与注视方向）。
 """
 
 from __future__ import annotations

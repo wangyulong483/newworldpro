@@ -1,21 +1,19 @@
-"""Neural-network behaviour policy with a learned proto-language.
+"""带学习型原语言的神经网络行为策略。
 
-The inhabitant can be driven by a larger MLP:
+居民可以由一个更大的 MLP 驱动：
 
-* input: 24 sensory/physiology features;
-* hidden: 64 tanh units -> 32 tanh units;
-* output: 5 behaviour modes, 3 movement directions, jump/speak, and a
-  **3-syllable word** drawn from a 16-syllable vocabulary.
+* 输入：40 维感官/生理特征（v0.9 扩展；前 24 维与旧版一致）；
+* 隐藏层：64 tanh 单元 → 32 tanh 单元；
+* 输出：5 个行为模式、3 个移动方向、跳跃/说话开关，以及一个从
+  16 音节词表中取的 **3 音节词**。
 
-The default checkpoint is ``assets/neural_policy.npz``.  It is loaded at start-up
-and **never retrained automatically**.  Training only happens when the observer
-presses **F2**; it continues from the loaded weights and overwrites the
-checkpoint, so the policy evolves continuously across sessions.
+默认 checkpoint 是 ``assets/neural_policy.npz``。启动时载入且
+**从不自动重训**。只有观察者按 **F2** 才训练；训练从已载入的权重
+继续并覆盖 checkpoint，因此策略跨会话持续演化。
 
-The network's behaviour is bootstrapped by imitating the hand-written
-homeostatic behaviour (walk / forage / eat / drink / sleep); the language head
-learns a distinct word for each internal state, giving the creature a small
-emergent vocabulary ("proto-language") rather than fixed random syllables.
+网络行为靠模仿手写的稳态行为（走/觅食/吃/喝/睡）来引导；语言
+头为每个内在状态学一个专属的词，让生物拥有一小套涌现的
+"原语言"，而不是固定的随机音节。
 """
 
 from __future__ import annotations
@@ -29,16 +27,19 @@ from .behavior import Decision, HAND_HEIGHT_PX, HAND_REACH_PX, InnerLife
 from .materials import ATOM_SIZE
 
 # ---------------------------------------------------------------------------
-# architecture
+# 网络结构
 # ---------------------------------------------------------------------------
-#: number of sensory/physiology features available before the civilization layer
+#: 文明层加入之前的感官/生理特征维数
 LEGACY_FEATURE_DIM = 24
-#: extra context appended by the civilization layer (P3):
-#: 8 memory summary + 4 goal/plan context + 4 civilization context
+#: 文明层追加的上下文（P3）：8 记忆摘要 + 4 目标/计划 + 4 文明上下文
 CONTEXT_DIM = 16
-#: full input width.  Old 24-dim checkpoints are migrated by **zero-initialising**
-#: the new input columns, so their behaviour is bit-identical until retrained.
-FEATURE_DIM = LEGACY_FEATURE_DIM + CONTEXT_DIM
+#: v2（文明版）输入宽度：24 感知/生理 + 16 文明上下文
+V2_FEATURE_DIM = LEGACY_FEATURE_DIM + CONTEXT_DIM
+#: V2.1（感知打通）追加的真实视网膜特征维数
+VISUAL_DIM = 16
+#: 完整输入宽度。旧 24 维与 v2 40 维 checkpoint 都通过**零初始化**新输入列迁移，
+#: 因此重训之前行为逐比特一致（视觉特征全 0 时输出不变）。
+FEATURE_DIM = V2_FEATURE_DIM + VISUAL_DIM
 HIDDEN1 = 64
 HIDDEN2 = 32
 MODES: tuple[str, ...] = ("explore", "forage", "drink", "sleep", "rest")
@@ -52,14 +53,26 @@ VOCAB: tuple[str, ...] = (
 LANG_DIM = LANG_TOKENS * len(VOCAB)
 OUTPUT_DIM = len(MODES) + MOVE_DIM + AUX_DIM + LANG_DIM
 
-#: flat parameter count of the legacy 24-input network (pre-civilization v0.8.0)
+#: 旧 24 输入网络的扁平参数量（文明层之前的 v0.8.0）
 LEGACY_FLAT_SIZE = (
     LEGACY_FEATURE_DIM * HIDDEN1 + HIDDEN1
     + HIDDEN1 * HIDDEN2 + HIDDEN2
     + HIDDEN2 * OUTPUT_DIM + OUTPUT_DIM
 )
+#: v2（40 输入，文明版）网络的扁平参数量
+V2_FLAT_SIZE = (
+    V2_FEATURE_DIM * HIDDEN1 + HIDDEN1
+    + HIDDEN1 * HIDDEN2 + HIDDEN2
+    + HIDDEN2 * OUTPUT_DIM + OUTPUT_DIM
+)
+#: 当前（56 输入）网络的扁平参数量
+CURRENT_FLAT_SIZE = (
+    FEATURE_DIM * HIDDEN1 + HIDDEN1
+    + HIDDEN1 * HIDDEN2 + HIDDEN2
+    + HIDDEN2 * OUTPUT_DIM + OUTPUT_DIM
+)
 
-#: a distinct word for each internal state (the language target during training)
+#: 每个内在状态一个专属的词（训练时的语言目标）
 MODE_WORDS: dict[str, tuple[str, ...]] = {
     "explore": ("ba", "ne", "po"),
     "forage": ("mi", "ta", "ki"),
@@ -71,6 +84,8 @@ MODE_WORDS: dict[str, tuple[str, ...]] = {
 
 @dataclass
 class PolicyOutput:
+    """一次前向传播解析出的高层输出。"""
+
     mode: str
     move: int
     jump: bool
@@ -79,11 +94,13 @@ class PolicyOutput:
 
 
 class NeuralPolicy:
-    """Two-hidden-layer MLP policy (numpy)."""
+    """双隐藏层 MLP 策略（纯 numpy，无框架依赖）。"""
 
     def __init__(self, weights: np.ndarray | None = None, seed: int = 0) -> None:
+        """初始化（随机权重或从扁平数组还原）。"""
         rng = np.random.default_rng(seed)
         if weights is None:
+            # 三层权重的尺度递减（0.5 → 0.4 → 0.3）利于初始行为温和
             self.w1 = rng.normal(0.0, 0.5, (FEATURE_DIM, HIDDEN1))
             self.b1 = np.zeros(HIDDEN1)
             self.w2 = rng.normal(0.0, 0.4, (HIDDEN1, HIDDEN2))
@@ -95,6 +112,7 @@ class NeuralPolicy:
 
     # ------------------------------------------------------------------
     def flat_weights(self) -> np.ndarray:
+        """把全部权重拍平成一维数组（遗传/存档用）。"""
         return np.concatenate(
             [
                 self.w1.reshape(-1),
@@ -107,6 +125,7 @@ class NeuralPolicy:
         )
 
     def set_flat_weights(self, flat: np.ndarray) -> None:
+        """从一维数组按顺序还原各层权重。"""
         flat = np.asarray(flat, dtype=np.float64)
         index = 0
         self.w1 = flat[index : index + FEATURE_DIM * HIDDEN1].reshape(FEATURE_DIM, HIDDEN1)
@@ -123,12 +142,14 @@ class NeuralPolicy:
 
     # ------------------------------------------------------------------
     def forward(self, features: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """前向传播：返回 (logits, h1, h2)（隐藏层供训练用）。"""
         h1 = np.tanh(features @ self.w1 + self.b1)
         h2 = np.tanh(h1 @ self.w2 + self.b2)
         logits = h2 @ self.w3 + self.b3
         return logits, h1, h2
 
     def act(self, features: np.ndarray) -> PolicyOutput:
+        """贪心解码一帧：模式/移动取 argmax，跳跃说话看正负，语言取每音节 argmax。"""
         logits, _, _ = self.forward(features)
         mode_index = int(np.argmax(logits[: len(MODES)]))
         move_index = int(np.argmax(logits[len(MODES) : len(MODES) + MOVE_DIM]))
@@ -145,6 +166,7 @@ class NeuralPolicy:
 
     # ------------------------------------------------------------------
     def save(self, path: str | Path) -> Path:
+        """把权重与结构元数据保存为 .npz checkpoint。"""
         path = Path(path)
         path.parent.mkdir(parents=True, exist_ok=True)
         np.savez(
@@ -155,18 +177,17 @@ class NeuralPolicy:
             hidden2=HIDDEN2,
             output_dim=OUTPUT_DIM,
             vocab=np.asarray(VOCAB),
-            version=np.asarray(3),
+            version=np.asarray(4),
         )
         return path
 
     @classmethod
     def from_legacy_weights(cls, flat: np.ndarray) -> "NeuralPolicy":
-        """Migrate a 24-input checkpoint by zero-initialising the new columns.
+        """把 24 输入的旧 checkpoint 零初始化迁移到 40 输入。
 
-        With zero input columns and zero weights the extra features contribute
-        exactly ``0`` to the first hidden layer, so the migrated network produces
-        **bit-identical** outputs to the original one.  Continuous training then
-        gradually learns (or ignores) the new context.
+        新增输入列的权重全为 0，因此额外特征对第一隐藏层的贡献恰为
+        ``0``，迁移后的网络输出与原网络**逐比特一致**。继续训练再
+        逐渐学习（或忽略）新的上下文。
         """
         flat = np.asarray(flat, dtype=np.float64).reshape(-1)
         if flat.size != LEGACY_FLAT_SIZE:
@@ -191,31 +212,64 @@ class NeuralPolicy:
         return policy
 
     @classmethod
+    def from_v2_weights(cls, flat: np.ndarray) -> "NeuralPolicy":
+        """把 v2（40 输入，文明版）checkpoint 零初始化迁移到 56 输入。
+
+        新增的 16 维视觉特征权重全为 0，因此视觉输入为 0 时迁移后的网络
+        输出与原网络**逐比特一致**；从 BC 数据继续训练后才逐渐学习视觉。
+        """
+        flat = np.asarray(flat, dtype=np.float64).reshape(-1)
+        if flat.size != V2_FLAT_SIZE:
+            raise ValueError(
+                f"not a v2 checkpoint: {flat.size} values, expected {V2_FLAT_SIZE}"
+            )
+        policy = cls(seed=0)
+        index = 0
+        v2_w1 = flat[index : index + V2_FEATURE_DIM * HIDDEN1].reshape(V2_FEATURE_DIM, HIDDEN1)
+        index += V2_FEATURE_DIM * HIDDEN1
+        policy.w1 = np.zeros((FEATURE_DIM, HIDDEN1))
+        policy.w1[:V2_FEATURE_DIM] = v2_w1
+        policy.b1 = flat[index : index + HIDDEN1].copy()
+        index += HIDDEN1
+        policy.w2 = flat[index : index + HIDDEN1 * HIDDEN2].reshape(HIDDEN1, HIDDEN2).copy()
+        index += HIDDEN1 * HIDDEN2
+        policy.b2 = flat[index : index + HIDDEN2].copy()
+        index += HIDDEN2
+        policy.w3 = flat[index : index + HIDDEN2 * OUTPUT_DIM].reshape(HIDDEN2, OUTPUT_DIM).copy()
+        index += HIDDEN2 * OUTPUT_DIM
+        policy.b3 = flat[index : index + OUTPUT_DIM].copy()
+        return policy
+
+    @classmethod
     def load(cls, path: str | Path) -> "NeuralPolicy":
+        """载入 checkpoint；自动迁移 24 维（v0.8）与 40 维（v2）旧格式。"""
         data = np.load(Path(path), allow_pickle=False)
         if "hidden1" not in data or int(data["hidden1"]) != HIDDEN1:
             raise ValueError("incompatible neural policy checkpoint (old network size)")
         weights = np.asarray(data["weights"], dtype=np.float64).reshape(-1)
         if weights.size == LEGACY_FLAT_SIZE:
-            # v0.8.0 checkpoint (24 inputs) -> zero-initialised migration
+            # v0.8.0 checkpoint（24 输入）→ 零初始化迁移
             return cls.from_legacy_weights(weights)
-        expected = FEATURE_DIM * HIDDEN1 + HIDDEN1 + HIDDEN1 * HIDDEN2 + HIDDEN2 + HIDDEN2 * OUTPUT_DIM + OUTPUT_DIM
-        if weights.size != expected:
+        if weights.size == V2_FLAT_SIZE:
+            # v2 checkpoint（40 输入，文明版）→ 零初始化视觉列
+            return cls.from_v2_weights(weights)
+        if weights.size != CURRENT_FLAT_SIZE:
             raise ValueError(
-                f"incompatible neural policy checkpoint ({weights.size} weights, expected {expected})"
+                f"incompatible neural policy checkpoint ({weights.size} weights, "
+                f"expected {CURRENT_FLAT_SIZE})"
             )
         return cls(weights=weights)
 
 
 # ---------------------------------------------------------------------------
-# feature extraction
+# 特征抽取
 # ---------------------------------------------------------------------------
 def _context_features(world, character) -> list[float]:
-    """16 extra inputs: memory summary (8) + goal/plan (4) + civilization (4).
+    """16 个附加输入：记忆摘要 (8) + 目标/计划 (4) + 文明 (4)。
 
-    These are all zeros when ``world.expanded_observation`` is off (ablation
-    groups A/B) *or* when the civilization layer is absent, which keeps the
-    legacy behaviour bit-identical (see :meth:`NeuralPolicy.from_legacy_weights`).
+    ``world.expanded_observation`` 关闭（消融组 A/B）*或*文明层缺失时
+    全为 0，从而保持旧行为逐比特一致
+    （见 :meth:`NeuralPolicy.from_legacy_weights`）。
     """
     context = [0.0] * CONTEXT_DIM
     if not bool(getattr(world, "expanded_observation", False)):
@@ -261,12 +315,37 @@ def _context_features(world, character) -> list[float]:
     return context
 
 
-def features(world, perception=None, character=None) -> np.ndarray:
-    """The 40-dimensional input vector of the neural policy.
+def _visual_features(world, character) -> list[float]:
+    """16 个真实视网膜特征（V2.1 感知打通）。
 
-    The first 24 values are the original v0.8.0 sensory/physiology features; the
-    last 16 are civilization context (memory, goals, knowledge, society) and are
-    zero unless the world enables the expanded observation.
+    由 ``Population`` / ``AgentMind`` 每隔 ``perception_stride`` 帧用
+    :class:`newworld.visual_features.VisualFeatureExtractor` 计算一次，写入
+    ``character.visual_features``；本函数只做读取、裁剪与降级，不做光学计算。
+    世界未启用视觉特征、或个体尚无缓存时全为 0，从而保持旧 checkpoint
+    行为逐比特一致（见 :meth:`NeuralPolicy.from_v2_weights`）。
+    """
+    visual = [0.0] * VISUAL_DIM
+    if not bool(getattr(world, "enable_visual_features", False)):
+        return visual
+    raw = getattr(character, "visual_features", None)
+    if raw is None:
+        return visual
+    try:
+        values = np.asarray(raw, dtype=np.float64).reshape(-1)
+        count = min(VISUAL_DIM, values.size)
+        values = np.nan_to_num(values[:count], nan=0.0, posinf=1.0, neginf=-1.0)
+        visual[:count] = np.clip(values, -1.0, 1.0).tolist()
+    except Exception:
+        pass
+    return visual
+
+
+def features(world, perception=None, character=None) -> np.ndarray:
+    """神经策略的 56 维输入向量。
+
+    前 24 个是 v0.8.0 原有的感官/生理特征；中间 16 个是文明上下文
+    （记忆、目标、知识、社会）；最后 16 个是真实视网膜特征（V2.1）。
+    世界未启用扩展观测/视觉特征时，相应段全为 0。
     """
     character = character if character is not None else world.agent
     scene = world.pixel_scene
@@ -275,6 +354,7 @@ def features(world, perception=None, character=None) -> np.ndarray:
     hour = world.hour
     feet_y = character.y if character.y is not None else cfg.ground_y
 
+    # 最近浆果的相对方向/高度/存在标志
     berry_dx = 0.0
     berry_dy = 0.0
     berry_flag = 0.0
@@ -283,6 +363,7 @@ def features(world, perception=None, character=None) -> np.ndarray:
         berry_dx = max(-1.0, min(1.0, (nearest[0] * ATOM_SIZE - character.x) / 600.0))
         berry_dy = max(-1.0, min(1.0, (nearest[1] * ATOM_SIZE - feet_y) / 250.0))
         berry_flag = 1.0
+    # 池塘方向与"附近有水"标志
     left, right = scene.pond
     pond_dx = max(-1.0, min(1.0, ((left + right) / 2.0 * ATOM_SIZE - character.x) / 800.0))
     pond_flag = (
@@ -320,24 +401,28 @@ def features(world, perception=None, character=None) -> np.ndarray:
         scene.ecology.water_level,
     ]
     vector.extend(_context_features(world, character))
+    vector.extend(_visual_features(world, character))
     return np.asarray(vector, dtype=np.float64)
 
 
 # ---------------------------------------------------------------------------
-# neural behaviour
+# 神经行为
 # ---------------------------------------------------------------------------
 class NeuralInnerLife(InnerLife):
-    """Behaviour whose high-level choices and words come from the network."""
+    """高层选择与话语都来自网络的行为引擎（决策链最底层）。"""
 
     def __init__(self, policy: NeuralPolicy, seed: int = 0) -> None:
+        """初始化（随机权重或从扁平数组还原）。"""
         super().__init__(seed)
         self.policy = policy
         self.last_output: PolicyOutput | None = None
+        # 说话冷却/自言自语计时/自发蹦跳计时
         self.speech_cooldown = 0.0
         self.talk_timer = 1.5
         self.jump_timer = 3.0
 
     def decide(self, world, dt: float, perception=None, character=None) -> Decision:
+        """用网络输出驱动一帧行为（睡眠/喝水/觅食优先处理）。"""
         character = character if character is not None else world.agent
         physiology = character.physiology
         scene = world.pixel_scene
@@ -350,6 +435,7 @@ class NeuralInnerLife(InnerLife):
         self.jump_timer -= dt
         speak = output.speak and self.speech_cooldown <= 0.0
         if self.talk_timer <= 0.0 and not physiology.sleeping:
+            # 定时自言自语，让语言头保持活跃
             self.talk_timer = self.rng.uniform(2.5, 6.0)
             speak = True
         if speak:
@@ -358,6 +444,7 @@ class NeuralInnerLife(InnerLife):
         if spontaneous_jump:
             self.jump_timer = self.rng.uniform(4.0, 9.0)
 
+        # -- 睡眠/醒来（与规则版 InnerLife 相同的守卫） -----------------
         if physiology.sleeping:
             character.behavior_state = "sleep"
             if daylight > 0.02 and (physiology.sleep_pressure < 45.0 or hour > 6.8):
@@ -373,6 +460,7 @@ class NeuralInnerLife(InnerLife):
         hand_x = character.x + character.facing * HAND_REACH_PX
 
         if output.mode == "drink":
+            # 喝水：先走到池塘，手碰到水就喝
             left, right = scene.pond
             target = (left + right) / 2.0 * ATOM_SIZE
             if abs(target - character.x) > 30.0:
@@ -388,6 +476,7 @@ class NeuralInnerLife(InnerLife):
             return Decision(0, False, False, None)
 
         if output.mode in ("forage", "explore"):
+            # 觅食：探索模式也响应低能量
             berry = self._nearest_berry(scene, character.x, feet_y)
             if berry is not None and (output.mode == "forage" or physiology.energy < 55.0):
                 berry_x = berry[0] * ATOM_SIZE
@@ -411,7 +500,7 @@ class NeuralInnerLife(InnerLife):
         character.behavior_state = "explore"
         jump = (output.jump or spontaneous_jump) and character.on_ground
         move = output.move
-        # environmental clamp: never keep pushing into the screen edge
+        # 环境夹紧：永远不要顶着屏幕边缘走
         if character.at_left_wall and move < 0:
             move = 1
         elif character.at_right_wall and move > 0:

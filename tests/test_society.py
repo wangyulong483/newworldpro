@@ -1,4 +1,6 @@
-"""Tests for society (network, reproduction, death) and technology/community."""
+"""社会网络与人口学测试：亲密度、出生/死亡、8 人预算。
+
+Tests for society (network, reproduction, death) and technology/community."""
 
 from __future__ import annotations
 

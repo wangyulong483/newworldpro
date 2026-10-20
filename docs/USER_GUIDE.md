@@ -239,3 +239,41 @@ clamp/resize、命中（bbox/最近/重叠/无命中/死人不选/缩放一致�
   会写 `assets/agents/*.npz`；不建议在长观察期间反复训练。
 
 - **截图语义**：`--screenshot` 抓整个窗口（包含面板与状态栏），便于验收布局。
+
+---
+
+## 10. 无限世界（v0.9.2 `--infinite`）
+
+```powershell
+python -m newworld --infinite --windowed --size 960x600
+```
+
+- 屏幕只是**当前窗口**；人口迁移到窗口边缘时世界自动滚动（每次平移 1/4 窗口），
+  因此可以一直往一个方向走，没有世界边界。
+- 地形/石头/树/池塘由 `seed + 全局坐标` 确定性生成：同一个 seed 下，
+  同一地点两次经过内容一致；`clear_atom`/采果等修改按全局坐标持久化。
+- 窗口化界面行为不变：点选个体、详情、暂停/单步/重置、速度、面板折叠都可用；
+  缩放/平移仍在当前窗口内（窗口本身会自动搬移）。若想回看走过的区域，
+  目前只能通过 `--seed` 重建（不保存远距离历史，见 UPGRADE_V2_REPORT §6）。
+- 顶部状态栏的计数仍是累计创建/存活/死亡/剩余；窗口的全局偏移记录在
+  状态的 `window_origin_px` 字段（无窗口实验/存档里可审计）。
+
+## 11. V2 的其他开关（无窗口实验）
+
+```powershell
+# 感知开/关（16 维真实视网膜特征进入 56 维观测）
+python -m newworld.simulation --group C --steps 12000 --dt 0.05 --width 640 --height 400
+python -m newworld.simulation --group C --steps 12000 --dt 0.05 --width 640 --height 400 --no-visual
+
+# 低层动作：BC / RL / 随机
+python -m newworld.simulation --group C --steps 12000 --dt 0.05 --width 640 --height 400 `
+    --low-level-mode rl --lowlevel-policy assets/lowlevel_rl.npz
+
+# 放开累计创建上限（对照实验）
+python -m newworld.simulation --group C --steps 12000 --dt 0.05 --width 640 --height 400 `
+    --infinite --cap 32
+```
+
+> 说明：GUI 默认仍使用 BC 低层 + 有限世界，保证交互与既有行为稳定；
+> 感知特征在 GUI 中由 `perception_stride`（默认 4）刷新，详情面板不显示原始 16 维，
+> 实验报告里通过 `visual_active_dims` 审计。

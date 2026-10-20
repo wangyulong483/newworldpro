@@ -1,4 +1,6 @@
-"""Tests for the inhabitant's visual perception (optics, eye, retina, gaze)."""
+"""视觉管线测试：光学/眼睛/视网膜/感知。
+
+Tests for the inhabitant's visual perception (optics, eye, retina, gaze)."""
 
 from __future__ import annotations
 

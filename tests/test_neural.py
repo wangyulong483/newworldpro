@@ -1,4 +1,6 @@
-"""Tests for the optional neural-network behaviour policy."""
+"""神经网络策略测试：前向/激活/序列化。
+
+Tests for the optional neural-network behaviour policy."""
 
 from __future__ import annotations
 

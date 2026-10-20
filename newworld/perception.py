@@ -1,34 +1,31 @@
-"""Perception for the newworld inhabitant.
+"""newworld 居民的感知系统。
 
-This module chains the physical pieces into a human-like sensory system:
+本模块把各物理部件串成一套类人感官：
 
-``scene`` (light field) -> eye optics (pupil / accommodation / defocus /
-diffraction) -> retina (cone/rod mosaic, foveal acuity, L/M/S colour, light
-adaptation) -> retinal ganglion cells (centre-surround contrast).
+``场景``（光场）→ 眼光学（瞳孔/调节/失焦/衍射）→ 视网膜
+（视锥/视杆镶嵌、中央凹锐度、L/M/S 色彩、光适应）→ 视网膜神经节
+细胞（中心-外周对比度）。
 
-On top of that it implements the *active* part of human vision: the eye is
-never still.  Human observers make 3-4 saccades per second, each fixation lasts
-about 200-300 ms and each saccade 5-100 ms; during a saccade the image sweeps
-across the retina at hundreds of degrees per second and perception is strongly
-suppressed ("saccadic suppression").  There are also microsaccades and blinks
-(https://www.cs.cmu.edu/~xingyu/saccade.html).  All of that is modelled here,
-because it determines what the inhabitant can actually see.
+在此之上还实现人类视觉的*主动*部分：眼睛从不静止。人类观察者
+每秒做 3-4 次扫视，每次注视约 200-300 ms、每次扫视 5-100 ms；
+扫视期间图像以每秒数百度的速度扫过视网膜，且知觉被强烈抑制
+（"扫视抑制"）。还有微扫视和眨眼
+（https://www.cs.cmu.edu/~xingyu/saccade.html）。这些全部建模，
+因为它们决定了居民真正能看到什么。
 
-The other senses are assembled by :class:`Perceiver`:
+其他感官由 :class:`Perceiver` 组装：
 
-* **vision** — the optical/retinal pipeline above;
-* **audition** — sound pressure waves in the air
-  (:mod:`newworld.acoustics`), arriving at the ear after ``r / c`` seconds and
-  converted to dB SPL (threshold 20 uPa);
-* **thermoception / interoception** — body temperature from the heat balance
-  (:mod:`newworld.environment`) and the air temperature.
+* **视觉** —— 上面的光学/视网膜管线；
+* **听觉** —— 空气中的声压波（:mod:`newworld.acoustics`），
+  经 ``r / c`` 秒到达耳朵并换算为 dB SPL（听阈 20 µPa）；
+* **温度觉 / 内感受** —— 来自热平衡（:mod:`newworld.environment`）
+  的体温与气温。
 
-The visual field is one-dimensional because the world is a 2-D side view; the
-retina is a 1-D foveated mosaic over azimuth.  The inhabitant's *own* world is
-currently a uniform white environment, so the optical image is uniform and the
-ganglion cells (contrast detectors) report ~zero contrast — the honest result of
-looking at an empty white world.  As soon as objects are added to the world the
-same pipeline produces real images.
+视觉场是一维的，因为世界是 2-D 侧视；视网膜是方位角上的一维
+中央凹镶嵌。居民自己的世界目前是均匀的白色环境，因此光学像是
+均匀的、神经节细胞（对比度探测器）报告约零对比——这是看着一个
+空旷白世界的诚实结果。一旦世界里加入物体，同一条管线就会产生
+真实的图像。
 """
 
 from __future__ import annotations
@@ -55,11 +52,11 @@ from .retina import Retina, RetinaObservation, RetinaParameters
 
 
 # ---------------------------------------------------------------------------
-# gaze / eye movements
+# 注视 / 眼动
 # ---------------------------------------------------------------------------
 @dataclass
 class GazeParameters:
-    """Human eye-movement statistics (see module docstring)."""
+    """人类眼动统计（见模块 docstring）。"""
 
     saccades_per_second: float = 3.5
     fixation_s: tuple[float, float] = (0.20, 0.30)
@@ -74,6 +71,8 @@ class GazeParameters:
 
 @dataclass
 class GazeState:
+    """注视控制器的全部状态（偏移、目标、扫视进度、眨眼、漂移）。"""
+
     offset_deg: float = 0.0
     target_deg: float = 0.0
     start_deg: float = 0.0
@@ -91,9 +90,10 @@ class GazeState:
 
 
 class GazeController:
-    """Saccades, microsaccades, drift and blinks."""
+    """扫视、微扫视、注视漂移与眨眼。"""
 
     def __init__(self, params: GazeParameters, rng: random.Random) -> None:
+        """初始化。"""
         self.params = params
         self.rng = rng
         self.state = GazeState(offset_deg=rng.uniform(-5.0, 5.0))
@@ -101,10 +101,12 @@ class GazeController:
         self.state.next_blink_s = self._next_blink_time()
 
     def _next_blink_time(self) -> float:
+        """下一次眨眼的等待时间（指数分布）。"""
         mean = 60.0 / max(1e-3, self.params.blink_per_minute)
         return self.rng.expovariate(1.0 / mean)
 
     def reset(self, rng: random.Random | None = None) -> None:
+        """重置注视状态（可换随机源）。"""
         if rng is not None:
             self.rng = rng
         self.state = GazeState(offset_deg=self.rng.uniform(-5.0, 5.0))
@@ -113,8 +115,11 @@ class GazeController:
 
     # ------------------------------------------------------------------
     def _start_saccade(self, amplitude_deg: float) -> None:
+        """发起一次扫视。
+
+        人类主序列：时长随幅度增长（约 21 + 2.2*|A| 毫秒）。
+        """
         state = self.state
-        # human main sequence: duration grows with amplitude (~21 + 2.2*|A| ms)
         duration = (21.0 + 2.2 * abs(amplitude_deg)) / 1000.0
         state.mode = "saccade"
         state.start_deg = state.offset_deg
@@ -126,10 +131,11 @@ class GazeController:
         state.saccade_count += 1
 
     def update(self, dt: float) -> GazeState:
+        """推进一帧眼动：眨眼 → 漂移/微扫视 → 扫视或注视计时。"""
         params = self.params
         state = self.state
 
-        # -- blinks -----------------------------------------------------
+        # -- 眨眼 -------------------------------------------------------
         if state.blink:
             state.blink_timer_s -= dt
             if state.blink_timer_s <= 0.0:
@@ -142,7 +148,7 @@ class GazeController:
                 state.blink_timer_s = self.rng.uniform(*params.blink_s)
                 state.blink_count += 1
 
-        # -- fixational drift + microsaccades ---------------------------
+        # -- 注视漂移 + 微扫视 -------------------------------------------
         state.drift += self.rng.gauss(0.0, params.drift_deg_per_s * dt)
         state.microsaccade_timer_s -= dt
         if state.microsaccade_timer_s <= 0.0:
@@ -153,11 +159,11 @@ class GazeController:
                 *params.microsaccade_deg
             )
 
-        # -- saccade / fixation ----------------------------------------
+        # -- 扫视 / 注视 ------------------------------------------------
         if state.mode == "saccade":
             state.saccade_progress += dt / max(1e-3, state.saccade_duration_s)
             progress = min(1.0, state.saccade_progress)
-            # smooth acceleration/deceleration of a ballistic saccade
+            # 弹道扫视的平滑加/减速（ease-in-out）
             eased = progress * progress * (3.0 - 2.0 * progress)
             state.offset_deg = state.start_deg + (state.target_deg - state.start_deg) * eased
             if progress >= 1.0:
@@ -176,11 +182,11 @@ class GazeController:
 
 
 # ---------------------------------------------------------------------------
-# perception
+# 感知
 # ---------------------------------------------------------------------------
 @dataclass
 class PerceptionState:
-    """Everything the inhabitant perceives in one simulation step."""
+    """居民在一个仿真步里感知到的一切。"""
 
     time: float
     eye_x: float
@@ -198,7 +204,7 @@ class PerceptionState:
     foveal_luminance: float
     saccade_velocity_deg_s: float
     retina: RetinaObservation
-    # -- other senses (filled by :class:`Perceiver`) --------------------
+    # -- 其他感官（由 :class:`Perceiver` 填写） ------------------------
     body_temperature_c: float = physics.HUMAN_BODY_TEMPERATURE_K - 273.15
     air_temperature_c: float = physics.AIR_TEMPERATURE_K - 273.15
     sound_pressure_pa: float = 0.0
@@ -211,9 +217,11 @@ class PerceptionState:
     solar_irradiance_w_m2: float = 0.0
 
     def feature_vector(self) -> np.ndarray:
+        """视网膜拓扑特征向量（学习用）。"""
         return self.retina.feature_vector()
 
     def summary(self) -> str:
+        """单行人类可读摘要。"""
         return (
             f"gaze={self.gaze_world_deg:+06.1f}deg mode={self.mode:8s} "
             f"pupil={self.pupil_mm:4.1f}mm focus={self.accommodation_dpt:4.2f}D "
@@ -223,7 +231,7 @@ class PerceptionState:
 
 
 class VisualSystem:
-    """Eye + retina + gaze control, producing a PerceptionState each step."""
+    """眼 + 视网膜 + 注视控制，每步产出一个 PerceptionState。"""
 
     def __init__(
         self,
@@ -233,6 +241,7 @@ class VisualSystem:
         retina_parameters: RetinaParameters | None = None,
         gaze_parameters: GazeParameters | None = None,
     ) -> None:
+        """初始化。"""
         self.eye_parameters = eye_parameters or EyeParameters()
         self.retina_parameters = retina_parameters or RetinaParameters()
         self.gaze_parameters = gaze_parameters or GazeParameters()
@@ -254,7 +263,11 @@ class VisualSystem:
         config,
         dt: float,
     ) -> PerceptionState:
-        """Look at the scene through the eye and return the retinal signal."""
+        """透过眼睛看场景，返回视网膜信号。
+
+        流程：眼动 → 全景渲染 → 中央凹驱动的调节 → 光学模糊
+        （失焦+衍射+扫视拖影）→ 视网膜采样（眨眼断光、扫视抑制）。
+        """
         self.time += dt
         gaze = self.gaze.update(dt)
 
@@ -273,7 +286,7 @@ class VisualSystem:
             self.eye_parameters.panorama_samples_per_deg,
         )
 
-        # -- accommodation is driven by whatever the fovea is looking at --
+        # -- 调节由中央凹正看着的东西驱动 ------------------------------
         fixation_distance = float(
             np.interp(0.0, panorama.rel_angles_deg, panorama.distance_px)
         )
@@ -294,7 +307,7 @@ class VisualSystem:
             fixation_distance, self.eye_state.accommodation_dpt, self.eye_parameters
         )
 
-        # -- optical blur: defocus + diffraction + saccadic smear --------
+        # -- 光学模糊：失焦 + 衍射 + 扫视拖影 --------------------------
         sigma = blur_sigma_deg(pupil, defocus)
         if gaze.mode == "saccade":
             amplitude = abs(gaze.target_deg - gaze.start_deg)
@@ -305,9 +318,9 @@ class VisualSystem:
             self.saccade_velocity_deg_s = 0.0
         blurred = angular_gaussian_blur(panorama, sigma)
 
-        # -- retinal image ----------------------------------------------
+        # -- 视网膜成像 ------------------------------------------------
         lid = 0.0 if gaze.blink else 1.0
-        neural_gain = 0.25 if gaze.mode == "saccade" else 1.0  # saccadic suppression
+        neural_gain = 0.25 if gaze.mode == "saccade" else 1.0  # 扫视抑制
         retina_observation = self.retina.sample(
             blurred, dt, lid_transmission=lid, neural_gain=neural_gain
         )
@@ -336,7 +349,7 @@ class VisualSystem:
 
     # ------------------------------------------------------------------
     def summary_lines(self) -> list[str]:
-        """Compact human-readable state for the debug overlay."""
+        """调试覆盖层用的紧凑可读状态。"""
         perception = self.last_perception
         eye = self.eye_parameters
         retina = self.retina_parameters
@@ -357,11 +370,11 @@ class VisualSystem:
 
 
 # ---------------------------------------------------------------------------
-# other senses: hearing, thermoception
+# 其他感官：听觉、温度觉
 # ---------------------------------------------------------------------------
 @dataclass
 class AuditoryObservation:
-    """What arrives at the ear from the acoustic field."""
+    """从声场到达耳朵的东西。"""
 
     pressure_pa: float
     rms_pa: float
@@ -370,12 +383,14 @@ class AuditoryObservation:
 
 
 class Audition:
-    """Hearing through the air: pressure waves -> dB SPL."""
+    """透过空气的听觉：压力波 → dB SPL。"""
 
     def __init__(self) -> None:
+        """初始化。"""
         self.last_observation: AuditoryObservation | None = None
 
     def listen(self, world, character) -> AuditoryObservation:
+        """在耳朵位置采样声场，换算成声压级。"""
         ear_x, ear_y = eye_position(character, world.config)
         pressure = world.sound.pressure_at(ear_x, ear_y, world.t)
         rms = world.sound.rms_pressure_at(ear_x, ear_y, world.t)
@@ -384,16 +399,17 @@ class Audition:
             pressure_pa=pressure,
             rms_pa=rms,
             spl_db=level,
-            hearing=rms > 0.0 and level >= 0.0,  # threshold of hearing (20 uPa)
+            hearing=rms > 0.0 and level >= 0.0,  # 听阈（20 µPa）
         )
         self.last_observation = observation
         return observation
 
 
 class Perceiver:
-    """All senses together: vision + hearing + thermoception + interoception."""
+    """全部感官合体：视觉 + 听觉 + 温度觉 + 内感受。"""
 
     def __init__(self, seed: int | None = 0) -> None:
+        """初始化。"""
         self.visual = VisualSystem(seed)
         self.audition = Audition()
         self.last_perception: PerceptionState | None = None
@@ -401,6 +417,7 @@ class Perceiver:
         self._agent = None
 
     def perceive(self, world, dt: float, character=None) -> PerceptionState:
+        """跑一遍全部感官，合并成一个 PerceptionState。"""
         agent = character if character is not None else world.agent
         visual = self.visual.perceive(world.scene(), agent, world.config, dt)
         audio = self.audition.listen(world, agent)
@@ -427,7 +444,7 @@ class Perceiver:
 
     # ------------------------------------------------------------------
     def feature_vector(self) -> np.ndarray | None:
-        """Retinotopic features plus the non-visual sensory scalars."""
+        """视网膜拓扑特征 + 非视觉感官标量。"""
         perception = self.last_perception
         if perception is None:
             return None
@@ -446,6 +463,7 @@ class Perceiver:
 
     # ------------------------------------------------------------------
     def summary_lines(self) -> list[str]:
+        """调试面板用的多行感官摘要。"""
         lines = self.visual.summary_lines()
         perception = self.last_perception
         agent = self._agent

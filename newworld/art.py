@@ -1,21 +1,19 @@
-"""Pixel-art sprite for the newworld inhabitant.
+"""newworld 居民的像素艺术精灵。
 
-The sprite is reconstructed from the user's blueprint PDF
-(``ref/blueprint.pdf``).  The blueprint embeds a 480x480 PNG of a pixel-art
-creature standing on a green-screen background.  The artwork lives on a grid
-with a pitch of 13.25 px starting at (0, 3.3125); each grid cell was reduced to
-its dominant colour, the background (green) was removed and the result was
-trimmed to the sprite bounding box.
+精灵从用户的蓝图 PDF（``ref/blueprint.pdf``）重建。蓝图内嵌一张
+480×480 的 PNG：一只站在绿幕背景上的像素画生物。画面分布在一个
+13.25 px 间距、起点 (0, 3.3125) 的网格上；每个网格元取其主色、
+移除绿色背景、裁剪到精灵包围盒。
 
-The resulting native sprite is 23 x 29 art pixels:
+得到的原生精灵是 23 × 29 艺术像素：
 
-* ``O`` = orange body  ``#E27E51``
-* ``B`` = blue thought bubble  ``#6699D0``
-* ``K`` = black eyes / thought dot  ``#000000``
-* `` `` = transparent
+* ``O`` = 橙色身体 ``#E27E51``
+* ``B`` = 蓝色思维气泡 ``#6699D0``
+* ``K`` = 黑色眼睛 / 思考点 ``#000000``
+* `` `` = 透明
 
-``tools/extract_character.py`` can re-derive this grid from the PDF and verify
-that the two agree (``python tools/extract_character.py --check``).
+``tools/extract_character.py`` 可以从 PDF 重新推导这份网格并校验
+两者一致（``python tools/extract_character.py --check``）。
 """
 
 from __future__ import annotations
@@ -56,19 +54,19 @@ SPRITE_ROWS: tuple[str, ...] = (
 )
 # fmt: on
 
-#: width / height of the sprite measured in art pixels
+#: 精灵的宽 / 高（艺术像素数）
 SPRITE_W: int = len(SPRITE_ROWS[0])
 SPRITE_H: int = len(SPRITE_ROWS)
 
-#: palette used by the blueprint.  Alpha 0 means "transparent".
+#: 蓝图用的调色板。Alpha 0 表示"透明"。
 PALETTE: dict[str, tuple[int, int, int, int]] = {
     " ": (0, 0, 0, 0),
-    "O": (226, 126, 81, 255),   # body orange
-    "B": (102, 153, 208, 255),  # thought bubble blue
-    "K": (0, 0, 0, 255),        # eyes / thought dot
+    "O": (226, 126, 81, 255),   # 身体橙
+    "B": (102, 153, 208, 255),  # 思维气泡蓝
+    "K": (0, 0, 0, 255),        # 眼睛 / 思考点
 }
 
-#: human readable colour names (used by the debug tooling)
+#: 人类可读的颜色名（调试工具用）
 PALETTE_NAMES: dict[str, str] = {
     " ": "transparent",
     "O": "orange",
@@ -78,7 +76,7 @@ PALETTE_NAMES: dict[str, str] = {
 
 
 def validate() -> None:
-    """Raise ``ValueError`` when the embedded sprite data is malformed."""
+    """内嵌精灵数据格式不对时抛 ``ValueError``（import 时自检）。"""
     if not SPRITE_ROWS:
         raise ValueError("sprite has no rows")
     for index, row in enumerate(SPRITE_ROWS):
@@ -95,18 +93,17 @@ validate()
 
 
 def sprite_image(cell: int = 1, facing: int = 1, variant: str = "male") -> Image.Image:
-    """Return the sprite as an RGBA :class:`PIL.Image.Image`.
+    """把精灵输出为 RGBA :class:`PIL.Image.Image`。
 
-    ``cell`` scales every art pixel to ``cell`` screen pixels (nearest
-    neighbour, so the pixel-art look is preserved).  ``facing`` = -1 mirrors the
-    sprite horizontally.
+    ``cell`` 把每个艺术像素放大到 ``cell`` 个屏幕像素（最近邻，
+    保持像素画观感）。``facing`` = -1 水平镜像精灵。
     """
     if cell < 1:
         raise ValueError(f"cell must be >= 1, got {cell}")
     palette = dict(PALETTE)
     if variant == "female":
-        palette["O"] = (214, 116, 142, 255)  # rose body
-        palette["B"] = (196, 154, 212, 255)  # lilac thought bubble
+        palette["O"] = (214, 116, 142, 255)  # 玫瑰色身体
+        palette["B"] = (196, 154, 212, 255)  # 淡紫色思维气泡
     image = Image.new("RGBA", (SPRITE_W, SPRITE_H), (0, 0, 0, 0))
     pixels = image.load()
     assert pixels is not None
@@ -123,5 +120,5 @@ def sprite_image(cell: int = 1, facing: int = 1, variant: str = "male") -> Image
 
 
 def sprite_image_native(variant: str = "male") -> Image.Image:
-    """Return the sprite at its native 23x29 art-pixel resolution."""
+    """原生 23×29 艺术像素分辨率的精灵。"""
     return sprite_image(1, 1, variant=variant)

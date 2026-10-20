@@ -1,13 +1,12 @@
-"""Train / continue the neural behaviour + proto-language policy.
+"""训练 / 继续训练神经行为 + 原语言策略。
 
-Examples::
+示例::
 
-    python tools/train_neural_policy.py --pretrain           # first-time bootstrap
+    python tools/train_neural_policy.py --pretrain           # 首次从零引导
     python tools/train_neural_policy.py --mode fine --steps 220 --epochs 10
     python tools/train_neural_policy.py --out assets/neural_policy.npz
 
-In the GUI, press **F2** to trigger the same continuous fine-tuning; the policy
-is never retrained on startup.
+在 GUI 里按 **F2** 触发同样的持续微调；策略绝不会在启动时被重训。
 """
 
 from __future__ import annotations

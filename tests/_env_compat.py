@@ -1,4 +1,7 @@
-"""Test-environment compatibility shim (Windows + DSH file sandbox).
+"""沙箱环境兼容垫片：把 ``tempfile.mkdtemp`` 换成普通 mkdir，
+避免 Windows ACL 受限沙箱中临时目录不可写导致的测试假错误（见 README §9）。
+
+Test-environment compatibility shim (Windows + DSH file sandbox).
 
 Why this exists
 ---------------
@@ -17,8 +20,7 @@ still unique, temporary and removed afterwards.
 Usage (top of a test module, before the tempfile-using tests run)::
 
     from tests._env_compat import patch_tempdir
-    patch_tempdir()
-"""
+    patch_tempdir()"""
 
 from __future__ import annotations
 

@@ -277,6 +277,7 @@ class AgentRegistry:
     """受约束的创建路径：``total_created`` 只增不减，死亡只标记不删除。"""
 
     def __init__(self, max_agents: int = MAX_AGENTS_CREATED) -> None:
+        """初始化空注册表；``max_agents`` 为历史累计创建上限。"""
         self.max_agents = max(0, int(max_agents))
         self._records: dict[int, AgentRecord] = {}
         self._total_created = 0
@@ -459,6 +460,7 @@ class Facility:
     private_uses: int = 0
 
     def __post_init__(self) -> None:
+        """初始化损耗锚点与维护者追踪（非冻结字段）。"""
         #: 损耗计算的锚点（上次 decay / 维护时刻），不属于冻结字段
         self._decay_anchor: float = float(self.built_at)
         #: 最近一次维护者 id（用于追踪），不属于冻结字段
@@ -596,6 +598,7 @@ class CivilizationState:
     """
 
     def __init__(self, registry: AgentRegistry, knowledge=None, memory=None, config=None) -> None:
+        """初始化文明状态（知识/记忆为鸭子类型依赖，可为 None）。"""
         self.registry = registry
         self.knowledge = knowledge
         self.memory = memory
@@ -870,9 +873,11 @@ class CivilizationState:
         return bool(getattr(config, name, default))
 
     def _inheritance_enabled(self) -> bool:
+        """继承机制（记忆/知识转移）是否开启。"""
         return self._flag("enable_inheritance", True)
 
     def _social_enabled(self) -> bool:
+        """社会机制（合作/契约）是否开启。"""
         return self._flag("enable_social", True)
 
     # ------------------------------------------------------------------

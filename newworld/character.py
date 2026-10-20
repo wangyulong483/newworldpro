@@ -1,23 +1,20 @@
-"""The inhabitant of newworld.
+"""newworld 的居民（角色本体）。
 
-The inhabitant is the creature from the user's blueprint: an orange pixel-art
-body with a blue thought bubble.  It lives near the bottom of the screen, walks
-left/right, **jumps under gravity** (mechanics), has a **body temperature**
-(thermodynamics) and **speaks** (acoustics).  Its motion is clipped to the
-screen so it can never leave the world.
+居民是用户蓝图上的生物：橙色像素身体 + 蓝色思维气泡。它生活在屏幕
+底部附近，能左右行走、**在重力下跳跃**（力学）、有**体温**（热学）、
+会**说话**（声学）。运动被裁剪在屏幕内，永远出不了世界。
 
-Actions are integers for the RL/environment interface::
+动作是整数（给 RL / 环境接口用）::
 
-    -1  walk left
-     0  stand still (friction decelerates the creature)
-    +1  walk right
+    -1  向左走
+     0  原地站（摩擦让生物减速停下）
+    +1  向右走
 
-``update(..., jump=True)`` additionally launches a ballistic jump when the
-creature is standing on the ground.  The free (§:mod:`newworld.autonomy`)
-creature uses both.
+``update(..., jump=True)`` 会在生物站在地面时额外触发一次弹道跳跃。
+自由生物（:mod:`newworld.autonomy`）两者都会用到。
 
-The class is deliberately free of rendering and numpy so it can be copied,
-pickled, mutated by evolution experiments and unit-tested cheaply.
+这个类**故意**不包含渲染和 numpy：便于复制、pickle、被演化实验
+修改、以及低成本的单元测试。
 """
 
 from __future__ import annotations
@@ -38,42 +35,43 @@ ACTIONS = (LEFT, STAY, RIGHT)
 
 
 def clamp(value: float, low: float, high: float) -> float:
+    """把 value 夹在 [low, high] 内。"""
     return low if value < low else high if value > high else value
 
 
 @dataclass
 class Character:
-    """One inhabitant of the world."""
+    """世界中的一个居民（可独立 pickle/复制的纯数据 + 力学类）。"""
 
     x: float
     facing: int = 1
     vx: float = 0.0
     phase: float = 0.0
     agent_id: int = 0
-    # bookkeeping (useful for research logs)
+    # 记账（研究日志有用）
     distance_walked: float = 0.0
     steps: int = 0
-    # -- mechanics -----------------------------------------------------
-    #: feet position in world pixels (``None`` until :meth:`attach`); y grows down
+    # -- 力学 ---------------------------------------------------------
+    #: 脚的世界像素位置（``attach`` 之前为 None）；y 向下增长
     y: float | None = None
     vy: float = 0.0
     on_ground: bool = True
     mass_kg: float = physics.BODY_MASS_KG
     jump_count: int = 0
-    # -- thermodynamics -------------------------------------------------
+    # -- 热学 -----------------------------------------------------------
     body_temperature_k: float = physics.HUMAN_BODY_TEMPERATURE_K
     heat_balance: object | None = None
-    # -- acoustics ------------------------------------------------------
+    # -- 声学 -----------------------------------------------------------
     utterance: str | None = None
     utterance_until: float = 0.0
     speech_count: int = 0
-    # -- inner life ------------------------------------------------
+    # -- 内在生命 ---------------------------------------------------
     behavior_state: str = "explore"
     physiology: Physiology = field(default_factory=Physiology)
-    # -- society ------------------------------------------------------
+    # -- 社会 --------------------------------------------------------
     name: str = ""
     sex: str = "male"          # "male" | "female"
-    age: float = 0.0           # seconds of life
+    age: float = 0.0           # 寿命秒数
     generation: int = 0
     alive: bool = True
     pregnant: bool = False
@@ -83,43 +81,46 @@ class Character:
     body_scale: float = 1.0
     inventory: Inventory = field(default_factory=Inventory)
     social_context: tuple[float, ...] = ()
-    # -- civilization layer (P3): identity, history, knowledge, plans -----
-    #: direct parent (``parents[0]`` when present); kept explicit for lineage
+    # -- 文明层（P3）：身份、历史、知识、计划 ------------------------
+    #: 直接父代（有则是 ``parents[0]``）；显式保留以便族谱查询
     parent_id: int | None = None
-    #: world time of creation and of death (None while alive)
+    #: 创建与死亡的世界时刻（活着时 died_at 为 None）
     created_at: float = 0.0
     died_at: float | None = None
     death_cause: str = ""
-    #: knowledge ids this individual has learned (KnowledgeStore ids)
+    #: 该个体已学会的知识 id 列表（KnowledgeStore 的 id）
     known_knowledge_ids: list[str] = field(default_factory=list)
-    #: skill -> proficiency (0..1), learned procedurally
+    #: 技能 -> 熟练度 (0..1)，程序性习得
     skills: dict[str, float] = field(default_factory=dict)
-    #: ids of episodic memories kept for this agent (MemoryStore)
+    #: 该个体保留的情景记忆 id 列表（MemoryStore）
     memory_ids: list[int] = field(default_factory=list)
-    #: current goal / plan handles (GoalManager ids)
+    #: 当前目标 / 计划的句柄（GoalManager 的 id）
     current_goal_id: int | None = None
     current_plan_id: int | None = None
-    #: contributions to public facilities / cooperation (kind -> amount)
+    #: 对公共设施 / 合作的贡献（类别 -> 数量）
     contributions: dict[str, float] = field(default_factory=dict)
+    #: 16 维真实视网膜特征缓存（V2.1；由 Population 按 perception_stride 更新）
+    visual_features: tuple[float, ...] | None = None
 
     def __post_init__(self) -> None:
+        """归一化数值字段并初始化几何缓存（attach 后才有意义）。"""
         self.x = float(self.x)
         self.facing = 1 if self.facing >= 0 else -1
         self.vx = float(self.vx)
         self.phase = float(self.phase)
-        # geometry, attached by the world when the agent is created
+        # 几何信息：由世界在创建 agent 时挂接
         self._sprite_w: int = 0
         self._sprite_h: int = 0
         self._ground: float = 0.0
-        # screen-edge limits (left / right), refreshed by :meth:`attach`
+        # 屏幕边界（左/右），由 :meth:`attach` 刷新
         self._min_x: float = -1.0
         self._max_x: float = -1.0
 
     # ------------------------------------------------------------------
-    # setup
+    # 挂接
     # ------------------------------------------------------------------
     def attach(self, config: WorldConfig) -> None:
-        """Attach sprite geometry / screen-edge limits from the configuration."""
+        """从配置挂接精灵几何与屏幕边界（y 未初始化时落到地面线）。"""
         self._sprite_w = config.sprite_w
         self._sprite_h = config.sprite_h
         self._ground = float(config.ground_y)
@@ -129,7 +130,7 @@ class Character:
             self.y = self._ground
 
     # ------------------------------------------------------------------
-    # simulation
+    # 仿真
     # ------------------------------------------------------------------
     def update(
         self,
@@ -139,7 +140,11 @@ class Character:
         *,
         jump: bool = False,
     ) -> None:
-        """Advance the inhabitant by ``dt`` seconds (mechanics with gravity)."""
+        """按 ``dt`` 秒推进居民（带重力的力学积分）。
+
+        水平：加速度 + 摩擦 + 平方空气阻力，速度夹在 ±speed；
+        垂直：重力 + 可选的弹道跳跃，落地即停。
+        """
         if dt <= 0.0:
             return
         if self.y is None:
@@ -147,20 +152,22 @@ class Character:
         action = int(action)
         action = RIGHT if action > 0 else LEFT if action < 0 else STAY
 
-        # -- horizontal locomotion -------------------------------------
+        # -- 水平运动 ---------------------------------------------------
         if action != STAY:
             self.vx += action * config.accel * dt
             self.vx = clamp(self.vx, -config.speed, config.speed)
             self.facing = action
+            # 行走相位（决定走路弹跳动画）
             self.phase += dt * math.tau * 1.75 * (abs(self.vx) / config.speed)
         elif self.vx != 0.0:
+            # 摩擦减速
             drop = config.friction * dt
             if abs(self.vx) <= drop:
                 self.vx = 0.0
             else:
                 self.vx -= math.copysign(drop, self.vx)
 
-        # air drag (quadratic): a = -0.5 rho Cd A v|v| / m
+        # 空气阻力（平方阻力）：a = -0.5 rho Cd A v|v| / m
         drag = physics.air_drag_force(physics.px_to_m(self.vx)) / max(1e-6, self.mass_kg)
         drag_px = drag * physics.PIXELS_PER_METER
         if abs(self.vx) > 1e-9:
@@ -170,6 +177,7 @@ class Character:
 
         previous_x = self.x
         self.x += self.vx * dt
+        # 夹在屏幕内
         if self.x < config.min_x:
             self.x = config.min_x
             self.vx = 0.0
@@ -177,7 +185,7 @@ class Character:
             self.x = config.max_x
             self.vx = 0.0
 
-        # -- vertical mechanics: gravity + ballistic jump ---------------
+        # -- 垂直力学：重力 + 弹道跳跃 ---------------------------------
         if jump and self.on_ground:
             self.vy = -physics.JUMP_SPEED_PX
             self.on_ground = False
@@ -185,10 +193,12 @@ class Character:
         self.vy += physics.GRAVITY_PX * dt
         self.y += self.vy * dt
         if self.y >= self._ground:
+            # 落回地面
             self.y = self._ground
             self.vy = 0.0
             self.on_ground = True
         elif self.y < self._sprite_h:
+            # 不允许跳出屏幕顶端
             self.y = self._sprite_h
             self.vy = max(self.vy, 0.0)
 
@@ -196,7 +206,7 @@ class Character:
         self.steps += 1
 
     def jump(self, config: WorldConfig) -> bool:
-        """Launch a jump if standing on the ground; return whether it happened."""
+        """站在地面时起跳；返回是否真的跳了。"""
         if not self.on_ground:
             return False
         self.vy = -physics.JUMP_SPEED_PX
@@ -205,42 +215,44 @@ class Character:
         return True
 
     # ------------------------------------------------------------------
-    # civilization hooks
+    # 文明钩子
     # ------------------------------------------------------------------
     def can_innovate(self) -> bool:
-        """Minimum condition to experiment with combined techniques.
+        """进行组合技术创新的最低条件。
 
-        The limited combinatorial innovation prototype
-        (:mod:`newworld.innovation`) asks the individual this question.  The
-        world rule is: a tool in hand, **or** at least two units of raw material
-        to tinker with.  It is *not* a permission to skip materials or knowledge:
-        those are checked separately by the innovation rules and the technology
-        simulator, and the prototype cost is really deducted.
+        有限组合式创新原型（:mod:`newworld.innovation`）会问个体这个
+        问题。世界规则是：手上有工具，**或者**至少有两单位原料可摆弄。
+        这*不是*跳过材料或知识的许可：那些由创新规则与技术模拟器
+        另行检查，原型的成本也会真实扣除。
         """
         return self.inventory.tool is not None or self.inventory.load() >= 2
 
     # ------------------------------------------------------------------
-    # geometry / derived state
+    # 几何 / 派生状态
     # ------------------------------------------------------------------
     @property
     def width(self) -> int:
+        """精灵宽度（像素）。"""
         return self._sprite_w
 
     @property
     def height(self) -> int:
+        """精灵高度（像素）。"""
         return self._sprite_h
 
     @property
     def at_left_wall(self) -> bool:
+        """是否顶到左边界。"""
         return self.x <= self._min_x + 0.5
 
     @property
     def at_right_wall(self) -> bool:
+        """是否顶到右边界。"""
         return self.x >= self._max_x - 0.5
 
     @property
     def bbox(self) -> tuple[float, float, float, float]:
-        """Left, top, right, bottom of the sprite in world pixels."""
+        """精灵的世界像素包围盒 (left, top, right, bottom)。"""
         feet = self._ground if self.y is None else self.y
         left = self.x - self._sprite_w / 2.0
         top = feet - self._sprite_h
@@ -248,22 +260,23 @@ class Character:
 
     @property
     def body_temperature_c(self) -> float:
+        """体温（摄氏度）。"""
         return self.body_temperature_k - 273.15
 
     # ------------------------------------------------------------------
-    # observation
+    # 观测
     # ------------------------------------------------------------------
     def observation(self, config: WorldConfig) -> tuple[float, ...]:
-        """Normalised feature vector used for RL / logs (8 values).
+        """RL / 日志用的归一化特征向量（8 维）。
 
         ``(x_norm, vx_norm, facing, dist_left_norm, dist_right_norm,
         height_norm, vy_norm, on_ground)``
 
-        * ``x_norm`` / ``dist_left_norm`` / ``dist_right_norm`` as before
-        * ``height_norm`` jump height above the ground, normalised to the
-          ballistic peak of a full jump
-        * ``vy_norm`` vertical speed normalised by the jump speed
-        * ``on_ground`` 1.0 when standing on the ground, else 0.0
+        * ``x_norm`` / ``dist_left_norm`` / ``dist_right_norm``：位置与
+          到左右边界的距离（按可走跨度归一化）
+        * ``height_norm``：跳离地面的高度，按满跳的弹道峰值归一化
+        * ``vy_norm``：垂直速度，按跳跃初速度归一化
+        * ``on_ground``：站在地面为 1.0，否则 0.0
         """
         span = config.travel_span
         if span <= 0:
@@ -287,7 +300,7 @@ class Character:
         )
 
     def bob_offset(self, config: WorldConfig) -> int:
-        """Vertical bounce (screen px, negative = upwards) while walking."""
+        """行走时的垂直弹跳偏移（屏幕像素，负 = 向上）。"""
         if abs(self.vx) < 1.0 or not self.on_ground:
             return 0
         amount = min(1.0, abs(self.vx) / config.speed)
@@ -295,6 +308,7 @@ class Character:
         return -int(round(abs(math.sin(self.phase)) * amplitude * amount))
 
     def to_dict(self) -> dict[str, float | int | str | bool | None]:
+        """序列化为可 JSON 化的字典（telemetry / 存档用）。"""
         return {
             "agent_id": self.agent_id,
             "x": round(self.x, 3),
@@ -336,16 +350,16 @@ class Character:
 
 
 # ---------------------------------------------------------------------------
-# body geometry helpers
+# 身体几何辅助
 # ---------------------------------------------------------------------------
 def eye_position(character: Character, config: WorldConfig) -> tuple[float, float]:
-    """World position of the eye (head centre of the pixel body)."""
+    """眼睛的世界坐标（像素身体的头部中心）。"""
     feet = config.ground_y if character.y is None else character.y
     return character.x, feet - 14.0 * ATOM_SIZE
 
 
 def mouth_position(character: Character, config: WorldConfig) -> tuple[float, float]:
-    """World position of the mouth (front of the head)."""
+    """嘴的世界坐标（头部朝向前方的一侧）。"""
     feet = config.ground_y if character.y is None else character.y
     return (
         character.x + character.facing * 2.0 * ATOM_SIZE,

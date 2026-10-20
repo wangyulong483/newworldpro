@@ -1,20 +1,20 @@
-"""Command line interface for newworld.
+"""newworld 的命令行接口。
 
-Examples
+用法示例
 --------
-Launch the interactive world (fullscreen, screen-sized)::
+启动交互世界（全屏、屏幕大小）::
 
     python -m newworld
 
-Windowed development mode::
+窗口化开发模式::
 
     python -m newworld --windowed --size 1280x800
 
-Headless demonstration run with a JSONL log and recorded frames::
+无窗口演示运行（JSONL 日志 + 录帧）::
 
     python -m newworld --headless --steps 900 --policy wander --log run.jsonl --frames frames/
 
-Generate the documentation images::
+生成文档用图片::
 
     python -m newworld --preview
 """
@@ -43,9 +43,10 @@ DEFAULT_WINDOWED_SIZE = "1280x800"
 
 
 # ---------------------------------------------------------------------------
-# argument parsing
+# 参数解析
 # ---------------------------------------------------------------------------
 def build_parser() -> argparse.ArgumentParser:
+    """构造 CLI 参数解析器（分组：运行模式/世界参数/无窗口运行）。"""
     parser = argparse.ArgumentParser(
         prog="newworld",
         description=(
@@ -70,6 +71,10 @@ def build_parser() -> argparse.ArgumentParser:
     geometry.add_argument("--cell", type=int, help="角色像素块大小（屏幕像素），越小活动范围越大")
     geometry.add_argument("--seed", type=int, default=0, help="随机种子（默认 0）")
     geometry.add_argument("--windowed", action="store_true", help="以窗口方式运行（默认全屏）")
+    geometry.add_argument("--infinite", action="store_true",
+                          help="无限世界：横向无界，屏幕只是跟随人口的局部窗口")
+    geometry.add_argument("--window-atoms", type=int, default=0, metavar="N",
+                          help="无限窗口宽度（原子数，0=自动=屏幕宽度）")
     geometry.add_argument("--debug", action="store_true", help="启动时显示调试信息层")
     geometry.add_argument("--neural", nargs="?", const="assets/neural_policy.npz", metavar="PATH",
                           help="用神经网络行为策略（可指定权重文件，默认 assets/neural_policy.npz）")
@@ -99,18 +104,24 @@ def _build_config(
     width: int | None = None,
     height: int | None = None,
 ) -> WorldConfig:
+    """按 CLI 参数组装世界配置（优先级：显式宽高 > --size > 屏幕）。"""
+    infinite = bool(getattr(args, "infinite", False))
+    window_atoms = int(getattr(args, "window_atoms", 0) or 0)
     if width is not None and height is not None:
-        return make_config(width, height, cell=args.cell)
+        return make_config(width, height, cell=args.cell,
+                           infinite=infinite, window_atoms=window_atoms)
     if args.size:
         width, height = parse_size(args.size)
-        return make_config(width, height, cell=args.cell)
-    return make_config(cell=args.cell)
+        return make_config(width, height, cell=args.cell,
+                           infinite=infinite, window_atoms=window_atoms)
+    return make_config(cell=args.cell, infinite=infinite, window_atoms=window_atoms)
 
 
 # ---------------------------------------------------------------------------
-# modes
+# 各运行模式
 # ---------------------------------------------------------------------------
 def run_info() -> int:
+    """--info：打印屏幕检测、世界参数、视觉/物理/声学/热学/昼夜参数。"""
     detected = detect_screen_size()
     print(f"{WORLD_NAME} v{__version__}")
     print(f"检测到的屏幕（物理像素）: {detected[0]} x {detected[1]}")
@@ -188,6 +199,7 @@ def run_info() -> int:
 
 
 def run_preview(args: argparse.Namespace) -> int:
+    """--preview：生成文档预览图。"""
     from .preview import generate_previews
 
     config = _build_config(args)
@@ -200,7 +212,7 @@ def run_preview(args: argparse.Namespace) -> int:
 
 
 def _load_neural_policy(args: argparse.Namespace):
-    """Load the optional neural behaviour policy (random weights if missing)."""
+    """载入可选的神经行为策略（文件缺失则用随机网络）。"""
     from .neural import NeuralPolicy
 
     spec = getattr(args, "neural", None)
@@ -222,6 +234,7 @@ def _load_neural_policy(args: argparse.Namespace):
 
 
 def run_headless(args: argparse.Namespace) -> int:
+    """--headless：无窗口跑一段仿真，可选写 JSONL 日志与保存渲染帧。"""
     from .autonomy import Mind
     from .render import render_frame
 
@@ -232,6 +245,7 @@ def run_headless(args: argparse.Namespace) -> int:
     world = World(config, seed=args.seed)
     world.reset(seed=args.seed)
 
+    # free = 自由生物（可带神经策略）；其余是脚本测试策略
     free = args.policy == "free"
     neural_policy = _load_neural_policy(args)
     mind = Mind(world, seed=args.seed, policy=neural_policy) if free else None
@@ -260,6 +274,7 @@ def run_headless(args: argparse.Namespace) -> int:
                 action = int(policy(world))
                 world.step(actions=action)
             agent = world.agent
+            # 统计活动范围与撞边次数
             x_min = min(x_min, agent.x)
             x_max = max(x_max, agent.x)
             left_hits += int(agent.at_left_wall)
@@ -290,6 +305,7 @@ def run_headless(args: argparse.Namespace) -> int:
                     }
                 )
                 if perception is not None:
+                    # 自由模式附带完整感知记录
                     record.update(
                         {
                             "gaze_deg": round(perception.gaze_world_deg, 3),
@@ -362,6 +378,7 @@ def run_headless(args: argparse.Namespace) -> int:
 
 
 def run_interactive(args: argparse.Namespace) -> int:
+    """默认模式：打开 tkinter 交互窗口（全屏或窗口化）。"""
     from .app_tk import run_app
 
     if args.size or args.windowed:
@@ -393,9 +410,10 @@ def run_interactive(args: argparse.Namespace) -> int:
 
 
 # ---------------------------------------------------------------------------
-# entry point
+# 入口
 # ---------------------------------------------------------------------------
 def main(argv: list[str] | None = None) -> int:
+    """CLI 总入口：按参数分发到 info/preview/headless/interactive。"""
     parser = build_parser()
     args = parser.parse_args(argv)
     try:
@@ -409,7 +427,7 @@ def main(argv: list[str] | None = None) -> int:
     except KeyboardInterrupt:
         print("\n已中断。")
         return 130
-    except Exception as exc:  # keep the CLI friendly
+    except Exception as exc:  # 保持 CLI 友好
         if args.traceback:
             raise
         print(f"错误：{exc}")

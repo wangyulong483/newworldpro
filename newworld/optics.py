@@ -1,19 +1,17 @@
-"""Physical light model for the 2D side-view world.
+"""2-D 侧视世界的物理光照模型。
 
-The world is a 2-D plane (x to the right, y downwards) lit by a perfectly
-uniform white illumination.  The environment is an infinite white
-Lambertian/emissive background with radiance 1.0 in every direction; a future
-object is a 2-D shape whose surface reflects a fraction (albedo) of that
-uniform illumination.  Under uniform illumination and pure diffuse reflection,
-radiance is constant along a ray, so the radiance seen in a direction is simply
-the albedo of the first surface hit (or the environment radiance).
+世界是一个 2-D 平面（x 向右、y 向下），被完全均匀的白光照明。
+环境是一个无限大的白色朗伯/发光背景，向每个方向的辐射亮度都是
+1.0；物体是 2-D 形状，其表面反射该均匀照明的一部分（反照率）。
+在均匀照明与纯漫反射下，辐射亮度沿光线不变，因此某一方向看到的
+亮度就 simply 是第一个被命中表面的反照率（或环境亮度）。
 
-That gives a *physically consistent but cheap* light field for vision: rays,
-shapes, occlusion, and no dependence on distance.  Once objects are added to
-the world (food, other creatures, ...) the same ray caster feeds the eye.
+这给视觉提供了一个**物理自洽但便宜**的光场：光线、形状、遮挡，
+且与距离无关。一旦世界里加了物体（食物、其他生物……），同一个
+光线投射器就喂给眼睛。
 
-Optics (blur from the pupil / defocus / diffraction) lives in
-:mod:`newworld.eye`; the photoreceptor layer lives in :mod:`newworld.retina`.
+光学（瞳孔/失焦/衍射造成的模糊）在 :mod:`newworld.eye`；
+感光细胞层在 :mod:`newworld.retina`。
 """
 
 from __future__ import annotations
@@ -25,28 +23,29 @@ import numpy as np
 
 LinearRGB = tuple[float, float, float]
 
-#: radiance of the infinite white environment (all channels)
+#: 无限白色环境的辐射亮度（所有通道）
 WHITE: LinearRGB = (1.0, 1.0, 1.0)
 
 
 # ---------------------------------------------------------------------------
-# 2-D shapes
+# 2-D 形状
 # ---------------------------------------------------------------------------
 class Shape:
-    """Base class for things that can be hit by a ray in the 2-D world."""
+    """2-D 世界中能被光线命中的东西的基类。"""
 
-    #: diffuse albedo (linear RGB)
+    #: 漫反射反照率（线性 RGB）
     albedo: LinearRGB = (0.0, 0.0, 0.0)
 
     def intersect(
         self, ox: float, oy: float, dx: float, dy: float
-    ) -> float | None:  # pragma: no cover - abstract
+    ) -> float | None:  # pragma: no cover - 抽象方法
+        """与射线求交（子类实现）。"""
         raise NotImplementedError
 
 
 @dataclass(frozen=True)
 class Disc(Shape):
-    """A filled circle in the world plane."""
+    """世界平面上的一个实心圆。"""
 
     cx: float
     cy: float
@@ -54,6 +53,7 @@ class Disc(Shape):
     albedo: LinearRGB = (0.0, 0.0, 0.0)
 
     def intersect(self, ox: float, oy: float, dx: float, dy: float) -> float | None:
+        """单射线求交：解二次方程，返回命中距离（未命中 None）。"""
         fx = ox - self.cx
         fy = oy - self.cy
         b = fx * dx + fy * dy
@@ -71,6 +71,7 @@ class Disc(Shape):
         return None
 
     def intersect_many(self, ox, oy, dx, dy):  # type: ignore[override]
+        """批量射线求交（numpy 向量化）：返回每条射线的命中距离。"""
         fx = ox - self.cx
         fy = oy - self.cy
         b = fx * dx + fy * dy
@@ -88,7 +89,7 @@ class Disc(Shape):
 
 @dataclass(frozen=True)
 class Box(Shape):
-    """An axis-aligned rectangle in the world plane."""
+    """世界平面上的一个轴对齐矩形。"""
 
     x0: float
     y0: float
@@ -97,6 +98,7 @@ class Box(Shape):
     albedo: LinearRGB = (0.0, 0.0, 0.0)
 
     def intersect(self, ox: float, oy: float, dx: float, dy: float) -> float | None:
+        """单射线与 AABB 求交（经典的 slab 法）。"""
         t_min = -math.inf
         t_max = math.inf
         for origin, direction, low, high in (
@@ -121,6 +123,7 @@ class Box(Shape):
         return t_min if t_min > 0.0 else t_max
 
     def intersect_many(self, ox, oy, dx, dy):  # type: ignore[override]
+        """批量射线与 AABB 求交（numpy 向量化）。"""
         t_min = np.full(dx.shape, -np.inf, dtype=np.float64)
         t_max = np.full(dx.shape, np.inf, dtype=np.float64)
         for origin, direction, low, high in (
@@ -142,15 +145,15 @@ class Box(Shape):
 
 
 # ---------------------------------------------------------------------------
-# scene + panorama
+# 场景 + 全景
 # ---------------------------------------------------------------------------
 @dataclass
 class Panorama:
-    """A horizontal light-field slice as seen by an eye.
+    """眼睛看到的一个水平光场切片。
 
-    ``rel_angles_deg`` are angles *relative to the gaze direction* (0 = fovea),
-    ``radiance`` is (N, 3) linear RGB, ``distance_px`` is the hit distance
-    (``inf`` for the white environment).
+    ``rel_angles_deg`` 是**相对注视方向**的角度（0 = 中央凹），
+    ``radiance`` 是 (N, 3) 线性 RGB，``distance_px`` 是命中距离
+    （命中白色环境时为 inf）。
     """
 
     rel_angles_deg: np.ndarray
@@ -158,21 +161,22 @@ class Panorama:
     distance_px: np.ndarray
 
     def __len__(self) -> int:
+        """采样点数。"""
         return len(self.rel_angles_deg)
 
 
 @dataclass
 class Scene:
-    """The visible world: uniform white environment plus 2-D objects."""
+    """可见世界：均匀白色环境 + 若干 2-D 物体。"""
 
     objects: tuple[Shape, ...] = ()
     environment: LinearRGB = WHITE
 
-    # -- single-ray query -------------------------------------------------
+    # -- 单射线查询 ----------------------------------------------------
     def trace(self, x: float, y: float, angle_rad: float) -> tuple[LinearRGB, float]:
-        """Return ``(radiance, distance)`` for the ray leaving ``(x, y)``.
+        """从 (x, y) 沿 ``angle_rad`` 方向投射一条光线，返回 (亮度, 距离)。
 
-        The distance is ``math.inf`` when the ray hits the white environment.
+        光线命中白色环境时距离为 ``math.inf``。
         """
         dx = math.cos(angle_rad)
         dy = math.sin(angle_rad)
@@ -187,7 +191,7 @@ class Scene:
             return self.environment, math.inf
         return hit, nearest
 
-    # -- full panorama ----------------------------------------------------
+    # -- 完整全景 -------------------------------------------------------
     def panorama(
         self,
         x: float,
@@ -196,11 +200,10 @@ class Scene:
         fov_deg: float,
         samples_per_deg: float = 120.0,
     ) -> Panorama:
-        """Render the light field over ``fov_deg`` around ``gaze_deg``.
+        """渲染 ``gaze_deg`` 周围 ``fov_deg`` 范围内的光场。
 
-        The result is expressed relative to the gaze direction, which is what
-        the retina samples.  If the scene has no objects, the whole panorama is
-        the constant environment radiance (cheap path).
+        结果以相对注视方向的角度表示（视网膜采样要的就是这个）。
+        场景没有物体时整幅全景都是常数环境亮度（快速路径）。
         """
         samples = max(2, int(round(fov_deg * samples_per_deg)))
         rel = np.linspace(-fov_deg / 2.0, fov_deg / 2.0, samples)
@@ -216,6 +219,7 @@ class Scene:
         distances = np.full(samples, np.inf, dtype=np.float64)
         radiance = np.empty((samples, 3), dtype=np.float32)
         radiance[:, :] = self.environment
+        # 逐物体批量求交，保留最近命中（遮挡）
         for obj in self.objects:
             if not hasattr(obj, "intersect_many"):
                 continue
@@ -228,7 +232,7 @@ class Scene:
 
 
 def mean_luminance(radiance: np.ndarray) -> float:
-    """Photopic luminance (Rec. 709) of an (N, 3) radiance array."""
+    """(N, 3) 辐射亮度阵列的光度学亮度（Rec. 709 加权）。"""
     if radiance.size == 0:
         return 0.0
     weights = np.array((0.2126, 0.7152, 0.0722), dtype=np.float32)

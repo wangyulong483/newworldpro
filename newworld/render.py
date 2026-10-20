@@ -1,4 +1,9 @@
-"""Rendering: pixel-atom world, part-based creature, Chinese debug overlay."""
+"""渲染：像素原子世界、分部位生物、中文调试覆盖层。
+
+渲染管线：原子网格 → RGB 图像（pixelworld.render_atoms）→ 最近邻
+放大到屏幕 → 叠加社区结构 → 角色（分部位的 BodyRenderer）→ 阴影
+→ 语言气泡 → 调试面板/提示条。全部用 PIL，不依赖 tkinter。
+"""
 
 from __future__ import annotations
 
@@ -13,6 +18,7 @@ from .world import World
 
 
 def _cjk_font(size: int) -> ImageFont.ImageFont:
+    """加载一个支持中文的系统字体（微软雅黑 → 宋体 → 默认）。"""
     for path in (
         "C:/Windows/Fonts/msyh.ttc",
         "C:/Windows/Fonts/msyhbd.ttc",
@@ -26,28 +32,30 @@ def _cjk_font(size: int) -> ImageFont.ImageFont:
 
 
 def _text_size(text: str, font: ImageFont.ImageFont) -> tuple[int, int]:
+    """测量文本的像素尺寸。"""
     left, top, right, bottom = font.getbbox(text)
     return right - left, bottom - top
 
 
 # ---------------------------------------------------------------------------
-# world + creature
+# 世界 + 生物
 # ---------------------------------------------------------------------------
 def render_world(world: World) -> Image.Image:
-    """The world image (terrain, objects, sky, shadows, community structures)."""
+    """世界图像（地形、物体、天空、阴影、社区结构）。"""
     atoms = world.pixel_scene.render_atoms(world.day, world.hour)
     image = Image.fromarray(atoms, mode="RGB")
     image = image.resize((world.config.width, world.config.height), Image.NEAREST)
+    # 旧版社区的简易像素画（材料堆/小屋/篝火）
     community = getattr(getattr(world, "technology", None), "community", None)
     if community is not None:
         draw = ImageDraw.Draw(image)
         cx = int(community.x_screen)
         ground = int(world.config.ground_y)
-        # material pile grows as the community accumulates resources
+        # 材料堆随社区积累的资源变大
         if community.wood or community.stone:
             draw.rectangle((cx - 80, ground - 14, cx - 30, ground - 4), fill=(120, 78, 44))
         if community.structures >= 1:
-            # simple pixel hut
+            # 简易像素小屋
             draw.rectangle((cx - 34, ground - 70, cx + 34, ground - 6), fill=(122, 82, 50))
             draw.polygon(((cx - 44, ground - 68), (cx, ground - 105), (cx + 44, ground - 68)), fill=(156, 102, 58))
             draw.rectangle((cx - 10, ground - 34, cx + 8, ground - 6), fill=(54, 40, 30))
@@ -59,6 +67,7 @@ def render_world(world: World) -> Image.Image:
 
 
 def pose_for(world: World, character=None) -> Pose:
+    """按角色当前状态选择身体姿态（睡/跳/吃/喝/走/站）。"""
     character = character if character is not None else world.agent
     facing = character.facing
     if character.physiology.sleeping:
@@ -75,9 +84,10 @@ def pose_for(world: World, character=None) -> Pose:
 
 
 def character_layer(world: World, character=None) -> tuple[Image.Image, tuple[int, int]]:
-    """Render an inhabitant (atom pixels upscaled) and its screen-space anchor."""
+    """渲染一个居民（艺术像素放大）并返回其在屏幕空间的锚点。"""
     character = character if character is not None else world.agent
     body = BodyRenderer(variant=getattr(character, "sex", "male")).render(pose_for(world, character))
+    # 孩子体型小（body_scale 0.65），按比例缩小
     scale = ATOM_SIZE * max(0.4, getattr(character, "body_scale", 1.0))
     image = body.image.resize(
         (max(1, int(body.image.width * scale)), max(1, int(body.image.height * scale))),
@@ -87,7 +97,7 @@ def character_layer(world: World, character=None) -> tuple[Image.Image, tuple[in
 
 
 def build_shadow(world: World) -> Image.Image:
-    """Soft contact shadow following the creature (size depends on sunlight)."""
+    """跟随生物的柔性接触阴影（大小随日光变化）。"""
     cfg = world.config
     daylight = world.daylight
     width = int(max(40, BODY_W * ATOM_SIZE * (1.1 + 0.6 * daylight)))
@@ -100,6 +110,7 @@ def build_shadow(world: World) -> Image.Image:
 
 
 def speech_bubble(text: str) -> Image.Image:
+    """画一个带尾巴的圆角语言气泡（内容居中）。"""
     font = _cjk_font(28)
     padding_x, padding_y = 16, 8
     text_width, text_height = _text_size(text, font)
@@ -127,7 +138,11 @@ def render_frame(
     paused: bool = False,
     background: Image.Image | None = None,
 ) -> Image.Image:
-    """Compose a full screen frame (used by headless recording and previews)."""
+    """合成一整屏画面（headless 录像与预览用）。
+
+    顺序：背景（世界或调用方给的图）→ 每个存活角色的阴影/身体/
+    语言气泡 → 可选的中文调试面板。
+    """
     frame = render_world(world) if background is None else background.copy()
     shadow = build_shadow(world)
     for character in world.agents:
@@ -161,9 +176,10 @@ def render_frame(
 
 
 # ---------------------------------------------------------------------------
-# debug overlay (Chinese)
+# 调试覆盖层（中文）
 # ---------------------------------------------------------------------------
 def debug_lines_zh(world: World, mind, *, fps: float = 0.0, paused: bool = False) -> list[str]:
+    """组装调试面板的中文文本行（时间/生理/世界/生态/文明等）。"""
     character = world.agent
     physiology = character.physiology
     scene = world.pixel_scene
@@ -187,7 +203,7 @@ def debug_lines_zh(world: World, mind, *, fps: float = 0.0, paused: bool = False
         f"材料：{scene.material_composition_text()}",
         "按键：空格 暂停  ·  F1 开关调试  ·  Q/Esc 关闭",
     ]
-    # -- civilization layer (only when the world carries it) --------------
+    # -- 文明层（只有世界携带时才显示） --------------------------------
     registry = getattr(world, "registry", None)
     if registry is not None:
         limit = getattr(getattr(world, "civ_config", None), "max_agents_created", 8)
@@ -209,6 +225,7 @@ def debug_lines_zh(world: World, mind, *, fps: float = 0.0, paused: bool = False
 
 
 def build_debug_panel(world: World, lines: list[str]) -> Image.Image:
+    """把调试文本行画成半透明深色圆角面板。"""
     config = world.config
     font = _cjk_font(max(18, round(config.height * 0.016)))
     line_height = _text_size("Ag", font)[1] + 8
@@ -222,6 +239,7 @@ def build_debug_panel(world: World, lines: list[str]) -> Image.Image:
     draw.rectangle((0, 0, 6, height - 1), fill=(226, 126, 81, 255))
     y = padding
     for index, line in enumerate(lines):
+        # 第 0 行标题白亮、第 1 行信息淡蓝、其余浅灰
         colour = (244, 246, 250, 255) if index == 0 else (200, 208, 218, 255)
         if index == 1:
             colour = (150, 190, 220, 255)
@@ -231,9 +249,10 @@ def build_debug_panel(world: World, lines: list[str]) -> Image.Image:
 
 
 # ---------------------------------------------------------------------------
-# hint
+# 提示条
 # ---------------------------------------------------------------------------
 def build_hint(config: WorldConfig) -> Image.Image:
+    """底部操作提示条（中文）。"""
     text = "像素世界 · 他在自由生活（走 / 跳 / 说话 / 吃 / 睡）    空格 暂停    F1 调试    F2 从零训练    Q / Esc 关闭"
     font = _cjk_font(max(18, round(config.height * 0.018)))
     padding_x, padding_y = 22, 12
@@ -248,9 +267,10 @@ def build_hint(config: WorldConfig) -> Image.Image:
 
 
 # ---------------------------------------------------------------------------
-# io helper
+# IO 辅助
 # ---------------------------------------------------------------------------
 def save_png(image: Image.Image, path: str | Path) -> Path:
+    """把图像保存为 PNG（自动建目录）。"""
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     image.save(path)

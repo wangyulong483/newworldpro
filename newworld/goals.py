@@ -233,6 +233,7 @@ def _compare(actual: float, op: str, expected: float) -> bool:
 
 
 def _inventory(agent):
+    """读 agent 的库存（duck-typed）。"""
     return _get(agent, "inventory", None)
 
 
@@ -247,19 +248,23 @@ def _inv_get(agent, kind: str) -> float:
 
 
 def _tool_of(agent) -> str:
+    """读 agent 手持工具名（无则 None）。"""
     tool = _get(_inventory(agent), "tool", None)
     return str(tool) if tool else ""
 
 
 def _phys(agent, name: str, default: float = 0.0) -> float:
+    """读 agent 的生理状态。"""
     return _num(_get(_get(agent, "physiology", None), name, default), default)
 
 
 def _agent_x(agent) -> float:
+    """读 agent 的 x 坐标。"""
     return _num(_get(agent, "x", 0.0))
 
 
 def _feet_y(world, agent) -> float:
+    """读 agent 脚部 y（缺省用地面线）。"""
     y = _get(agent, "y", None)
     if y is not None:
         return _num(y, 0.0)
@@ -267,6 +272,7 @@ def _feet_y(world, agent) -> float:
 
 
 def _set_facing(agent, direction: int) -> None:
+    """让 agent 朝向坐标 x。"""
     if direction == 0:
         return
     try:
@@ -276,6 +282,7 @@ def _set_facing(agent, direction: int) -> None:
 
 
 def _set_state(agent, state: str) -> None:
+    """写 behavior_state。"""
     try:
         agent.behavior_state = state
     except Exception:
@@ -294,14 +301,17 @@ def _world_time(world) -> float | None:
 
 
 def _tech(world):
+    """读世界的技术层。"""
     return _get(world, "technology", None)
 
 
 def _community(world):
+    """读旧版社区地点。"""
     return _get(_tech(world), "community", None)
 
 
 def _scene(world):
+    """读像素场景。"""
     return _get(world, "pixel_scene", None)
 
 
@@ -366,6 +376,7 @@ def _nearest_berry(scene, x: float, feet_y: float):
 
 
 def _safe_float(value, default: float = 0.0) -> float:
+    """安全转 float，失败给 default。"""
     return _num(value, default)
 
 
@@ -396,6 +407,7 @@ class Condition:
             return False
 
     def _evaluate(self, world, agent) -> bool:
+        """评估条件是否满足。"""
         kind = self.kind
         if kind == "always":
             return True
@@ -433,6 +445,7 @@ class Condition:
         return False
 
     def _knowledge_verified(self, world, agent) -> bool:
+        """该知识是否已被验证。"""
         store = _get(world, "knowledge", None)
         if store is not None:
             getter = _get(store, "get", None)
@@ -447,6 +460,7 @@ class Condition:
             return False
 
     def _at_site(self, world, agent) -> bool:
+        """是否已到达目标 x 附近。"""
         tolerance = self.value if self.value > 0.0 else 14.0
         if self.target == "community":
             fn = _get(_tech(world), "near_community", None)
@@ -470,6 +484,7 @@ class Condition:
         return False
 
     def _near_agent(self, world, agent, threshold: float) -> bool:
+        """是否与某个体靠近。"""
         others = _get(world, "agents", None) or ()
         x = _agent_x(agent)
         best = math.inf
@@ -483,6 +498,7 @@ class Condition:
 
     # -- 序列化 --------------------------------------------------------
     def to_dict(self) -> dict[str, object]:
+        """序列化为普通字典。"""
         return {
             "kind": self.kind,
             "target": self.target,
@@ -492,6 +508,7 @@ class Condition:
 
     @classmethod
     def from_dict(cls, data: dict) -> "Condition":
+        """从字典重建实例。"""
         return cls(
             kind=str(data.get("kind", "always")),
             target=str(data.get("target", "")),
@@ -555,6 +572,7 @@ class Goal:
 
     # -- 序列化 --------------------------------------------------------
     def to_dict(self) -> dict[str, object]:
+        """序列化为普通字典。"""
         return {
             "goal_id": int(self.goal_id),
             "agent_id": int(self.agent_id),
@@ -578,6 +596,7 @@ class Goal:
 
     @classmethod
     def from_dict(cls, data: dict) -> "Goal":
+        """从字典重建实例。"""
         return cls(
             goal_id=int(data.get("goal_id", 0)),
             agent_id=int(data.get("agent_id", 0)),
@@ -635,6 +654,7 @@ class PlanStep:
     last_error: str = ""
 
     def to_dict(self) -> dict[str, object]:
+        """序列化为普通字典。"""
         return {
             "index": int(self.index),
             "verb": self.verb,
@@ -650,6 +670,7 @@ class PlanStep:
 
     @classmethod
     def from_dict(cls, data: dict) -> "PlanStep":
+        """从字典重建实例。"""
         return cls(
             index=int(data.get("index", 0)),
             verb=str(data.get("verb", "observe")),
@@ -699,6 +720,7 @@ class Plan:
             self.current = len(self.steps)
 
     def to_dict(self) -> dict[str, object]:
+        """序列化为普通字典。"""
         return {
             "plan_id": int(self.plan_id),
             "agent_id": int(self.agent_id),
@@ -716,6 +738,7 @@ class Plan:
 
     @classmethod
     def from_dict(cls, data: dict) -> "Plan":
+        """从字典重建实例。"""
         return cls(
             plan_id=int(data.get("plan_id", 0)),
             agent_id=int(data.get("agent_id", 0)),
@@ -739,6 +762,7 @@ class Planner:
     """把目标翻译成计划：有知识库走 recipe 依赖图，否则用内置基础链。"""
 
     def __init__(self, knowledge=None, *, memory=None) -> None:
+        """初始化。"""
         self.knowledge = knowledge
         self.memory = memory
         self._next_plan_id = 0
@@ -776,13 +800,16 @@ class Planner:
 
     # -- 序列化（供 GoalManager 存档） ---------------------------------
     def to_dict(self) -> dict[str, object]:
+        """序列化为普通字典。"""
         return {"next_plan_id": int(self._next_plan_id)}
 
     def from_dict(self, data: dict) -> None:
+        """从字典重建实例。"""
         self._next_plan_id = int(data.get("next_plan_id", 0) or 0)
 
     # -- 计划展开 ------------------------------------------------------
     def _build_steps(self, world, agent, goal: Goal) -> list[PlanStep] | None:
+        """为目标构建计划步骤序列。"""
         goal_type = str(_get(goal, "goal_type", ""))
         params = dict(_get(goal, "params", {}) or {})
         if goal_type == "survive":
@@ -887,6 +914,7 @@ class Planner:
 
     # -- 配方 / 依赖图 --------------------------------------------------
     def _craft_chain(self, world, agent, goal: Goal, params: dict) -> list[PlanStep] | None:
+        """为配方解析“先做什么”的制造链。"""
         recipe_id = _get(goal, "recipe_id", None) or params.get("recipe")
         if not recipe_id:
             recipe_id = "stone_axe"
@@ -904,6 +932,7 @@ class Planner:
         return steps
 
     def _build_chain(self, world, agent, goal: Goal, params: dict) -> list[PlanStep] | None:
+        """递归解析配方的依赖链（有环即停）。"""
         community = _community(world)
         if community is None:
             return None
@@ -1051,6 +1080,7 @@ class Planner:
     # -- 步骤构造小工具 -------------------------------------------------
     @staticmethod
     def _step(verb: str, *, cost: float = 1.0, **args) -> PlanStep:
+        """执行计划的当前步骤。"""
         return PlanStep(
             index=0,
             verb=verb,
@@ -1060,10 +1090,12 @@ class Planner:
 
     @staticmethod
     def _move_step(*, site: str, cost: float = 1.5) -> PlanStep:
+        """move_to 步骤：朝目标走。"""
         return PlanStep(index=0, verb="move_to", args={"site": site}, cost=float(cost))
 
     @staticmethod
     def _gather_step(kind: str, target: float) -> PlanStep:
+        """gather 步骤：采集资源。"""
         return PlanStep(
             index=0,
             verb="gather",
@@ -1073,6 +1105,7 @@ class Planner:
 
     @staticmethod
     def _gather_target(goal: Goal) -> tuple[str, float]:
+        """找当前采集目标坐标。"""
         params = dict(_get(goal, "params", {}) or {})
         kind = str(params.get("kind", "") or "")
         target = _num(params.get("target", 0.0), 0.0)
@@ -1097,14 +1130,17 @@ class StepResult:
 
     @classmethod
     def ok(cls) -> "StepResult":
+        """步骤成功。"""
         return cls(None, True, "")
 
     @classmethod
     def moving(cls, decision: Decision | None) -> "StepResult":
+        """步骤还在移动中。"""
         return cls(decision, False, "")
 
     @classmethod
     def fail(cls, error: str) -> "StepResult":
+        """步骤失败。"""
         return cls(None, False, str(error))
 
     @classmethod
@@ -1128,6 +1164,7 @@ class GoalManager:
         civilization=None,
         config=None,
     ) -> None:
+        """初始化。"""
         self.seed = int(seed)
         self.rng = random.Random(self.seed)
         self.knowledge = knowledge
@@ -1294,6 +1331,7 @@ class GoalManager:
         return delegated
 
     def current_goal(self, agent_id: int) -> Goal | None:
+        """该 agent 当前的活跃目标（无则 None）。"""
         return self._select_goal(int(agent_id))
 
     def stats(self) -> dict[str, float]:
@@ -1318,6 +1356,7 @@ class GoalManager:
         }
 
     def summary_zh(self) -> str:
+        """中文摘要。"""
         stats = self.stats()
         active = sum(
             1
@@ -1336,6 +1375,7 @@ class GoalManager:
 
     # -- 序列化 --------------------------------------------------------
     def to_dict(self) -> dict[str, object]:
+        """序列化为普通字典。"""
         state = self.rng.getstate()
         return {
             "version": 1,
@@ -1434,6 +1474,7 @@ class GoalManager:
     # 目标结算
     # ==================================================================
     def _settle(self, world, agent, agent_id: int, now: float) -> None:
+        """结算一个目标（完成/失败/放弃三选一）。"""
         for goal in self._goals.get(agent_id, ()):
             if goal.status != "active":
                 continue
@@ -1443,6 +1484,7 @@ class GoalManager:
                 self._fail(world, agent, goal, now)
 
     def _complete(self, world, agent, goal: Goal, now: float) -> None:
+        """按完成结算目标。"""
         goal.status = "completed"
         goal.progress = max(goal.progress, 1.0)
         goal.last_progress_at = now
@@ -1463,6 +1505,7 @@ class GoalManager:
         )
 
     def _fail(self, world, agent, goal: Goal, now: float) -> None:
+        """按失败结算目标。"""
         goal.status = "failed"
         self._stats["goals_failed"] += 1.0
         self._plans.pop(int(goal.agent_id), None)
@@ -1475,6 +1518,7 @@ class GoalManager:
         )
 
     def _abandon(self, world, agent, goal: Goal, now: float, reason: str) -> None:
+        """按放弃结算目标并进入冷却。"""
         if goal.status != "active":
             return
         goal.status = "abandoned"
@@ -1493,6 +1537,7 @@ class GoalManager:
     # 目标选择 / 生成（状态驱动，无固定剧情）
     # ==================================================================
     def _select_goal(self, agent_id: int) -> Goal | None:
+        """从候选里选出下一个目标。"""
         best: Goal | None = None
         for goal in self._goals.get(agent_id, ()):
             if goal.status != "active":
@@ -1507,6 +1552,7 @@ class GoalManager:
         entries[str(goal_type)] = float(now) + GOAL_COOLDOWN_S
 
     def _cooled(self, agent_id: int, goal_type: str, now: float) -> bool:
+        """该 agent 的该类目标是否还在冷却。"""
         entries = self._cooldowns.get(str(int(agent_id)), None)
         until = float((entries or {}).get(str(goal_type), 0.0))
         return now + _EPS >= until
@@ -1737,6 +1783,7 @@ class GoalManager:
         # not get stuck re-testing the same hard recipe forever (e.g. basket
         # difficulty 0.4) while other affordable techniques are never tried.
         def _attempts(item) -> tuple[int, str]:
+            """（嵌套）解析实验记录为 (次数, 原因)。"""
             uses = int(_num(_get(item, "successful_uses", 0), 0)) + int(
                 _num(_get(item, "failed_uses", 0), 0)
             )
@@ -1791,6 +1838,7 @@ class GoalManager:
         return []
 
     def _mate_exists(self, world, agent) -> bool:
+        """是否存在可选伴侣。"""
         for other in _get(world, "agents", None) or ():
             if other is agent:
                 continue
@@ -1803,6 +1851,7 @@ class GoalManager:
         return False
 
     def _nearest_other(self, world, agent):
+        """找最近的另一个体。"""
         others = _get(world, "agents", None) or ()
         best = None
         best_distance = 160.0
@@ -1831,6 +1880,7 @@ class GoalManager:
         recipe_id: str | None = None,
         params: dict | None = None,
     ) -> Goal:
+        """构造一个目标实例。"""
         self._next_goal_id += 1
         # 小幅随机抖动：同级目标不总是按固定顺序出现（但仍可复现）
         priority = float(priority) + self.rng.uniform(0.0, 0.05)
@@ -1864,6 +1914,7 @@ class GoalManager:
         dt: float,
         now: float,
     ) -> Decision | None:
+        """推进当前计划一步，产出 Decision。"""
         step = plan.current_step()
         if step is None:
             plan.status = "completed"
@@ -1978,6 +2029,7 @@ class GoalManager:
 
     # -- 进展镜像 / 快照 -----------------------------------------------
     def _reset_progress(self, agent_id: int, now: float) -> None:
+        """重置该 agent 的反卡死进度计数。"""
         self._progress_since[agent_id] = float(now)
         self._progress_steps[agent_id] = 0
 
@@ -2014,6 +2066,7 @@ class GoalManager:
             pass
 
     def _set_goal_progress(self, agent, goal: Goal, progress: float) -> None:
+        """写入该 agent 的目标进度镜像。"""
         goal.progress = max(0.0, min(1.0, float(progress)))
         try:
             agent.goal_progress = goal.progress
@@ -2039,6 +2092,7 @@ class GoalManager:
         detail: str = "",
         salience: float = 0.5,
     ) -> None:
+        """读记忆库（可缺失）。"""
         store = self.memory
         if store is None:
             return
@@ -2062,12 +2116,14 @@ class GoalManager:
         return bool(value)
 
     def _planning_enabled(self) -> bool:
+        """规划机制是否开启。"""
         return self._flag("enable_planning", True)
 
     # ==================================================================
     # 执行器：verb -> 世界公开方法 -> Decision
     # ==================================================================
     def _resolve_site_x(self, world, agent, site: str) -> float | None:
+        """解析某类设施/地点的目标 x 坐标。"""
         site = str(site or "")
         if site == "community":
             community = _community(world)
@@ -2094,6 +2150,7 @@ class GoalManager:
         return None
 
     def _verb_move_to(self, world, agent, goal, plan, step, dt, now) -> StepResult:
+        """执行器：朝步骤目标移动。"""
         target = _arg(step.args, "x", None)
         if target is None:
             target = self._resolve_site_x(world, agent, str(_arg(step.args, "site", "")))
@@ -2109,6 +2166,7 @@ class GoalManager:
         return StepResult.moving(Decision(direction, False, False))
 
     def _verb_gather(self, world, agent, goal, plan, step, dt, now) -> StepResult:
+        """执行器：采集材料。"""
         kind = str(_arg(step.args, "kind", "wood") or "wood")
         target = _arg(step.args, "target", None)
         if target is None:
@@ -2153,6 +2211,7 @@ class GoalManager:
         return StepResult.moving(Decision(0, False, False))
 
     def _verb_craft(self, world, agent, goal, plan, step, dt, now) -> StepResult:
+        """执行器：执行配方制作。"""
         if _tool_of(agent):
             return StepResult.ok()
         recipe_id = _arg(step.args, "recipe", None)
@@ -2199,6 +2258,7 @@ class GoalManager:
         return StepResult.ok()
 
     def _verb_experiment(self, world, agent, goal, plan, step, dt, now) -> StepResult:
+        """执行器：做技术实验（可能失败烧材料）。"""
         store = self.knowledge or _get(world, "knowledge", None)
         knowledge_id = (
             _arg(step.args, "knowledge_id", None)
@@ -2224,6 +2284,7 @@ class GoalManager:
         return StepResult.fail(f"experiment_failed:{reason}")
 
     def _verb_contribute(self, world, agent, goal, plan, step, dt, now) -> StepResult:
+        """执行器：向社区捐献材料。"""
         tech = _tech(world)
         near = _get(tech, "near_community", None)
         if callable(near):
@@ -2253,6 +2314,7 @@ class GoalManager:
         return StepResult.ok()
 
     def _verb_build(self, world, agent, goal, plan, step, dt, now) -> StepResult:
+        """执行器：向社区捐料建结构。"""
         community = _community(world)
         if community is None:
             return StepResult.fail("no_community")
@@ -2263,9 +2325,11 @@ class GoalManager:
         return self._verb_contribute(world, agent, goal, plan, step, dt, now)
 
     def _verb_deliver(self, world, agent, goal, plan, step, dt, now) -> StepResult:
+        """执行器：搬运材料（contribute 的别名）。"""
         return self._verb_contribute(world, agent, goal, plan, step, dt, now)
 
     def _verb_maintain(self, world, agent, goal, plan, step, dt, now) -> StepResult:
+        """执行器：维护公共设施（三级降级：repair → maintain → CivilizationState.maintain）。"""
         tech = _tech(world)
         civilization = _get(world, "civilization", None) or self.civilization
         facility_id = _arg(step.args, "facility_id", None)
@@ -2325,6 +2389,7 @@ class GoalManager:
         return StepResult.ok()
 
     def _verb_drink(self, world, agent, goal, plan, step, dt, now) -> StepResult:
+        """执行器：找水喝水。"""
         physiology = _get(agent, "physiology", None)
         if physiology is None:
             return StepResult.fail("no_physiology")
@@ -2358,6 +2423,7 @@ class GoalManager:
         return StepResult.ok()
 
     def _verb_eat(self, world, agent, goal, plan, step, dt, now) -> StepResult:
+        """执行器：摘浆果吃。"""
         scene = _scene(world)
         if scene is None:
             return StepResult.fail("no_scene")
@@ -2402,6 +2468,7 @@ class GoalManager:
         return StepResult.fail("berry_unreachable")
 
     def _verb_rest(self, world, agent, goal, plan, step, dt, now) -> StepResult:
+        """执行器：原地休息恢复。"""
         duration = _num(_arg(step.args, "duration", 8.0), 8.0)
         started = step.args.get("_started_at")
         if started is None:
@@ -2430,6 +2497,7 @@ class GoalManager:
         return StepResult.moving(Decision(0, False, False))
 
     def _verb_explore(self, world, agent, goal, plan, step, dt, now) -> StepResult:
+        """执行器：随机探索（产出移动决策）。"""
         duration = _num(_arg(step.args, "duration", 8.0), 8.0)
         started = step.args.get("_started_at")
         if started is None:
@@ -2457,6 +2525,7 @@ class GoalManager:
         return StepResult.delegated()
 
     def _verb_observe(self, world, agent, goal, plan, step, dt, now) -> StepResult:
+        """执行器：原地观察（观察其它个体）。"""
         duration = _num(_arg(step.args, "duration", 1.5), 1.5)
         started = step.args.get("_started_at")
         if started is None:
@@ -2469,6 +2538,7 @@ class GoalManager:
         return StepResult.moving(Decision(0, False, False))
 
     def _verb_socialize(self, world, agent, goal, plan, step, dt, now) -> StepResult:
+        """执行器：走向最近个体社交。"""
         other = self._nearest_other(world, agent)
         if other is None:
             return StepResult.fail("no_social_target")
@@ -2484,6 +2554,7 @@ class GoalManager:
         return StepResult.moving(Decision(0, False, True, word))
 
     def _verb_reproduce(self, world, agent, goal, plan, step, dt, now) -> StepResult:
+        """执行器：求偶/生育尝试。"""
         hook = _get(world, "try_reproduce", None) or _get(world, "reproduce", None)
         if not callable(hook):
             # TODO(Lead/P3)：提供 world.try_reproduce(agent) -> bool

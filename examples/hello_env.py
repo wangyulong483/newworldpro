@@ -1,12 +1,11 @@
-"""Minimal RL-style rollout example.
+"""最小 RL 风格 rollout 示例。
 
-Run from the project root::
+在项目根目录运行::
 
     python examples/hello_env.py
 
-It shows the Gymnasium-style API, a pluggable reward function and how to save a
-rendered frame.  This is the starting point for the policy / neural-network
-experiments planned on top of newworld.
+演示 Gymnasium 风格 API、可插拔奖励函数与渲染帧保存。这是在
+newworld 上开展策略 / 神经网络实验的起点。
 """
 
 from __future__ import annotations

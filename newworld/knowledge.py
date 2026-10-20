@@ -790,6 +790,7 @@ class KnowledgeStore:
         memo: dict[str, int] = {}
 
         def longest(node: str, visiting: frozenset[str]) -> int:
+            """找出最长的依赖链。"""
             if node in memo:
                 return memo[node]
             if node in visiting:  # 理论上 DAG；防御性处理意外环

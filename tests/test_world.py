@@ -1,4 +1,6 @@
-"""Tests for newworld.  Run with:  python -m unittest discover -s tests -v"""
+"""世界核心测试：几何/物理/生态/观测/默认值。
+
+Tests for newworld.  Run with:  python -m unittest discover -s tests -v"""
 
 from __future__ import annotations
 

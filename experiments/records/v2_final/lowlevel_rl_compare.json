@@ -1,0 +1,439 @@
+{
+  "compare": true,
+  "bc_init_checkpoint": "assets\\neural_policy.npz",
+  "bc_init_size": 46674,
+  "trained_checkpoint": "assets\\lowlevel_rl.npz",
+  "trained_size": 63642,
+  "eval_seeds": [
+    100,
+    101,
+    102,
+    103,
+    104,
+    105,
+    106,
+    107,
+    108,
+    109
+  ],
+  "steps": 4000,
+  "dt": 0.05,
+  "group": "D",
+  "width": 640,
+  "height": 400,
+  "conditions": {
+    "bc_init": {
+      "rows": [
+        {
+          "seed": 100,
+          "return": 38.87785,
+          "transitions": 19897.0,
+          "steps_run": 4000.0,
+          "alive_count": 8.0,
+          "tech_verified": 6.0,
+          "facilities_active": 4.0,
+          "lowlevel_decisions": 19897.0,
+          "total_agents_created": 8.0,
+          "total_deaths": 0.0,
+          "cooperation_index": 0.011594202898550725
+        },
+        {
+          "seed": 101,
+          "return": 16.738449999999997,
+          "transitions": 20713.0,
+          "steps_run": 4000.0,
+          "alive_count": 8.0,
+          "tech_verified": 3.0,
+          "facilities_active": 2.0,
+          "lowlevel_decisions": 20713.0,
+          "total_agents_created": 8.0,
+          "total_deaths": 0.0,
+          "cooperation_index": 0.005747126436781609
+        },
+        {
+          "seed": 102,
+          "return": 45.1633,
+          "transitions": 19832.0,
+          "steps_run": 4000.0,
+          "alive_count": 8.0,
+          "tech_verified": 6.0,
+          "facilities_active": 5.0,
+          "lowlevel_decisions": 19832.0,
+          "total_agents_created": 8.0,
+          "total_deaths": 0.0,
+          "cooperation_index": 0.014084507042253521
+        },
+        {
+          "seed": 103,
+          "return": 105.06810000000002,
+          "transitions": 17003.0,
+          "steps_run": 4000.0,
+          "alive_count": 8.0,
+          "tech_verified": 5.0,
+          "facilities_active": 4.0,
+          "lowlevel_decisions": 17003.0,
+          "total_agents_created": 8.0,
+          "total_deaths": 0.0,
+          "cooperation_index": 0.6024518388791593
+        },
+        {
+          "seed": 104,
+          "return": 108.36165000000001,
+          "transitions": 19310.0,
+          "steps_run": 4000.0,
+          "alive_count": 8.0,
+          "tech_verified": 5.0,
+          "facilities_active": 4.0,
+          "lowlevel_decisions": 19310.0,
+          "total_agents_created": 8.0,
+          "total_deaths": 0.0,
+          "cooperation_index": 0.6057030481809242
+        },
+        {
+          "seed": 105,
+          "return": 122.24184999999996,
+          "transitions": 17902.0,
+          "steps_run": 4000.0,
+          "alive_count": 8.0,
+          "tech_verified": 5.0,
+          "facilities_active": 4.0,
+          "lowlevel_decisions": 17902.0,
+          "total_agents_created": 8.0,
+          "total_deaths": 0.0,
+          "cooperation_index": 0.6522435897435898
+        },
+        {
+          "seed": 106,
+          "return": 61.8041,
+          "transitions": 18861.0,
+          "steps_run": 4000.0,
+          "alive_count": 8.0,
+          "tech_verified": 6.0,
+          "facilities_active": 5.0,
+          "lowlevel_decisions": 18861.0,
+          "total_agents_created": 8.0,
+          "total_deaths": 0.0,
+          "cooperation_index": 0.012953367875647668
+        },
+        {
+          "seed": 107,
+          "return": 46.68405,
+          "transitions": 19541.0,
+          "steps_run": 4000.0,
+          "alive_count": 8.0,
+          "tech_verified": 6.0,
+          "facilities_active": 5.0,
+          "lowlevel_decisions": 19541.0,
+          "total_agents_created": 8.0,
+          "total_deaths": 0.0,
+          "cooperation_index": 0.013774104683195593
+        },
+        {
+          "seed": 108,
+          "return": 86.78670000000001,
+          "transitions": 17792.0,
+          "steps_run": 4000.0,
+          "alive_count": 8.0,
+          "tech_verified": 4.0,
+          "facilities_active": 3.0,
+          "lowlevel_decisions": 17792.0,
+          "total_agents_created": 8.0,
+          "total_deaths": 0.0,
+          "cooperation_index": 0.6080691642651297
+        },
+        {
+          "seed": 109,
+          "return": 24.331,
+          "transitions": 20844.0,
+          "steps_run": 4000.0,
+          "alive_count": 8.0,
+          "tech_verified": 4.0,
+          "facilities_active": 3.0,
+          "lowlevel_decisions": 20844.0,
+          "total_agents_created": 8.0,
+          "total_deaths": 0.0,
+          "cooperation_index": 0.008287292817679558
+        }
+      ],
+      "aggregate": {
+        "return": {
+          "n": 10.0,
+          "mean": 65.605705,
+          "std": 35.54996510448674,
+          "min": 16.738449999999997,
+          "max": 122.24184999999996
+        },
+        "alive_count": {
+          "n": 10.0,
+          "mean": 8.0,
+          "std": 0.0,
+          "min": 8.0,
+          "max": 8.0
+        },
+        "tech_verified": {
+          "n": 10.0,
+          "mean": 5.0,
+          "std": 1.0,
+          "min": 3.0,
+          "max": 6.0
+        },
+        "facilities_active": {
+          "n": 10.0,
+          "mean": 3.9,
+          "std": 0.9433981132056604,
+          "min": 2.0,
+          "max": 5.0
+        },
+        "lowlevel_decisions": {
+          "n": 10.0,
+          "mean": 19169.5,
+          "std": 1208.5203556415588,
+          "min": 17003.0,
+          "max": 20844.0
+        },
+        "transitions": {
+          "n": 10.0,
+          "mean": 19169.5,
+          "std": 1208.5203556415588,
+          "min": 17003.0,
+          "max": 20844.0
+        },
+        "steps_run": {
+          "n": 10.0,
+          "mean": 4000.0,
+          "std": 0.0,
+          "min": 4000.0,
+          "max": 4000.0
+        },
+        "total_agents_created": {
+          "n": 10.0,
+          "mean": 8.0,
+          "std": 0.0,
+          "min": 8.0,
+          "max": 8.0
+        },
+        "total_deaths": {
+          "n": 10.0,
+          "mean": 0.0,
+          "std": 0.0,
+          "min": 0.0,
+          "max": 0.0
+        },
+        "cooperation_index": {
+          "n": 10.0,
+          "mean": 0.2534908242822912,
+          "std": 0.2971885349313184,
+          "min": 0.005747126436781609,
+          "max": 0.6522435897435898
+        }
+      }
+    },
+    "rl_trained": {
+      "rows": [
+        {
+          "seed": 100,
+          "return": 35.475300000000004,
+          "transitions": 19966.0,
+          "steps_run": 4000.0,
+          "alive_count": 8.0,
+          "tech_verified": 6.0,
+          "facilities_active": 4.0,
+          "lowlevel_decisions": 19966.0,
+          "total_agents_created": 8.0,
+          "total_deaths": 0.0,
+          "cooperation_index": 0.011869436201780416
+        },
+        {
+          "seed": 101,
+          "return": 18.3362,
+          "transitions": 20796.0,
+          "steps_run": 4000.0,
+          "alive_count": 8.0,
+          "tech_verified": 3.0,
+          "facilities_active": 2.0,
+          "lowlevel_decisions": 20796.0,
+          "total_agents_created": 8.0,
+          "total_deaths": 0.0,
+          "cooperation_index": 0.0056022408963585435
+        },
+        {
+          "seed": 102,
+          "return": 17.930249999999997,
+          "transitions": 20698.0,
+          "steps_run": 4000.0,
+          "alive_count": 8.0,
+          "tech_verified": 3.0,
+          "facilities_active": 2.0,
+          "lowlevel_decisions": 20698.0,
+          "total_agents_created": 8.0,
+          "total_deaths": 0.0,
+          "cooperation_index": 0.03636363636363636
+        },
+        {
+          "seed": 103,
+          "return": 135.87775000000002,
+          "transitions": 16851.0,
+          "steps_run": 4000.0,
+          "alive_count": 8.0,
+          "tech_verified": 5.0,
+          "facilities_active": 4.0,
+          "lowlevel_decisions": 16851.0,
+          "total_agents_created": 8.0,
+          "total_deaths": 0.0,
+          "cooperation_index": 0.6891798759476223
+        },
+        {
+          "seed": 104,
+          "return": 48.7279,
+          "transitions": 20452.0,
+          "steps_run": 4000.0,
+          "alive_count": 8.0,
+          "tech_verified": 5.0,
+          "facilities_active": 4.0,
+          "lowlevel_decisions": 20452.0,
+          "total_agents_created": 8.0,
+          "total_deaths": 0.0,
+          "cooperation_index": 0.01015228426395939
+        },
+        {
+          "seed": 105,
+          "return": 122.73195000000001,
+          "transitions": 19594.0,
+          "steps_run": 4000.0,
+          "alive_count": 8.0,
+          "tech_verified": 5.0,
+          "facilities_active": 5.0,
+          "lowlevel_decisions": 19594.0,
+          "total_agents_created": 8.0,
+          "total_deaths": 0.0,
+          "cooperation_index": 0.659967845659164
+        },
+        {
+          "seed": 106,
+          "return": 51.983,
+          "transitions": 19445.0,
+          "steps_run": 4000.0,
+          "alive_count": 8.0,
+          "tech_verified": 6.0,
+          "facilities_active": 5.0,
+          "lowlevel_decisions": 19445.0,
+          "total_agents_created": 8.0,
+          "total_deaths": 0.0,
+          "cooperation_index": 0.013157894736842105
+        },
+        {
+          "seed": 107,
+          "return": 43.2498,
+          "transitions": 19949.0,
+          "steps_run": 4000.0,
+          "alive_count": 8.0,
+          "tech_verified": 6.0,
+          "facilities_active": 4.0,
+          "lowlevel_decisions": 19949.0,
+          "total_agents_created": 8.0,
+          "total_deaths": 0.0,
+          "cooperation_index": 0.010256410256410256
+        },
+        {
+          "seed": 108,
+          "return": 84.67505000000001,
+          "transitions": 18283.0,
+          "steps_run": 4000.0,
+          "alive_count": 8.0,
+          "tech_verified": 4.0,
+          "facilities_active": 4.0,
+          "lowlevel_decisions": 18283.0,
+          "total_agents_created": 8.0,
+          "total_deaths": 0.0,
+          "cooperation_index": 0.5631469979296067
+        },
+        {
+          "seed": 109,
+          "return": 45.7282,
+          "transitions": 20570.0,
+          "steps_run": 4000.0,
+          "alive_count": 8.0,
+          "tech_verified": 5.0,
+          "facilities_active": 5.0,
+          "lowlevel_decisions": 20570.0,
+          "total_agents_created": 8.0,
+          "total_deaths": 0.0,
+          "cooperation_index": 0.012626262626262626
+        }
+      ],
+      "aggregate": {
+        "return": {
+          "n": 10.0,
+          "mean": 60.471540000000005,
+          "std": 38.83574139492383,
+          "min": 17.930249999999997,
+          "max": 135.87775000000002
+        },
+        "alive_count": {
+          "n": 10.0,
+          "mean": 8.0,
+          "std": 0.0,
+          "min": 8.0,
+          "max": 8.0
+        },
+        "tech_verified": {
+          "n": 10.0,
+          "mean": 4.8,
+          "std": 1.0770329614269007,
+          "min": 3.0,
+          "max": 6.0
+        },
+        "facilities_active": {
+          "n": 10.0,
+          "mean": 3.9,
+          "std": 1.044030650891055,
+          "min": 2.0,
+          "max": 5.0
+        },
+        "lowlevel_decisions": {
+          "n": 10.0,
+          "mean": 19660.4,
+          "std": 1176.3354283536646,
+          "min": 16851.0,
+          "max": 20796.0
+        },
+        "transitions": {
+          "n": 10.0,
+          "mean": 19660.4,
+          "std": 1176.3354283536646,
+          "min": 16851.0,
+          "max": 20796.0
+        },
+        "steps_run": {
+          "n": 10.0,
+          "mean": 4000.0,
+          "std": 0.0,
+          "min": 4000.0,
+          "max": 4000.0
+        },
+        "total_agents_created": {
+          "n": 10.0,
+          "mean": 8.0,
+          "std": 0.0,
+          "min": 8.0,
+          "max": 8.0
+        },
+        "total_deaths": {
+          "n": 10.0,
+          "mean": 0.0,
+          "std": 0.0,
+          "min": 0.0,
+          "max": 0.0
+        },
+        "cooperation_index": {
+          "n": 10.0,
+          "mean": 0.20123228848816427,
+          "std": 0.2871849680759426,
+          "min": 0.0056022408963585435,
+          "max": 0.6891798759476223
+        }
+      }
+    }
+  },
+  "wall_s": 236.416
+}

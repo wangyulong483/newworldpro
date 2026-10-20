@@ -1,27 +1,25 @@
-"""newworld — a screen-sized pixel-art world.
+"""newworld —— 一个屏幕大小的像素世界（微型文明仿真）。
 
-The world is a rectangle the size of the physical screen and it is painted
-**pure white**: no sky, sun, clouds or floor are drawn — "above the inhabitant
-is sky" is a perceptual fact for the inhabitant, not a visual element.  The
-inhabitant (the creature from the user's blueprint) is deliberately small so
-that almost the whole screen width is walkable; it can only move left/right and
-is clamped to the screen bounds.
+世界是一个物理屏幕大小的矩形，被涂成**纯白**：没有画天空、太阳、
+云或地板——"居民头顶是天空"是居民的**感知**事实，不是视觉元素。
+居民（用户蓝图上的生物）故意画得很小，因此几乎整个屏幕宽度都可
+以走；他只能左右移动，并被夹在屏幕边界内。
 
-The package is split so the simulation can be reused for RL research:
+包的拆分让仿真可以被 RL 研究复用：
 
-* :mod:`newworld.world` — pure simulation (:class:`~newworld.world.World`)
-* :mod:`newworld.character` — inhabitants and their physics
-* :mod:`newworld.env` — Gymnasium-style environment
-  (:class:`~newworld.env.NewWorldEnv`) with pluggable rewards
-* :mod:`newworld.render` — headless PIL renderer used by previews/recordings
-* :mod:`newworld.app_tk` — interactive fullscreen frontend
-* :mod:`newworld.preview` — documentation / preview images
+* :mod:`newworld.world` —— 纯仿真（:class:`~newworld.world.World`）
+* :mod:`newworld.character` —— 居民与其物理
+* :mod:`newworld.env` —— Gymnasium 风格环境
+  （:class:`~newworld.env.NewWorldEnv`），奖励可插拔
+* :mod:`newworld.render` —— 预览/录像用的 headless PIL 渲染器
+* :mod:`newworld.app_tk` —— 交互式全屏前端
+* :mod:`newworld.preview` —— 文档 / 预览图
 
-Typical use::
+典型用法::
 
-    python -m newworld                     # enter the world
-    python -m newworld --headless          # run without a window
-    python -m newworld --preview           # render PNG previews
+    python -m newworld                     # 进入世界
+    python -m newworld --headless          # 无窗口运行
+    python -m newworld --preview           # 渲染 PNG 预览
 """
 
 from .config import (

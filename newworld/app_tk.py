@@ -137,6 +137,7 @@ class NewWorldApp:
         policy_path=None,
         ui_test_path: str | Path | None = None,
     ) -> None:
+        """初始化。"""
         if not TK_AVAILABLE:  # pragma: no cover - run_app 已提前检查
             raise RuntimeError(f"tkinter/Pillow 不可用：{_TK_ERROR or _PIL_ERROR}")
         self.config = config
@@ -245,12 +246,14 @@ class NewWorldApp:
         return Viewport(self.config.width, self.config.height, view_w, view_h, scale=scale).clamp()
 
     def _fit_viewport_to_world(self) -> None:
+        """把视口缩放调整到完整容纳世界。"""
         self.viewport = self._fit_viewport(self.layout.rects()["world"])
 
     # ==================================================================
     # 窗口与控件
     # ==================================================================
     def _build_ui(self) -> None:
+        """构建 tkinter 界面（画布/侧栏/控制栏）。"""
         root = self.root
         self._empty_photo = tk.PhotoImage(master=root, width=1, height=1)
 
@@ -453,6 +456,7 @@ class NewWorldApp:
         log_frame.pack(fill="both", expand=True, pady=(0, 2))
 
     def _make_button(self, parent, text: str, command) -> "tk.Button":
+        """统一风格按钮工厂。"""
         return tk.Button(
             parent,
             text=text,
@@ -473,6 +477,7 @@ class NewWorldApp:
         )
 
     def _bind_events(self) -> None:
+        """绑定键盘与鼠标事件。"""
         canvas = self.canvas
         canvas.bind("<Button-1>", self._on_canvas_click)
         canvas.bind("<MouseWheel>", self._on_wheel)
@@ -495,9 +500,11 @@ class NewWorldApp:
     # 布局
     # ==================================================================
     def _place(self, widget, rect: tuple[int, int, int, int]) -> None:
+        """摆放各界面元素。"""
         widget.place(x=rect[0], y=rect[1], width=max(1, rect[2]), height=max(1, rect[3]))
 
     def _apply_layout(self) -> None:
+        """按布局状态应用到实际控件。"""
         rects = self.layout.rects()
         self._place(self.status_frame, rects["top"])
         self._place(self.canvas, rects["world"])
@@ -530,9 +537,11 @@ class NewWorldApp:
     # 世界渲染
     # ==================================================================
     def _alive_agents(self) -> list:
+        """存活个体列表。"""
         return [agent for agent in self.world.agents if getattr(agent, "alive", False)]
 
     def _alive_ids(self) -> set[int]:
+        """存活个体 id 列表。"""
         return {int(agent.agent_id) for agent in self._alive_agents()}
 
     def _refresh_background(self, force: bool = False) -> None:
@@ -609,6 +618,7 @@ class NewWorldApp:
             }
 
     def _refresh_agent(self, agent) -> None:
+        """刷新画布上的个体绘制。"""
         visual = self._visuals.get(int(agent.agent_id))
         if visual is None:
             return
@@ -704,6 +714,7 @@ class NewWorldApp:
         )
 
     def _refresh_ring(self) -> None:
+        """刷新选中圈。"""
         selected_id = self.selection.selected_id
         box = self._boxes.get(int(selected_id)) if selected_id is not None else None
         if box is None:
@@ -744,6 +755,7 @@ class NewWorldApp:
         self._frame_key = None
 
     def _consume_pending_steps(self) -> int:
+        """消化后台线程累积的步数。"""
         steps = 0
         while self.controls.consume_step():
             self._step_once()
@@ -753,6 +765,7 @@ class NewWorldApp:
         return steps
 
     def _advance(self, wall_dt: float) -> None:
+        """推进一步仿真（带速度倍率）。"""
         if self.controls.playing:
             world_dt = self.controls.scaled_dt(wall_dt)
             if world_dt > 0.0:
@@ -765,6 +778,7 @@ class NewWorldApp:
     # 鼠标：世界点击 / 缩放 / 平移
     # ==================================================================
     def _on_canvas_click(self, event) -> None:
+        """画布点击：选中个体或不做任何事。"""
         rect = self.layout.rects()["world"]
         self._handle_click_at_window(rect[0] + int(event.x), rect[1] + int(event.y))
 
@@ -789,6 +803,7 @@ class NewWorldApp:
             self._on_selection_changed()
 
     def _on_wheel(self, event) -> None:
+        """滚轮缩放。"""
         delta = int(getattr(event, "delta", 0) or 0)
         if delta == 0:
             return
@@ -796,6 +811,7 @@ class NewWorldApp:
         self._zoom_at_screen(int(event.x), int(event.y), factor)
 
     def _zoom_at_screen(self, screen_x: float, screen_y: float, factor: float) -> None:
+        """围绕屏幕点缩放视口。"""
         before = self.viewport.scale
         self.viewport = self.viewport.zoom_at(screen_x, screen_y, factor)
         if abs(self.viewport.scale - before) < 1e-9:
@@ -804,12 +820,15 @@ class NewWorldApp:
         self._refresh_frame(force=True)
 
     def _on_pan_start(self, event) -> None:
+        """开始拖动平移。"""
         self._drag = (int(event.x), int(event.y))
 
     def _on_pan_end(self, _event) -> None:
+        """结束拖动平移。"""
         self._drag = None
 
     def _on_pan_move(self, event) -> None:
+        """拖动中平移视口。"""
         if self._drag is None:
             return
         last_x, last_y = self._drag
@@ -826,6 +845,7 @@ class NewWorldApp:
     # 选择同步
     # ==================================================================
     def _on_list_select(self, _event=None) -> None:
+        """列表选中：切换观察对象。"""
         selection = self.listbox.curselection()
         if not selection:
             return
@@ -835,6 +855,7 @@ class NewWorldApp:
                 self._on_selection_changed()
 
     def _on_selection_changed(self) -> None:
+        """选中状态变化的联动刷新。"""
         self._sync_list_selection()
         self._refresh_detail()
         self._frame_key = None
@@ -850,6 +871,7 @@ class NewWorldApp:
             self._on_selection_changed()
 
     def _refresh_agent_list(self, alive_ids: set[int] | None = None) -> None:
+        """刷新右侧智能体列表。"""
         wanted = self._alive_ids() if alive_ids is None else {int(item) for item in alive_ids}
         alive = sorted(
             (agent for agent in self._alive_agents() if int(agent.agent_id) in wanted),
@@ -867,6 +889,7 @@ class NewWorldApp:
         self._sync_list_selection()
 
     def _sync_list_selection(self) -> None:
+        """让列表高亮与当前选中一致。"""
         self.listbox.selection_clear(0, "end")
         for index in range(len(self._list_ids)):
             self.listbox.itemconfig(index, foreground=FG)
@@ -883,12 +906,14 @@ class NewWorldApp:
     # ==================================================================
     @staticmethod
     def _set_text(widget, content: str) -> None:
+        """安全地替换文本控件内容。"""
         widget.configure(state="normal")
         widget.delete("1.0", "end")
         widget.insert("1.0", content)
         widget.configure(state="disabled")
 
     def _fill_rows(self, widget, title: str, rows) -> None:
+        """填充两列键值行。"""
         widget.configure(state="normal")
         widget.delete("1.0", "end")
         if title:
@@ -899,6 +924,7 @@ class NewWorldApp:
         widget.configure(state="disabled")
 
     def _refresh_detail(self) -> None:
+        """刷新详情面板。"""
         detail = build_agent_detail(self.world, self.population, self.selection.selected_id)
         detail.selected = self.selection.selected_id is not None
         text = detail.title + "".join(f"{row.label}：{row.value}\n" for row in detail.rows)
@@ -908,6 +934,7 @@ class NewWorldApp:
         self._fill_rows(self.detail_text, detail.title, detail.rows)
 
     def _refresh_stats(self) -> None:
+        """刷新统计面板。"""
         if not self.stats_visible:
             return
         rows = build_stats(self.world, self.population)
@@ -918,6 +945,7 @@ class NewWorldApp:
         self._fill_rows(self.stats_text, "", rows)
 
     def _refresh_log(self) -> None:
+        """刷新事件日志面板。"""
         events = build_event_log(self.world, self.population, limit=10)
         lines = ["# 世界事件"] + [f"· {line}" for line in events]
         if self._log_lines:
@@ -931,6 +959,7 @@ class NewWorldApp:
         self.log_text.see("end")
 
     def _update_status(self) -> None:
+        """更新底部状态栏文本。"""
         world = self.world
         registry = world.registry
         alive = registry.alive_count()
@@ -956,12 +985,14 @@ class NewWorldApp:
             self.status_var.set(text)
 
     def _update_hint(self) -> None:
+        """更新操作提示文本。"""
         text = f"缩放 {self.viewport.scale:.2f}× · fps {self._fps:4.1f} · 左键选中"
         if text != self._last_hint_text:
             self._last_hint_text = text
             self.hint_var.set(text)
 
     def _update_controls(self) -> None:
+        """更新按钮可用状态。"""
         actions = self.controls.available_actions()
         mapping = {
             self.button_start: actions["start"],
@@ -978,6 +1009,7 @@ class NewWorldApp:
         self.button_panel.configure(text="面板 ✓" if self.panel_visible else "面板")
 
     def _refresh_panels(self) -> None:
+        """刷新全部面板（节流）。"""
         self._apply_alive_ids(self._alive_ids())
         self._refresh_detail()
         self._refresh_stats()
@@ -990,12 +1022,14 @@ class NewWorldApp:
     # 按钮 / 键盘处理
     # ==================================================================
     def _log(self, text: str) -> None:
+        """追加一条事件日志。"""
         self._log_lines.append(f"{float(self.world.t):7.1f}s · {text}")
         del self._log_lines[:-200]
         self._log_dirty = True
         self._last_log_text = None
 
     def _drain_thread_messages(self) -> None:
+        """取出后台线程产生的消息。"""
         if not self._thread_messages:
             return
         with self._thread_lock:
@@ -1005,6 +1039,7 @@ class NewWorldApp:
             self._log(message)
 
     def _on_start(self) -> None:
+        """按钮：开始。"""
         if not self.controls.resume():
             self._log("仿真已在运行")
         else:
@@ -1012,16 +1047,19 @@ class NewWorldApp:
         self._update_controls()
 
     def _on_pause(self) -> None:
+        """按钮：暂停。"""
         if self.controls.pause():
             self._log("已暂停（画面与详情仍可查看）")
         self._update_controls()
 
     def _on_resume(self) -> None:
+        """按钮：继续。"""
         if self.controls.resume():
             self._log("继续运行")
         self._update_controls()
 
     def _on_space(self, _event=None) -> None:
+        """快捷键：空格暂停/继续。"""
         if self.controls.toggle():
             self._log("继续运行")
         else:
@@ -1029,6 +1067,7 @@ class NewWorldApp:
         self._update_controls()
 
     def _on_step(self) -> None:
+        """按钮：单步。"""
         if not self.controls.request_step():
             self._log("单步只在暂停时可用")
             return
@@ -1038,11 +1077,13 @@ class NewWorldApp:
         self._update_controls()
 
     def _on_speed(self, direction: int) -> None:
+        """速度档位切换。"""
         speed = self.controls.nudge_speed(direction)
         self._log(f"速度：{speed:.2f}×")
         self._update_controls()
 
     def _on_toggle_stats(self, _event=None) -> None:
+        """开关：统计面板。"""
         self.stats_visible = not self.stats_visible
         if self.stats_visible:
             self.panel_frame.rowconfigure(3, weight=3)
@@ -1061,6 +1102,7 @@ class NewWorldApp:
         self._update_controls()
 
     def _on_toggle_panel(self, _event=None) -> None:
+        """开关：详情侧栏。"""
         self.panel_visible = not self.panel_visible
         width, height = self._window_size or (self.root.winfo_width(), self.root.winfo_height())
         self.layout = Layout(int(width), int(height), panel_visible=self.panel_visible)
@@ -1082,6 +1124,7 @@ class NewWorldApp:
         self._log("已请求从零训练所有个体的神经网络（后台线程）…")
 
         def worker() -> None:
+            """后台仿真线程主体。"""
             try:
                 metrics = self.population.train_round(self.seed + self._reset_count, reset=True)
                 message = (
@@ -1113,6 +1156,7 @@ class NewWorldApp:
             return False
 
     def _on_reset(self) -> None:
+        """按钮：重置世界。"""
         self._do_reset(ask=True)
 
     def _do_reset(self, *, ask: bool = True) -> bool:
@@ -1156,6 +1200,7 @@ class NewWorldApp:
     # 主循环
     # ==================================================================
     def _start_tick(self) -> None:
+        """启动主循环定时器。"""
         if self._tick_scheduled:
             return
         self._tick_scheduled = True
@@ -1163,6 +1208,7 @@ class NewWorldApp:
         self.root.after(0, self._tick)
 
     def _tick(self) -> None:
+        """主循环的一帧：推进 + 刷新。"""
         if self._closed:
             return
         now = time.perf_counter()
@@ -1194,6 +1240,7 @@ class NewWorldApp:
         self.root.after(self.TICK_MS, self._tick)
 
     def _maybe_screenshot(self, now: float) -> None:
+        """到时间则截图。"""
         if self.screenshot is None or self._screenshot_taken:
             return
         if now - self._started < self.SCREENSHOT_DELAY:
@@ -1205,6 +1252,7 @@ class NewWorldApp:
             self.close()
 
     def _grab_screenshot(self) -> None:
+        """保存当前画面为 PNG。"""
         path = Path(self.screenshot)  # type: ignore[arg-type]
         try:
             path.parent.mkdir(parents=True, exist_ok=True)
@@ -1219,6 +1267,7 @@ class NewWorldApp:
             print(f"截图失败：{exc}")
 
     def announce(self) -> None:
+        """供后台线程发送 UI 消息。"""
         print(HELP)
         print(
             f"窗口 {self.root.winfo_width()}x{self.root.winfo_height()}，"
@@ -1230,6 +1279,7 @@ class NewWorldApp:
         self.root.focus_force()
 
     def close(self) -> None:
+        """关闭窗口与后台线程。"""
         if self._closed:
             return
         self._closed = True
@@ -1239,6 +1289,7 @@ class NewWorldApp:
             pass
 
     def run(self) -> int:
+        """进入 Tk 主循环。"""
         self._start_tick()
         self.root.after(250, self.announce)
         started = time.perf_counter()
@@ -1358,6 +1409,7 @@ class NewWorldApp:
 
     # -- 自检辅助 ------------------------------------------------------
     def _press(self, button) -> None:
+        """ui-test：程序化按键。"""
         button.invoke()
         self.root.update()
 
@@ -1367,10 +1419,12 @@ class NewWorldApp:
             self._on_selection_changed()
 
     def _inject_click(self, screen_x: float, screen_y: float) -> None:
+        """ui-test：程序化点击。"""
         self.canvas.event_generate("<Button-1>", x=int(round(screen_x)), y=int(round(screen_y)))
         self.root.update()
 
     def _agent_box(self, agent):
+        """个体的屏幕包围盒。"""
         for _ in range(30):
             box = self._boxes.get(int(agent.agent_id))
             if box is not None:
@@ -1380,11 +1434,13 @@ class NewWorldApp:
         raise AssertionError(f"{agent.agent_id} 号个体没有命中盒（画布未渲染？）")
 
     def _click_agent(self, agent) -> None:
+        """点击某个体（ui-test 用）。"""
         box = self._agent_box(agent)
         screen_x, screen_y = self.viewport.world_to_screen(box.x, box.y)
         self._inject_click(screen_x, screen_y)
 
     def _first_two_alive(self):
+        """前两个存活个体。"""
         agents = sorted(self._alive_agents(), key=lambda agent: int(agent.agent_id))
         if len(agents) < 2:
             raise AssertionError(f"存活个体不足 2 个（实际 {len(agents)}），无法测试切换")
@@ -1392,6 +1448,7 @@ class NewWorldApp:
 
     # -- 13 项断言 -----------------------------------------------------
     def _ui_layout(self) -> str:
+        """ui-test 断言：布局完整性。"""
         layout = self.layout
         rects = layout.rects()
         assert set(rects) == {"top", "world", "panel", "bottom"}
@@ -1415,6 +1472,7 @@ class NewWorldApp:
         return f"top/world/panel/bottom 区域正确，UI 点击被隔离（选中 {agent.agent_id} 号保持不变）"
 
     def _ui_viewport(self) -> str:
+        """ui-test 断言：缩放平移可用。"""
         rect = self.layout.rects()["world"]
         viewport = self.viewport
         assert viewport.world_width == self.config.width
@@ -1431,6 +1489,7 @@ class NewWorldApp:
         return f"往返误差<1e-6；缩放 {viewport.scale:.2f}→{zoomed.scale:.2f} 光标锚点不动"
 
     def _ui_click_select(self) -> str:
+        """ui-test 断言：点击选中。"""
         self._clear_selection()
         agent = sorted(self._alive_agents(), key=lambda item: int(item.agent_id))[0]
         self._click_agent(agent)
@@ -1439,6 +1498,7 @@ class NewWorldApp:
         return f"点击 {agent.agent_id} 号精灵中心 → 选中，高亮环 {'显示' if ring_visible else '未显示'}"
 
     def _ui_click_switch(self) -> str:
+        """ui-test 断言：列表切换选中。"""
         self._clear_selection()
         first, second = self._first_two_alive()
         self._click_agent(first)
@@ -1448,6 +1508,7 @@ class NewWorldApp:
         return f"选中 {first.agent_id} 号后再点 {second.agent_id} 号 → 选择切换"
 
     def _ui_click_toggle(self) -> str:
+        """ui-test 断言：按钮开关面板。"""
         self._clear_selection()
         agent, _ = self._first_two_alive()
         self._click_agent(agent)
@@ -1457,6 +1518,7 @@ class NewWorldApp:
         return f"再次点击 {agent.agent_id} 号 → 取消选中"
 
     def _ui_click_empty(self) -> str:
+        """ui-test 断言：点空白处取消选中。"""
         self._clear_selection()
         agent, _ = self._first_two_alive()
         self._click_agent(agent)
@@ -1478,6 +1540,7 @@ class NewWorldApp:
         return f"点击空白处 {empty} → 取消选中"
 
     def _ui_zoom_pan(self) -> str:
+        """ui-test 断言：缩放与平移组合。"""
         self._clear_selection()
         agent, _ = self._first_two_alive()
         box = self._agent_box(agent)
@@ -1516,6 +1579,7 @@ class NewWorldApp:
         )
 
     def _ui_pause(self) -> str:
+        """ui-test 断言：暂停/继续按钮。"""
         self._press(self.button_pause)
         assert self.controls.paused, "点击暂停按钮后仍在运行"
         t0 = float(self.world.t)
@@ -1535,6 +1599,7 @@ class NewWorldApp:
         )
 
     def _ui_single_step(self) -> str:
+        """ui-test 断言：单步按钮。"""
         assert self.controls.paused, "单步测试要求先处于暂停状态"
         fixed_dt = float(self.world.config.fixed_dt)
         t0 = float(self.world.t)
@@ -1555,6 +1620,7 @@ class NewWorldApp:
         return f"暂停下单步两次各推进 {fixed_dt:.6f}s；运行中单步被拒绝"
 
     def _ui_list_select(self) -> str:
+        """ui-test 断言：列表选择联动。"""
         self._clear_selection()
         self._refresh_panels()
         if len(self._list_ids) < 2:
@@ -1569,6 +1635,7 @@ class NewWorldApp:
         return f"点击个体列表第 {index + 1} 项 → 选中 {target} 号（与场景选择同步）"
 
     def _ui_dead_cleanup(self) -> str:
+        """ui-test 断言：死亡个体的清理。"""
         self._clear_selection()
         agent, _ = self._first_two_alive()
         self._click_agent(agent)
@@ -1582,6 +1649,7 @@ class NewWorldApp:
         return f"存活集合清空 → 选中 {agent.agent_id} 号被自动清理、列表同步；恢复 {len(alive)} 项"
 
     def _ui_detail_stats(self) -> str:
+        """ui-test 断言：详情/统计面板内容。"""
         agent = sorted(self._alive_agents(), key=lambda item: int(item.agent_id))[0]
         detail = build_agent_detail(self.world, self.population, agent.agent_id)
         labels = {row.label: row.value for row in detail.rows}
@@ -1601,6 +1669,7 @@ class NewWorldApp:
         )
 
     def _ui_reset(self) -> str:
+        """ui-test 断言：重置按钮。"""
         self._clear_selection()
         agent, _ = self._first_two_alive()
         self._click_agent(agent)
@@ -1625,6 +1694,7 @@ class NewWorldApp:
 
     # -- 断言小工具 ----------------------------------------------------
     def assert_selected(self, expected: int | None) -> None:
+        """ui-test 辅助：断言当前选中的个体。"""
         actual = self.selection.selected_id
         if actual != expected:
             raise AssertionError(f"期望选中 {expected}，实际 {actual}")

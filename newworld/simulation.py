@@ -1,25 +1,25 @@
-"""Headless civilization runner: experiments without a window.
+"""Headless 文明运行器：不开窗口做实验。
 
-``SocietyRunner`` builds a world + population from a :class:`RunSpec`, runs the
-simulation for a fixed budget, applies seeded **environment disturbances** (P4),
-collects metrics with :class:`~newworld.telemetry.Telemetry` and returns a
-JSON-serialisable result.  This is the entry point used by ``experiments/``.
+``SocietyRunner`` 按 :class:`RunSpec` 建好世界 + 种群，跑固定步数的
+仿真，施加 seed 驱动的**环境扰动**（P4），用
+:class:`~newworld.telemetry.Telemetry` 收集指标，返回可 JSON 化的
+结果。这是 ``experiments/`` 用的入口。
 
-Design notes
-------------
-* The runner never modifies world data behind the agents' backs: disturbances go
-  through the public :class:`~newworld.pixelworld.PixelScene` / ecology APIs,
-  exactly like weather or a foraging agent would.
-* The disturbance schedule is **seeded, not scripted**: every run of the
-  ``enable_disturbance=True`` groups experiences one drought, one storm and one
-  resource-scarcity event, each at a seeded random time in the first minutes, so
-  all three kinds actually occur while the development route is still open.
-  (Measured: scheduling only a random kind left groups C and D identical,
-  because a single late shock cannot change a route that is already decided.)
-* Perception costs ~95% of a frame and the neural feature extractor ignores it
-  (``neural.features`` never reads ``perception``), so experiments disable it by
-  default via ``spec.perception = False`` — behavioural results are identical,
-  the wall-clock is ~30x faster.
+设计要点
+--------
+* 运行器从不背着 agent 偷偷改世界数据：扰动走
+  :class:`~newworld.pixelworld.PixelScene` / ecology 的公开 API，
+  与天气或觅食 agent 一模一样。
+* 扰动时间表是**seed 化的，不是剧本**：每个
+  ``enable_disturbance=True`` 的组都会经历一次干旱、一次风暴、
+  一次资源枯竭，各自发生在开局几分钟内 seed 随机的时刻，保证
+  三种扰动都真的出现，而发展路线仍未被锁死。（实测：只随机安排
+  一种扰动时 C、D 两组完全相同——单个迟到冲击改变不了已定的
+  路线。）
+* 感知约占一帧 95% 的开销，而神经特征抽取根本不读它
+  （``neural.features`` 从不使用 ``perception``），因此实验通过
+  ``spec.perception = False`` 默认关闭——行为结果完全一致，
+  墙钟时间约快 30 倍。
 
 CLI::
 
@@ -48,13 +48,13 @@ from .population import Population
 from .telemetry import Telemetry
 from .world import World
 
-#: kinds of seeded environment disturbance (P4)
+#: seed 驱动的环境扰动种类（P4）
 DISTURBANCE_KINDS: tuple[str, ...] = ("drought", "storm", "scarcity")
 
 
 @dataclass
 class RunSpec:
-    """Everything that defines one experiment run (reproducible by design)."""
+    """一次实验的全部定义（设计上可复现）。"""
 
     group: str = "D"
     seed: int = 0
@@ -62,42 +62,61 @@ class RunSpec:
     dt: float = 0.05
     width: int = 800
     height: int = 500
-    #: wall-clock / behaviour switches that are experiment-level, not ablations
+    #: 墙钟/行为开关——属于实验级配置，不属于消融
     perception: bool = False
-    disturbance: bool | None = None          # None -> follow the ablation group
+    disturbance: bool | None = None          # None → 跟随消融组
     telemetry_window_s: float = 60.0
-    log_dir: str | Path | None = None        # events + summary written here
-    save_path: str | Path | None = None      # full world state at the end
-    #: stop the run at the first extinction (the default: record collapse)
+    log_dir: str | Path | None = None        # 事件与摘要写到这里
+    save_path: str | Path | None = None      # 结束时保存完整世界状态
+    #: 第一次灭绝即停止（默认：记录崩溃）
     stop_on_extinction: bool = True
-    #: optional budget for the neural behaviour-cloning training round
+    #: 行为克隆训练轮数预算（可选）
     train_rounds: int = 0
-    #: learned high-level goal policy: "heuristic" | "neural" | "random"
+    #: 高层目标策略："heuristic" | "neural" | "random"
     goal_policy_mode: str = "heuristic"
-    #: optional checkpoint for goal_policy_mode="neural" (fresh policy if None)
+    #: goal_policy_mode="neural" 的 checkpoint（None 则新建）
     goal_policy_path: str | Path | None = None
-    #: low-level controller ablation: "full" | "random" | "off"
+    #: 底层控制器消融："full" | "random" | "off"
     low_level_mode: str = "full"
-    #: limited combinatorial innovation prototype (None -> follow the group)
+    #: 有限组合式创新原型（None → 跟随消融组）
     enable_innovation: bool | None = None
+    #: V2.1：真实视网膜特征是否进入观测（None → 配置默认 True）
+    visual_features: bool | None = None
+    #: 低层 RL checkpoint（low_level_mode="rl" 时加载；None → assets/lowlevel_rl.npz）
+    lowlevel_policy_path: str | Path | None = None
+    #: V2 无限世界：横向无界 + 窗口跟随（屏幕只是局部窗口）
+    infinite: bool = False
+    window_atoms: int = 0
+    #: 累计创建上限覆盖（None → 消融组默认 8；对照实验可传 32/64）
+    max_agents_created: int | None = None
+    #: 感知/视觉特征刷新间隔帧数（None → 配置默认 4；大预算实验可加大摊薄成本）
+    perception_stride: int | None = None
+    #: 是否把社交网络读写 assets/society.npz（默认 False：实验 run 互相独立）
+    persist_society: bool = False
 
     def as_dict(self) -> dict[str, Any]:
+        """序列化为普通字典（进结果 JSON 用）。"""
         data = dict(self.__dict__)
         data["log_dir"] = None if self.log_dir is None else str(self.log_dir)
         data["save_path"] = None if self.save_path is None else str(self.save_path)
         data["goal_policy_path"] = (
             None if self.goal_policy_path is None else str(self.goal_policy_path)
         )
+        data["lowlevel_policy_path"] = (
+            None if self.lowlevel_policy_path is None else str(self.lowlevel_policy_path)
+        )
         return data
 
 
 class _RandomGoalPolicy:
-    """Uniform-random high-level policy used as a decision ablation."""
+    """均匀随机的高层策略，用作决策链消融的对照。"""
 
     def __init__(self, seed: int = 0) -> None:
+        """初始化。"""
         self.rng = random.Random(seed)
 
-    def sample(self, features, rng=None) -> int:  # noqa: ANN001 - duck typed
+    def sample(self, features, rng=None) -> int:  # noqa: ANN001 - 鸭子类型
+        """采样一个动作索引。"""
         from .highlevel import GOAL_ACTIONS
 
         return self.rng.randrange(len(GOAL_ACTIONS))
@@ -105,19 +124,19 @@ class _RandomGoalPolicy:
 
 @dataclass
 class EnvironmentDisturbance:
-    """Seeded environmental shocks (drought / storm / resource scarcity).
+    """seed 化的环境冲击（干旱 / 风暴 / 资源枯竭）。
 
-    Each event has a duration and is applied to the *real* world state (rain
-    target, plant/forest destruction, soil moisture), so it changes the viable
-    development route instead of being a UI flag.
+    每个事件有持续时间，作用在*真实*世界状态上（降雨目标、植物/
+    森林破坏、土壤湿度），因此它改变的是可行的发展路线，而不是
+    一个 UI 标志。
     """
 
     seed: int = 0
     enabled: bool = True
-    #: first event window (world seconds) — early enough to matter
+    #: 首个事件时间窗（世界秒）——早到足以影响走向
     first_min_s: float = 60.0
     first_max_s: float = 150.0
-    #: gap between consecutive events
+    #: 相邻事件的最小/最大间隔
     interval_min_s: float = 110.0
     interval_max_s: float = 210.0
     duration_s: float = 90.0
@@ -128,6 +147,7 @@ class EnvironmentDisturbance:
     history: list[dict[str, Any]] = field(default_factory=list)
 
     def __post_init__(self) -> None:
+        """生成三种扰动的乱序时间表（seed 决定，可复现）。"""
         self.rng = random.Random(self.seed * 7919 + 13)
         if self.enabled:
             kinds = list(DISTURBANCE_KINDS)
@@ -139,7 +159,7 @@ class EnvironmentDisturbance:
 
     # ------------------------------------------------------------------
     def apply(self, world, telemetry: Telemetry | None = None) -> None:
-        """Advance the disturbance schedule; called once per simulation step."""
+        """推进扰动时间表；每个仿真步调用一次。"""
         if not self.enabled:
             return
         now = world.t
@@ -157,8 +177,8 @@ class EnvironmentDisturbance:
                     telemetry.event("disturbance", **record)
                 except Exception:
                     pass
-            # one-shot impact at the start of the event: it must be able to
-            # change the development route, not just the weather display
+            # 事件开始时的一次性冲击：必须能改变发展路线，
+            # 而不只是天气显示
             if kind == "scarcity":
                 self._remove_resources(world)
             elif kind == "storm":
@@ -166,7 +186,7 @@ class EnvironmentDisturbance:
             elif kind == "drought":
                 self._dry_out(world)
         if self.active_kind == "drought":
-            # no rain and fast evaporation: the pond shrinks, growth stops
+            # 不下雨 + 快速蒸发：池塘缩小、生长停止
             ecology.rain_target = 0.0
             ecology.rain = max(0.0, ecology.rain - 0.05)
             ecology.rain_timer = max(ecology.rain_timer, self.duration_s)
@@ -176,11 +196,10 @@ class EnvironmentDisturbance:
 
     # ------------------------------------------------------------------
     def _remove_resources(self, world) -> None:
-        """Scarcity: wipe out one whole tree and one whole rock body.
+        """资源枯竭：整棵树 + 整块岩石被移除。
 
-        Removing scattered atoms had no measurable effect (verified in the first
-        ablation batch: groups C and D were identical), so this removes the
-        objects the planner actually navigates to — a real supply shock.
+        只删散落原子没有可测影响（第一批消融已验证：C、D 两组相同），
+        所以这里删的是规划器真正会导航过去的物体——真实的供给冲击。
         """
         scene = world.pixel_scene
         from . import materials
@@ -201,7 +220,7 @@ class EnvironmentDisturbance:
         scene.refresh_caches()
 
     def _destroy_plant(self, world) -> None:
-        """Storm: tear down a whole berry bush (a food supply shock)."""
+        """风暴：掀翻一整丛浆果丛（食物供给冲击）。"""
         scene = world.pixel_scene
         bushes = [obj for obj in scene.objects if obj.kind == "bush"]
         if not bushes:
@@ -223,12 +242,12 @@ class EnvironmentDisturbance:
         scene.refresh_caches()
 
     def _dry_out(self, world) -> None:
-        """Drought: soil moisture collapses, so regrowth stops for a while."""
+        """干旱：土壤湿度骤降，再生停滞一段时间。"""
         ecology = world.pixel_scene.ecology
         ecology.moisture = (ecology.moisture * 0.35).astype(ecology.moisture.dtype)
 
     def _storm_damage(self, world) -> None:
-        """Storm: tear soft plant atoms at a few random columns."""
+        """风暴：在几个随机列上撕掉软植物原子（持续伤害）。"""
         scene = world.pixel_scene
         for _ in range(2):
             x = self.rng.uniform(0.0, float(world.config.width))
@@ -237,9 +256,10 @@ class EnvironmentDisturbance:
 
 
 class SocietyRunner:
-    """Run one civilization experiment headlessly."""
+    """Headless 地跑一个文明实验。"""
 
     def __init__(self, spec: RunSpec | None = None) -> None:
+        """初始化。"""
         self.spec = spec if spec is not None else RunSpec()
         civ_config = make_civilization_config(
             self.spec.group,
@@ -252,8 +272,19 @@ class SocietyRunner:
         civ_config.low_level_mode = str(self.spec.low_level_mode)
         if self.spec.enable_innovation is not None:
             civ_config.enable_innovation = bool(self.spec.enable_innovation)
+        if self.spec.visual_features is not None:
+            civ_config.enable_visual_features = bool(self.spec.visual_features)
+        if self.spec.max_agents_created is not None:
+            civ_config.max_agents_created = int(self.spec.max_agents_created)
+        if self.spec.perception_stride is not None:
+            civ_config.perception_stride = max(1, int(self.spec.perception_stride))
         self.civ_config: CivilizationConfig = civ_config
-        self.world_config: WorldConfig = make_config(self.spec.width, self.spec.height)
+        self.world_config: WorldConfig = make_config(
+            self.spec.width,
+            self.spec.height,
+            infinite=bool(self.spec.infinite),
+            window_atoms=int(self.spec.window_atoms or 0),
+        )
         self.world = World(self.world_config, seed=self.spec.seed, civ_config=self.civ_config)
         self.world.reset(seed=self.spec.seed)
         self.events_path = None
@@ -267,8 +298,14 @@ class SocietyRunner:
             seed=self.spec.seed,
             group=self.spec.group,
         )
-        self.population = Population(self.world, self.spec.seed, telemetry=self.telemetry)
+        self.population = Population(
+            self.world,
+            self.spec.seed,
+            telemetry=self.telemetry,
+            persist_society=bool(self.spec.persist_society),
+        )
         self._attach_goal_policy()
+        self._attach_lowlevel_policy()
         self.disturbance = EnvironmentDisturbance(
             seed=self.spec.seed,
             enabled=bool(self.civ_config.enable_disturbance),
@@ -277,7 +314,7 @@ class SocietyRunner:
 
     # ------------------------------------------------------------------
     def _attach_goal_policy(self) -> None:
-        """Attach the learned / random high-level policy when requested."""
+        """按配置挂载学习型 / 随机高层策略。"""
         mode = str(self.spec.goal_policy_mode or "heuristic")
         if mode == "heuristic":
             return
@@ -292,11 +329,33 @@ class SocietyRunner:
             else:
                 policy = GoalPolicy(seed=self.spec.seed)
             self.population.attach_goal_policy(policy)
-        except Exception as exc:  # pragma: no cover - defensive
+        except Exception as exc:  # pragma: no cover - 防御性
             raise RuntimeError(f"cannot attach neural goal policy: {exc}") from exc
 
     # ------------------------------------------------------------------
+    def _attach_lowlevel_policy(self) -> None:
+        """low_level_mode="rl" 时加载训练好的低层策略 checkpoint。"""
+        if str(self.spec.low_level_mode) != "rl":
+            return
+        path = self.spec.lowlevel_policy_path
+        if path is None:
+            default = Path(__file__).resolve().parent.parent / "assets" / "lowlevel_rl.npz"
+            path = default if default.exists() else None
+        if path is None:
+            # 没有 checkpoint：保持 BC 回退，但如实记录（不伪造 RL）
+            self.population.attach_lowlevel_policy(None)
+            return
+        try:
+            from .lowlevel_rl import LowLevelPolicy
+
+            policy = LowLevelPolicy.load(str(path), seed=self.spec.seed)
+            self.population.attach_lowlevel_policy(policy)
+        except Exception:
+            self.population.attach_lowlevel_policy(None)
+
+    # ------------------------------------------------------------------
     def run(self) -> dict[str, Any]:
+        """跑到步数上限或灭绝，返回完整结果字典。"""
         spec = self.spec
         started = time.perf_counter()
         steps_run = 0
@@ -342,6 +401,16 @@ class SocietyRunner:
             "archive": self.population.archive_summary(),
             "decisions": self.population.decision_share(),
             "decision_counts": dict(self.population.decision_counts),
+            "lowlevel": self.population.lowlevel_summary(),
+            "visual_features": bool(
+                getattr(self.civ_config, "enable_visual_features", True)
+            ),
+            "visual": self.population.visual_summary(),
+            "perception_stride": int(getattr(self.civ_config, "perception_stride", 1)),
+            "infinite": bool(getattr(self.world.config, "infinite", False)),
+            "window_origin_px": float(
+                getattr(self.world.pixel_scene, "window_start_px", 0.0)
+            ),
             "innovations": self.population.innovations(),
             "goal_policy_mode": str(self.spec.goal_policy_mode),
             "disturbances": list(self.disturbance.history),
@@ -355,6 +424,7 @@ class SocietyRunner:
 
     # ------------------------------------------------------------------
     def _write_summary(self) -> None:
+        """把结果 JSON 写入 log_dir（配置了才写）。"""
         if self.result is None or self.spec.log_dir is None:
             return
         log_dir = Path(self.spec.log_dir)
@@ -366,16 +436,17 @@ class SocietyRunner:
         )
 
     def save(self, path: str | Path) -> Path:
-        """Persist the full world state (registry, knowledge, memory, civ)."""
+        """保存完整世界状态（注册表、知识、记忆、文明）。"""
         return self.world.save(path)
 
     @classmethod
     def load(cls, path: str | Path) -> World:
-        """Load a world state saved by :meth:`save`."""
+        """载入 :meth:`save` 保存的世界状态。"""
         return World.load(path)
 
     # ------------------------------------------------------------------
     def summary_lines(self) -> list[str]:
+        """结果的多行文本摘要（控制台打印用）。"""
         if self.result is None:
             return ["(not run yet)"]
         metrics = self.result["metrics"]
@@ -399,18 +470,17 @@ class SocietyRunner:
 
 
 # ---------------------------------------------------------------------------
-# environment for the learned high-level goal policy (REINFORCE training/eval)
+# 学习型高层目标策略的环境（REINFORCE 训练/评估）
 # ---------------------------------------------------------------------------
 class GoalPolicyEnv:
-    """Minimal env used by ``neworld/highlevel.py``'s ``GoalPolicyTrainer``.
+    """``newworld/highlevel.py`` 的 ``GoalPolicyTrainer`` 用的最小环境。
 
-    It runs exactly the same world rules as an experiment (same ``Population``,
-    same knowledge/civilization services), only without UI and without the
-    environment-disturbance schedule (training wants a stationary task).
+    它跑与实验完全相同的世界规则（同一个 ``Population``、同一套
+    知识/文明服务），只是没有 UI、也没有环境扰动时间表（训练要
+    平稳的任务）。
 
-    The trainer attaches its own policy through
-    ``population.attach_goal_policy(policy)`` after construction, so the policy
-    being optimized is the one actually driving the simulation.
+    训练器在构造之后通过 ``population.attach_goal_policy(policy)``
+    挂上自己的策略，因此被优化的策略正是驱动仿真的那个。
     """
 
     def __init__(
@@ -423,6 +493,7 @@ class GoalPolicyEnv:
         width: int = 640,
         height: int = 400,
     ) -> None:
+        """初始化。"""
         spec = RunSpec(
             group=group,
             seed=seed,
@@ -432,7 +503,7 @@ class GoalPolicyEnv:
             height=height,
             perception=False,
             disturbance=False,
-            goal_policy_mode="heuristic",  # trainer attaches its own policy
+            goal_policy_mode="heuristic",  # 训练器自己挂策略
         )
         self.spec = spec
         self.runner = SocietyRunner(spec)
@@ -443,15 +514,18 @@ class GoalPolicyEnv:
 
     # ------------------------------------------------------------------
     def step(self) -> None:
+        """推进一帧仿真。"""
         self.population.step(self.spec.dt)
         self._steps += 1
 
     def ended(self) -> bool:
+        """是否已经灭绝/无人存活。"""
         if self.world.civilization.extinct:
             return True
         return not any(agent.alive for agent in self.world.agents)
 
     def result(self) -> dict[str, float]:
+        """训练奖励/评估用的结果指标快照。"""
         world = self.world
         return {
             "world_time_s": round(float(world.t), 3),
@@ -472,7 +546,8 @@ class GoalPolicyEnv:
         }
 
     # ------------------------------------------------------------------
-    def attach_goal_policy(self, policy) -> None:  # pragma: no cover - convenience
+    def attach_goal_policy(self, policy) -> None:  # pragma: no cover - 便捷转发
+        """把训练中的策略挂到种群上。"""
         self.population.attach_goal_policy(policy)
 
 
@@ -486,8 +561,8 @@ def make_goal_policy_env(
     height: int = 400,
     **kwargs,
 ) -> GoalPolicyEnv:
-    """Build a training/evaluation env for the high-level goal policy."""
-    del kwargs  # tolerate future keywords from the trainer
+    """为高层目标策略构造训练/评估环境。"""
+    del kwargs  # 容忍训练器将来传入的关键字
     return GoalPolicyEnv(
         seed,
         group=group,
@@ -499,9 +574,127 @@ def make_goal_policy_env(
 
 
 # ---------------------------------------------------------------------------
+# 低层动作策略的环境（V2：REINFORCE 训练/评估）
+# ---------------------------------------------------------------------------
+class LowLevelPolicyEnv:
+    """``newworld/lowlevel_rl.py`` 的 ``LowLevelTrainer`` 用的最小环境。
+
+    与 :class:`GoalPolicyEnv` 相同的世界规则；``low_level_mode="rl"``
+    由训练器通过 ``population.attach_lowlevel_policy(policy)`` 挂上策略。
+    训练/评估 seed 由调用方保证不重叠。
+    """
+
+    def __init__(
+        self,
+        seed: int,
+        *,
+        group: str = "C",
+        steps: int = 4000,
+        dt: float = 0.05,
+        width: int = 640,
+        height: int = 400,
+        infinite: bool = False,
+        window_atoms: int = 0,
+        max_agents_created: int | None = None,
+        visual_features: bool = True,
+    ) -> None:
+        """初始化。"""
+        spec = RunSpec(
+            group=group,
+            seed=seed,
+            steps=steps,
+            dt=dt,
+            width=width,
+            height=height,
+            perception=False,
+            disturbance=False,
+            low_level_mode="rl",       # 训练器自己挂策略
+            visual_features=visual_features,
+            infinite=infinite,
+            window_atoms=window_atoms,
+            max_agents_created=max_agents_created,
+        )
+        self.spec = spec
+        self.runner = SocietyRunner(spec)
+        self.population = self.runner.population
+        self.world = self.runner.world
+        self._steps = 0
+        self._max_steps = int(steps)
+
+    def step(self) -> None:
+        """推进一帧仿真。"""
+        self.population.step(self.spec.dt)
+        self._steps += 1
+
+    def ended(self) -> bool:
+        """是否已经灭绝/无人存活。"""
+        if self.world.civilization.extinct:
+            return True
+        return not any(agent.alive for agent in self.world.agents)
+
+    def result(self) -> dict[str, float]:
+        """训练/评估用的结果指标快照。"""
+        world = self.world
+        return {
+            "world_time_s": round(float(world.t), 3),
+            "steps_run": float(self._steps),
+            "alive_count": float(len([a for a in world.agents if a.alive])),
+            "total_agents_created": float(world.registry.total_created),
+            "total_deaths": float(world.registry.total_deaths),
+            "tech_verified": float(len(world.knowledge.verified_ids())),
+            "facilities_active": float(
+                len([f for f in world.civilization.facilities if getattr(f, "active", False)])
+            ),
+            "innovations": float(len(self.population.innovations())),
+            "cooperation_index": float(getattr(world.civilization, "cooperation_index", 0.0)),
+            "extinction_time": float(
+                -1.0 if not world.civilization.extinct else (world.civilization.extinct_at or -1.0)
+            ),
+            "lowlevel_decisions": float(
+                self.population.decision_counts.get("lowlevel_rl", 0)
+            ),
+        }
+
+    def attach_lowlevel_policy(self, policy) -> None:  # pragma: no cover
+        """便捷转发（训练器通常直接调 population 上的方法）。"""
+        self.population.attach_lowlevel_policy(policy)
+
+
+def make_lowlevel_rl_env(
+    seed: int,
+    *,
+    group: str = "C",
+    steps: int = 4000,
+    dt: float = 0.05,
+    width: int = 640,
+    height: int = 400,
+    infinite: bool = False,
+    window_atoms: int = 0,
+    max_agents_created: int | None = None,
+    visual_features: bool = True,
+    **kwargs,
+) -> LowLevelPolicyEnv:
+    """为低层动作策略构造训练/评估环境（真实奖励、真实世界规则）。"""
+    del kwargs  # 容忍训练器将来传入的关键字
+    return LowLevelPolicyEnv(
+        seed,
+        group=group,
+        steps=steps,
+        dt=dt,
+        width=width,
+        height=height,
+        infinite=infinite,
+        window_atoms=window_atoms,
+        max_agents_created=max_agents_created,
+        visual_features=visual_features,
+    )
+
+
+# ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
 def main(argv: list[str] | None = None) -> int:
+    """命令行入口：解析参数 → 跑实验 → 打印摘要。"""
     parser = argparse.ArgumentParser(description="headless civilization experiment runner")
     parser.add_argument("--group", default="D", choices=sorted(ABLATIONS))
     parser.add_argument("--seed", type=int, default=0)
@@ -514,7 +707,20 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--policy-mode", choices=("heuristic", "neural", "random"), default="heuristic",
                         help="high-level goal policy: rules / trained network / uniform random")
     parser.add_argument("--policy-path", default=None, help="checkpoint for --policy-mode neural")
+    parser.add_argument("--low-level-mode", choices=("full", "random", "off", "rl"),
+                        default="full", help="low-level controller (bc / random / off / rl)")
     parser.add_argument("--innovation", action="store_true", help="enable combinatorial innovation")
+    parser.add_argument("--visual", dest="visual", action="store_true", default=None,
+                        help="enable real retina features in the observation (default: on)")
+    parser.add_argument("--no-visual", dest="visual", action="store_false",
+                        help="disable retina features (ablation)")
+    parser.add_argument("--infinite", action="store_true", help="unbounded scrolling world")
+    parser.add_argument("--window-atoms", type=int, default=0,
+                        help="infinite world window width in atoms (0 = auto)")
+    parser.add_argument("--cap", type=int, default=None,
+                        help="override cumulative agent creation cap (comparison experiments)")
+    parser.add_argument("--lowlevel-policy", default=None,
+                        help="checkpoint for --low-level-mode rl")
     parser.add_argument("--train-rounds", type=int, default=0)
     parser.add_argument("--log-dir", default=None)
     parser.add_argument("--save", default=None)
@@ -534,6 +740,12 @@ def main(argv: list[str] | None = None) -> int:
         train_rounds=args.train_rounds,
         goal_policy_mode=args.policy_mode,
         goal_policy_path=args.policy_path,
+        low_level_mode=args.low_level_mode,
+        lowlevel_policy_path=args.lowlevel_policy,
+        visual_features=args.visual,
+        infinite=bool(args.infinite),
+        window_atoms=int(args.window_atoms),
+        max_agents_created=args.cap,
         enable_innovation=True if args.innovation else None,
         log_dir=args.log_dir,
         save_path=args.save,

@@ -43,12 +43,14 @@ def _num(value, default: float = 0.0) -> float:
 
 
 def _clamp(value: float, low: float, high: float) -> float:
+    """把 value 夹在 [low, high]。"""
     if low > high:
         low, high = high, low
     return low if value < low else high if value > high else value
 
 
 def _int(value, default: int = 0) -> int:
+    """安全转 int，失败给 default。"""
     try:
         return int(value)
     except (TypeError, ValueError):
@@ -99,13 +101,16 @@ class Viewport:
 
     # -- 基本变换 ------------------------------------------------------
     def _safe_scale(self) -> float:
+        """受保护的世界→屏幕缩放系数。"""
         return max(MIN_SCALE * 1e-3, _num(self.scale, 1.0))
 
     def screen_to_world(self, sx: float, sy: float) -> tuple[float, float]:
+        """屏幕坐标转世界坐标。"""
         scale = self._safe_scale()
         return (_num(sx) / scale + _num(self.offset_x), _num(sy) / scale + _num(self.offset_y))
 
     def world_to_screen(self, wx: float, wy: float) -> tuple[float, float]:
+        """世界坐标转屏幕坐标。"""
         scale = self._safe_scale()
         return ((_num(wx) - _num(self.offset_x)) * scale, (_num(wy) - _num(self.offset_y)) * scale)
 
@@ -225,13 +230,16 @@ class HitTester:
     """
 
     def __init__(self, viewport: Viewport, *, max_distance_px: float = 60.0) -> None:
+        """初始化。"""
         self.viewport = viewport
         self.max_distance_px = max(0.0, _num(max_distance_px, 60.0))
 
     def _screen_center(self, box: AgentBox) -> tuple[float, float]:
+        """视口中心的屏幕坐标。"""
         return self.viewport.world_to_screen(_num(box.x), _num(box.y))
 
     def hit(self, agents: list[AgentBox], sx: float, sy: float) -> AgentHit | None:
+        """点击命中测试。"""
         point_x = _num(sx, float("nan"))
         point_y = _num(sy, float("nan"))
         if not (math.isfinite(point_x) and math.isfinite(point_y)):
@@ -273,12 +281,14 @@ class SelectionModel:
     """当前选中的个体；只允许存活 id，死亡后由 :meth:`sync` 清理。"""
 
     def __init__(self) -> None:
+        """初始化。"""
         self.selected_id: int | None = None
         self._alive: set[int] | None = None
 
     # -- 查询 ----------------------------------------------------------
     @property
     def has_selection(self) -> bool:
+        """当前是否有选中个体。"""
         return self.selected_id is not None
 
     def alive_ids(self) -> set[int] | None:
@@ -333,6 +343,7 @@ class ControlState:
     SPEEDS = SPEEDS
 
     def __init__(self, *, playing: bool = True, speed: float = 1.0) -> None:
+        """初始化。"""
         self.playing = bool(playing)
         self.speed = self._snap(speed) or 1.0
         self._pending_steps = 0
@@ -340,6 +351,7 @@ class ControlState:
     # -- 内部 ----------------------------------------------------------
     @classmethod
     def _snap(cls, speed: float) -> float | None:
+        """同步选中状态到当前世界。"""
         value = _num(speed, float("nan"))
         if not math.isfinite(value):
             return None
@@ -350,6 +362,7 @@ class ControlState:
 
     @property
     def paused(self) -> bool:
+        """是否暂停。"""
         return not self.playing
 
     @property
@@ -359,6 +372,7 @@ class ControlState:
 
     @property
     def speed_index(self) -> int:
+        """当前速度档位。"""
         for index, candidate in enumerate(self.SPEEDS):
             if abs(self.speed - candidate) <= 1e-6:
                 return index
@@ -462,6 +476,7 @@ class Layout:
     WORLD_MIN_H = 40
 
     def __init__(self, width: int, height: int, *, panel_visible: bool = True) -> None:
+        """初始化。"""
         self.width = max(1, _int(width, 1))
         self.height = max(1, _int(height, 1))
         self.panel_visible = bool(panel_visible)
@@ -469,6 +484,7 @@ class Layout:
 
     # -- 内部 ----------------------------------------------------------
     def _measure(self) -> tuple[int, int, int]:
+        """测量当前文本行所需尺寸。"""
         width, height = self.width, self.height
         top_h = int(_clamp(round(height * 0.06), self.TOP_MIN, self.TOP_MAX))
         bottom_h = int(_clamp(round(height * 0.26), self.BOTTOM_MIN, self.BOTTOM_MAX))
@@ -513,9 +529,11 @@ class Layout:
         return "world"
 
     def with_panel(self, visible: bool) -> "Layout":
+        """带侧栏的布局矩形。"""
         return Layout(self.width, self.height, panel_visible=visible)
 
     def resize(self, width: int, height: int) -> "Layout":
+        """窗口尺寸变化时重排。"""
         return Layout(width, height, panel_visible=self.panel_visible)
 
 
@@ -541,6 +559,7 @@ class AgentDetail:
 
 
 def _fmt(value, suffix: str = "", digits: int = 1) -> str:
+    """格式化数字（保留一位小数）。"""
     number = _num(value, float("nan"))
     if not math.isfinite(number):
         return NO_DATA
@@ -548,6 +567,7 @@ def _fmt(value, suffix: str = "", digits: int = 1) -> str:
 
 
 def _text(value) -> str:
+    """安全转文本。"""
     if value is None:
         return NO_DATA
     text = str(value).strip()
@@ -555,6 +575,7 @@ def _text(value) -> str:
 
 
 def _fmt_time(seconds) -> str:
+    """把世界秒格式化为 mm:ss。"""
     value = _num(seconds, float("nan"))
     if not math.isfinite(value):
         return NO_DATA
@@ -583,6 +604,7 @@ def _knowledge_text(world, agent) -> str:
 
 
 def _inventory_text(agent) -> str:
+    """库存一行的中文文本。"""
     inventory = _get(agent, "inventory", None)
     if inventory is None:
         return NO_DATA
@@ -602,6 +624,7 @@ def _inventory_text(agent) -> str:
 
 
 def _skill_text(agent) -> str:
+    """技能一行的中文文本。"""
     skills = _get(agent, "skills", None)
     if not skills:
         return NO_DATA
@@ -613,6 +636,7 @@ def _skill_text(agent) -> str:
 
 
 def _memory_text(world, agent_id: int) -> str:
+    """记忆一行的中文文本。"""
     memory = _get(world, "memory", None)
     entries = _call(memory, "entries", agent_id, limit=5) if memory is not None else None
     if not entries:
@@ -626,6 +650,7 @@ def _memory_text(world, agent_id: int) -> str:
 
 
 def _relation_text(world, population, agent_id: int) -> str:
+    """关系一行的中文文本。"""
     society = _get(population, "society", None)
     if society is None:
         return NO_DATA
@@ -793,6 +818,7 @@ def build_agent_detail(world, population, agent_id: int | None) -> AgentDetail:
 
 
 def _parents_text(agent, record) -> str:
+    """父母信息文本。"""
     ids = []
     if agent is not None:
         ids = [_int(item, -1) for item in (_get(agent, "parents", ()) or ())]
@@ -809,6 +835,7 @@ def _parents_text(agent, record) -> str:
 
 
 def _heart_text(physiology) -> str:
+    """心跳率文本。"""
     heart = _num(_get(physiology, "heart_rate", None), float("nan"))
     breathing = _num(_get(physiology, "breathing_rate", None), float("nan"))
     if not (math.isfinite(heart) or math.isfinite(breathing)):

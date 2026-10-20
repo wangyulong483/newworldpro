@@ -1,4 +1,6 @@
-"""Tests for the physical laws: mechanics, acoustics, thermodynamics, EM."""
+"""物理常数与单位换算测试（g、声速、声压级、跳跃高度等）。
+
+Tests for the physical laws: mechanics, acoustics, thermodynamics, EM."""
 
 from __future__ import annotations
 
