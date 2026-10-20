@@ -113,6 +113,8 @@ class Swarm:
         self.old_age_deaths = 0
         self.drowned = 0
         self.burned = 0
+        #: P1.6：逐个体死亡年龄（精确 mean_life 分子）
+        self.death_ages: list[float] = []
         # -- P1：策略注入 + 奖励/转移缓冲（见 swarm_policy.py） -----------
         #: None = V3 原规则行为；注入 SwarmPolicy 后移动决策由策略接管
         self.policy = None
@@ -412,6 +414,10 @@ class Swarm:
                         obs_last, action_last = last
                         self.transitions.append((obs_last, action_last, float(REWARD_DEATH)))
                         self.total_reward += float(REWARD_DEATH)
+            # P1.6：逐个体记录死亡年龄（mean_life 指标的精确分子，
+            # 替换实验脚本里的种群级近似——那在人口打满容量时失真）
+            for row in np.nonzero(dying)[0].tolist():
+                self.death_ages.append(float(view["age"][row]))
             view["alive"] = view["alive"] & ~dying
             self.starvation_deaths += int(starve.sum())
             self.old_age_deaths += int(old.sum())

@@ -29,6 +29,7 @@
 from __future__ import annotations
 
 import argparse
+import dataclasses
 import json
 import sys
 import time
@@ -57,6 +58,18 @@ EVAL_SECONDS = 120.0          # 评估时长（世界秒）
 TRAIN_SECONDS = 60.0          # 每训练回合时长
 INITIAL_POP = 120
 CAPACITY_HARD = 3000
+#: P1.7：稀缺环境（食物再生 0.012 → 0.0005）。P1.6 发现默认环境
+#: 承载过剩（食物再生 ≈ 消耗的 10 倍），任何活法都饿不死 → 无觅食
+#: 选择压力。稀缺下站桩饿死（饱足 0.14、193 饿死）、移动觅食存活
+#: ——这才是"觅食策略可以被学习优选"的环境条件。
+FOOD_REGROW_PER_S = 0.0005
+#: P1.6：竞争压力档位（多组对照——低密度站桩占优是环境事实，
+#: 高密度下觅食移动的价值应显现：3× 与 6× 初始人口两档）
+DENSITY_LEVELS: tuple[tuple[str, int], ...] = (
+    ("normal", 120),
+    ("dense3x", 360),
+    ("dense6x", 720),
+)
 
 
 # ---------------------------------------------------------------------------
@@ -71,12 +84,20 @@ class RandomPolicy:
 
 
 # ---------------------------------------------------------------------------
-def build(engine_seed: int, policy, swarm_seed: int) -> tuple[MapEngine, Swarm]:
+def make_map_config(seed: int) -> MapConfig:
+    """实验统一地图配置（含 P1.7 稀缺参数）。"""
+    return dataclasses.replace(
+        MapConfig(seed=seed, width=MAP_W, height=MAP_H),
+        food_regrow_per_s=FOOD_REGROW_PER_S,
+    )
+
+
+def build(engine_seed: int, policy, swarm_seed: int, population: int = INITIAL_POP) -> tuple[MapEngine, Swarm]:
     """构造一个 (engine, swarm) 对；注入给定策略。"""
-    engine = MapEngine(MapConfig(seed=engine_seed, width=MAP_W, height=MAP_H))
+    engine = MapEngine(make_map_config(engine_seed))
     swarm = Swarm(
         engine,
-        SwarmConfig(initial_population=INITIAL_POP, capacity_hard=CAPACITY_HARD),
+        SwarmConfig(initial_population=population, capacity_hard=CAPACITY_HARD),
         seed=swarm_seed,
     )
     if policy is not None:
@@ -84,26 +105,26 @@ def build(engine_seed: int, policy, swarm_seed: int) -> tuple[MapEngine, Swarm]:
     return engine, swarm
 
 
-def evaluate(policy, engine_seed: int, swarm_seed: int) -> dict[str, float]:
+def evaluate(policy, engine_seed: int, swarm_seed: int,
+             population: int = INITIAL_POP) -> dict[str, float]:
     """在给定 seed 下评估一个策略；返回指标字典。"""
-    engine, swarm = build(engine_seed, policy, swarm_seed)
-    life_sum = 0.0     # Σ 死亡时的年龄（平均寿命分子）
-    death_count = 0
+    engine, swarm = build(engine_seed, policy, swarm_seed, population)
     steps = int(EVAL_SECONDS / DT)
     for _ in range(steps):
-        alive_before = swarm.population
         engine.update(DT, 0.8)
-        stats = swarm.update(DT)
-        if stats["deaths"] > 0:
-            # 近似：死亡个体年龄用存活均值估计（精确逐个体需改 dtype——
-            # P1 以种群级指标为准，此近似记录在报告局限中）
-            life_sum += stats["deaths"] * float(
-                np.mean(swarm.data[: swarm.count]["age"]) if swarm.count else 60.0
-            )
-            death_count += int(stats["deaths"])
+        swarm.update(DT)
         if swarm.population == 0:
             break
     survived_seconds = engine.t
+    # P1.6：精确平均寿命（Swarm 逐个体记录 death_ages）；
+    # 无人死亡 = 全员活过评估（用存活均值，存活个体 age 为真实年龄）
+    if swarm.death_ages:
+        mean_life = float(np.mean(swarm.death_ages))
+    else:
+        alive_view = swarm.data[: swarm.count]
+        alive_ages = alive_view["age"][alive_view["alive"]] if swarm.count else np.array([0.0])
+        mean_life = float(alive_ages.mean()) if alive_ages.size else 0.0
+    # 存活个体的期望寿命下界 = 当前平均年龄 + 剩余期望（存活=好）
     return {
         "population": float(swarm.population),
         "births": float(swarm.births),
@@ -112,8 +133,8 @@ def evaluate(policy, engine_seed: int, swarm_seed: int) -> dict[str, float]:
         "total_reward": float(swarm.total_reward),
         # 进食效率：进食次数 / (存活个体·秒)
         "eat_rate": float(swarm.eat_events / max(1.0, survived_seconds * INITIAL_POP)),
-        # 粗平均寿命（死亡个体加权；无人死亡时取评估时长+（存活=好））
-        "mean_life": float(life_sum / death_count) if death_count else float(survived_seconds + 30.0),
+        # P1.6：精确平均寿命（死者的真实年龄；无死亡=存活者当前年龄）
+        "mean_life": mean_life,
         "extinct_seconds": float(survived_seconds if swarm.population == 0 else -1.0),
         "world_seconds": float(survived_seconds),
     }
@@ -159,7 +180,7 @@ def main(argv: list[str] | None = None) -> int:
               f"mean_return={stats['mean_return']:+.2f} Δw={stats['weight_delta']:.2e}")
     wall_train = time.perf_counter() - started
 
-    # -- 评估（四组 × 全部 eval seeds，配对） ---------------------------
+    # -- 评估（四组 × 全部 eval seeds × 密度档位，配对） -----------------
     def make_policies():
         return {
             "random": RandomPolicy(seed=1),
@@ -168,21 +189,27 @@ def main(argv: list[str] | None = None) -> int:
             "trained": policy,
         }
 
-    results: dict[str, list[dict[str, float]]] = {"random": [], "rule": [],
-                                                  "untrained": [], "trained": []}
+    #: 密度档位结果 {density: {policy_name: [runs]}}
+    dense_results: dict[str, dict[str, list[dict[str, float]]]] = {}
     started = time.perf_counter()
-    for eval_seed in eval_seed_list:
-        for name, pol in make_policies().items():
-            metrics = evaluate(pol, eval_seed, eval_seed)
-            metrics["seed"] = float(eval_seed)
-            results[name].append(metrics)
+    for density_name, population in DENSITY_LEVELS:
+        results: dict[str, list[dict[str, float]]] = {"random": [], "rule": [],
+                                                      "untrained": [], "trained": []}
+        for eval_seed in eval_seed_list:
+            for name, pol in make_policies().items():
+                metrics = evaluate(pol, eval_seed, eval_seed, population)
+                metrics["seed"] = float(eval_seed)
+                results[name].append(metrics)
+        dense_results[density_name] = results
         row = {k: results[k][-1] for k in results}
-        print(f"  eval seed={eval_seed}: " + "  ".join(
-            f"{k}(eat={v['eat_events']:.0f},rew={v['total_reward']:+.0f})"
+        print(f"  [{density_name} pop={population}] seed={eval_seed_list[-1]}: " + "  ".join(
+            f"{k}(eat={v['eat_events']:.0f},life={v['mean_life']:.1f})"
             for k, v in row.items()))
     wall_eval = time.perf_counter() - started
 
-    # -- 汇总与配对比较 -------------------------------------------------
+    # -- 汇总与配对比较（主档位 = normal） ------------------------------
+    results = dense_results["normal"]
+
     def summarize(runs: list[dict[str, float]]) -> dict[str, float]:
         keys = [k for k in runs[0] if k != "seed"]
         return {k: float(np.mean([r[k] for r in runs])) for k in keys} | {
@@ -200,6 +227,27 @@ def main(argv: list[str] | None = None) -> int:
         diffs_life.append(dl)
         wins_eat += de > 0
         wins_life += dl > 0
+    # 密度梯度分析：每个密度档位的 trained-vs-rule 进食效率差
+    density_analysis = {}
+    for density_name, runs in dense_results.items():
+        deats, dlifes = [], []
+        de_wins = dl_wins = 0
+        for run_t, run_r in zip(runs["trained"], runs["rule"]):
+            de = run_t["eat_rate"] - run_r["eat_rate"]
+            dl = run_t["mean_life"] - run_r["mean_life"]
+            deats.append(de)
+            dlifes.append(dl)
+            de_wins += de > 0
+            dl_wins += dl > 0
+        density_analysis[density_name] = {
+            "eat_rate_diff_mean": float(np.mean(deats)),
+            "eat_rate_diff_std": float(np.std(deats)),
+            "eat_wins": int(de_wins),
+            "mean_life_diff_mean": float(np.mean(dlifes)),
+            "life_wins": int(dl_wins),
+            "trained_mean_life": float(np.mean([r["mean_life"] for r in runs["trained"]])),
+            "rule_mean_life": float(np.mean([r["mean_life"] for r in runs["rule"]])),
+        }
     paired = {
         "trained_vs_rule_eat_wins": wins_eat,
         "trained_vs_rule_life_wins": wins_life,
@@ -209,6 +257,12 @@ def main(argv: list[str] | None = None) -> int:
         "mean_life_diff_mean": float(np.mean(diffs_life)),
         "mean_life_diff_std": float(np.std(diffs_life)),
         "gate_passed": bool(wins_eat >= 8 or wins_life >= 8),
+        "density_analysis": density_analysis,
+        "density_sweep_hypothesis": (
+            "低密度下站桩吃再生流占优是环境事实；高密度（竞争压力）下"
+            "扫掠觅食应反超——若 dense6x 的 eat_rate_diff 显著高于 normal，"
+            "则习得的扫掠策略在资源竞争中具有真实适应价值"
+        ),
         "train_wall_s": round(wall_train, 1),
         "eval_wall_s": round(wall_eval, 1),
         "train_log": train_log,
@@ -217,6 +271,7 @@ def main(argv: list[str] | None = None) -> int:
         "params": {
             "map": f"{MAP_W}x{MAP_H}", "dt": DT, "eval_s": EVAL_SECONDS,
             "train_s_per_ep": TRAIN_SECONDS, "initial_pop": INITIAL_POP,
+            "density_levels": {k: v for k, v in DENSITY_LEVELS},
             "lr": args.lr, "episodes": args.train_episodes,
         },
     }
@@ -256,9 +311,24 @@ def main(argv: list[str] | None = None) -> int:
         f"Δ = {paired['mean_life_diff_mean']:+.1f} ± {paired['mean_life_diff_std']:.1f}",
         f"- **验收门槛（≥8/{len(eval_seed_list)}）：{'通过' if paired['gate_passed'] else '未通过'}**",
         "",
-        "局限：平均寿命为种群级近似（死亡个体年龄用存活均值估计）；"
-        "进食效率分母用初始人口（存活个体会繁衍，实际分母更大——"
-        "四组同口径故配对比较仍有效）。",
+        "## 密度梯度（P1.6：竞争压力下习得策略的价值检验）",
+        "",
+        "| 密度 | 初始人口 | trained-rule 进食效率差 | 进食胜 | 寿命差 | 寿命胜 |",
+        "|---|---|---|---|---|---|",
+    ]
+    for density_name, pop in DENSITY_LEVELS:
+        da = density_analysis[density_name]
+        lines.append(
+            f"| {density_name} | {pop} | {da['eat_rate_diff_mean']:+.5f}±{da['eat_rate_diff_std']:.5f} "
+            f"| {da['eat_wins']}/{len(eval_seed_list)} "
+            f"| {da['mean_life_diff_mean']:+.1f} "
+            f"| {da['life_wins']}/{len(eval_seed_list)} |"
+        )
+    lines += [
+        "",
+        "指标定义（P1.6 修订）：mean_life 为逐个体记录的死亡年龄均值"
+        "（Swarm.death_ages；无死亡时用存活者当前年龄）；"
+        "进食效率分母用初始人口（四组同口径，配对比较有效）。",
     ]
     out_md = RESULTS_DIR / f"report_{tag}.md"
     out_md.write_text("\n".join(lines), encoding="utf-8")
