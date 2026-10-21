@@ -111,3 +111,60 @@ Mesa/Solara 仅作快速原型参照，Godot 排除。
 
 **全部不引入**：Avida/Tierra/Mesa/Axelrod 的代码依赖（许可证与
 集成成本见各节）。
+
+---
+
+## 第二轮调研（2026-10-21，回应用户批评"缺前沿理论依据"）
+
+### 多智能体前沿（勘误两条 arXiv 编号）
+- **Melting Pot 2.0**（https://arxiv.org/abs/2211.13746，DeepMind）：
+  "substrate + background population" 双层评估——受试策略丢进固定
+  背景人群中测社会泛化。**可抄的是评估协议**：背景种群做标尺防自评自闭。
+- **SMACv2**（https://arxiv.org/abs/2212.07489）：SMAC 被开环策略
+  刷穿的教训 → 我们的适应度指标必须过"开环基线"检验（V1.7 的
+  rule/untrained 对照正是这个作用）。
+- **涌现通信**：Lazaridou 综述 https://arxiv.org/abs/2006.02419、
+  指称博弈 https://arxiv.org/abs/1605.07133、Eccles 正信号偏置
+  https://arxiv.org/abs/1912.05676——P3 的技能传播是其离散前身。
+- **Open-endedness**（正确编号 **arXiv:2406.04268**，Hughes 等
+  DeepMind 2024；注意 2106.13804 是视觉论文、常被引错）：
+  "新奇性 × 可学习性"的形式化——本平台的文明多样性度量设计来源。
+
+### 演化-学习对照（P4 的理论基础）
+- **PBT**（https://arxiv.org/abs/1711.09846）：超参调度式种群训练。
+- **PAIRED/UED**（正确编号 **arXiv:2012.02096**；2012.01796 是
+  MRI 论文）：遗憾值驱动的环境课程——P5 候选。
+- **OpenAI ES**（https://arxiv.org/abs/1703.03864）：只通信标量
+  适应度的并行 ES——P4 演化臂的直接理论依据（SkillDistribution
+  与其同构）。
+
+### YOLO 工程模式（Ultralytics，https://github.com/ultralytics/ultralytics）
+四大可抄：YAML config 驱动实验、registry 注册制机制组件、
+CLI/训练/推理单代码路径、model zoo 统一产出格式（npz+metrics.json）。
+下一步 P5：run_p* 实验脚本全部收敛到统一 config + registry。
+
+### LLM 训练工程
+- **HF Trainer**（https://huggingface.co/docs/transformers/main_classes/trainer）：
+  callback/checkpoint/eval 三分离——实验循环零逻辑、观测全在回调。
+- **RLHF/DPO**（InstructGPT https://arxiv.org/abs/2203.02155、
+  DPO https://arxiv.org/abs/2305.18290）：奖励建模先行且单独审计
+  ——rewards.py 的反刷分测试是这个思想的落实。
+- **Scaling laws**（https://arxiv.org/abs/2001.08361）：
+  "其余冻结、只扫一维"——P5 候选：扫种群规模拟合幂律。
+
+### 社会仿真
+- **Generative Agents**（https://arxiv.org/abs/2304.03442）中
+  非 LLM 部分可移植：记忆流（新近×重要×相关检索）、周期反思、
+  日重规划——P6 候选的机制层。
+- FCLAgent（https://arxiv.org/abs/2510.12189）："决策智能体 +
+  规则结算"混合架构——与本平台社会层/个体层分工一致。
+
+### 落地优先级（本轮结论）
+| 建议 | 状态 |
+|---|---|
+| 开环基线检验（SMACv2 教训） | 已在 P1.7 落地（untrained 对照） |
+| ES vs 策略梯度对照 | P4 已实现（run_p4_evolution.py） |
+| YAML+registry 工程化 | P5 |
+| scaling law 单维扫描 | P5 |
+| 涌现通信通道 | P6 |
+| 生成式记忆三层（去 LLM 化） | P6 |

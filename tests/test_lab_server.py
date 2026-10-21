@@ -84,7 +84,7 @@ class CommandApiTest(unittest.TestCase):
             for payload in (
                 {"kind": "resume"},
                 {"kind": "speed", "index": 3},
-                {"kind": "catastrophe", "name": "meteor", "x": 64, "y": 32, "radius": 8},
+                {"kind": "step", "steps": 10},
             ):
                 result = client.post("/api/command", json=payload).json()
                 self.assertTrue(result["ok"], payload)
@@ -92,9 +92,9 @@ class CommandApiTest(unittest.TestCase):
                 self.assertIn("kind", result["record"])
             snap = client.get("/api/snapshot").json()
             kinds = [i["kind"] for i in snap["interventions"]]
-            self.assertEqual(kinds, ["resume", "speed", "catastrophe"])
+            self.assertEqual(kinds, ["resume", "speed", "step"])
             # 参数也被记录（审计可复现）
-            self.assertEqual(snap["interventions"][2]["params"]["name"], "meteor")
+            self.assertEqual(snap["interventions"][2]["params"]["steps"], 10)
 
     def test_pause_resume_roundtrip(self) -> None:
         """pause 后帧流不再推进；resume 恢复。"""
@@ -127,21 +127,15 @@ class CommandApiTest(unittest.TestCase):
             snap = client.get("/api/snapshot").json()
             self.assertEqual(snap["seed"], 42)
 
-    def test_catastrophe_affects_world(self) -> None:
-        """陨石真实作用世界（食物清零可测）。"""
+    def test_social_mechanisms_live(self) -> None:
+        """P4：社会机制在线（快照含 social 统计字段）。"""
         with make_client(seed=0) as client:
-            snap0 = client.get("/api/snapshot").json()
-            # 找个人口密集点（世界中心附近）
-            result = client.post("/api/command", json={
-                "kind": "catastrophe", "name": "meteor",
-                "x": 128, "y": 80, "radius": 12}).json()
-            self.assertTrue(result["ok"])
-            snap1 = client.get("/api/snapshot").json()
-            # 撞击要么杀了人要么至少被记录
-            self.assertTrue(
-                snap1["population"] <= snap0["population"]
-                or len(snap1["interventions"]) > 0,
-            )
+            client.post("/api/command", json={"kind": "resume"})
+            client.post("/api/command", json={"kind": "step", "steps": 400})
+            snap = client.get("/api/snapshot").json()
+            self.assertIn("social", snap)
+            for key in ("barter_events", "teach_events", "skilled_population"):
+                self.assertIn(key, snap["social"])
 
 
 # ---------------------------------------------------------------------------

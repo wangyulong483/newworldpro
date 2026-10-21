@@ -218,3 +218,57 @@ class ConfigIndependenceTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+# ---------------------------------------------------------------------------
+class SkillWiringTest(unittest.TestCase):
+    """P4 接线：技能效果通过 swarm.skill_effect 真实作用于行为层。"""
+
+    def test_attach_to_swarm_sets_hook(self) -> None:
+        """attach_to_swarm 后 swarm.skill_effect 可调用且返回正确乘数。"""
+        engine, swarm = make_pair(seed=10)
+        social = SocialLayer(swarm, SocialConfig())
+        social.attach_to_swarm()
+        self.assertIsNotNone(swarm.skill_effect)
+        social.skills[0] = 1  # efficient_biter
+        social.skills[1] = 2  # long_sight
+        social.skills[2] = 3  # slow_metabolism
+        self.assertAlmostEqual(swarm.skill_effect(0, "bite", 1.0), 1.5)
+        self.assertAlmostEqual(swarm.skill_effect(1, "move", 2.0), 2.8)
+        self.assertAlmostEqual(swarm.skill_effect(2, "metabolism", 0.01), 0.0075)
+        # 无技能 = 原值
+        self.assertAlmostEqual(swarm.skill_effect(5, "bite", 1.0), 1.0)
+
+    def test_detached_hook_is_none(self) -> None:
+        """未接线时 swarm.skill_effect 为 None（零开销）。"""
+        engine, swarm = make_pair(seed=11)
+        social = SocialLayer(swarm, SocialConfig())
+        self.assertIsNone(swarm.skill_effect)
+
+    def test_metabolism_skill_improves_survival(self) -> None:
+        """slow_metabolism 全员携带 → 断粮下活得明显更久（端到端）。"""
+        from newworld.swarm_policy import RuleSwarmPolicy
+
+        def run_starve(with_skill: bool, seed: int = 12) -> float:
+            engine, swarm = make_pair(seed=seed, population=40)
+            swarm.attach_policy(RuleSwarmPolicy(seed=seed))
+            social = SocialLayer(swarm, SocialConfig(
+                enable_barter=False, enable_teaching=False, enable_inheritance=False,
+                initial_skill_rate=0.0), seed=seed)
+            if with_skill:
+                social.skills[: swarm.count] = 3  # 全员 slow_metabolism
+                social.attach_to_swarm()
+            engine.food[:] = 0.0
+            steps = 0
+            while swarm.population > 0 and steps < 6000:
+                swarm.update(0.05)
+                steps += 1
+            return steps * 0.05  # 存活世界秒
+
+        plain = run_starve(False)
+        skilled = run_starve(True)
+        # 代谢 ×0.75 → 饥饿更慢 → 活得更久（应至少多 10%）
+        self.assertGreater(
+            skilled, plain * 1.1,
+            f"slow_metabolism 应延长断粮存活（{skilled:.0f}s vs {plain:.0f}s）",
+        )

@@ -5,7 +5,7 @@
 ``GET  /api/snapshot``   只读世界快照（地形摘要 + 人口统计 + 个体位图）
 ``WS   /api/stream``     增量帧流（个体位置/饱足 + 事件 + 指标，~15Hz）
 ``GET  /api/agent/{id}``  个体详情（状态/最近动作/累计奖励）
-``POST /api/command``    实验干预（pause/resume/speed/seed/reset/catastrophe）
+``POST /api/command``    实验控制（pause/resume/speed/seed/reset）
 ``GET  /``               前端页面（static/index.html）
 
 铁律（与 ROADMAP 一致）：
@@ -41,7 +41,7 @@ from fastapi.staticfiles import StaticFiles
 from .map_engine import MapConfig, MapEngine
 from .swarm import Swarm, SwarmConfig
 from .swarm_policy import RuleSwarmPolicy
-from .catastrophes import Catastrophes
+from .social_mech import SocialConfig, SocialLayer
 
 DT = 0.05
 #: 稀缺世界（P1.7 的结论环境）
@@ -79,7 +79,11 @@ class LabSession:
 
     # ------------------------------------------------------------------
     def _build(self, seed: int) -> None:
-        """（重）建世界：稀缺地图 + 群伙 + 规则策略 + 灾害。"""
+        """（重）建世界：稀缺地图 + 群伙 + 规则策略 + 社会机制。
+
+        P4 起世界为**抽象模拟**（无灾害/神迹命令——环境变化只
+        来自世界自身的规则动态与社会机制）。
+        """
         self.seed = int(seed)
         map_config = dataclasses.replace(
             MapConfig(seed=self.seed, width=256, height=160),
@@ -94,7 +98,10 @@ class LabSession:
         # P2 默认规则策略（学习策略挂载接口在 /command 里：attach-trained）
         self.policy = RuleSwarmPolicy(seed=self.seed)
         self.swarm.attach_policy(self.policy)
-        self.cats = Catastrophes(self.engine, self.swarm)
+        # P3 社会机制（交换/教学/继承——个体交互产生，非神迹）
+        self.social = SocialLayer(self.swarm, SocialConfig(), seed=self.seed)
+        self.social.inject_initial_skills()
+        self.social.attach_to_swarm()  # 技能效果接线到世界规则层
         self.agent_history.clear()
         self.series = []
         self._last_series_t = -1.0
@@ -117,7 +124,10 @@ class LabSession:
                 steps = speeds[self.speed_index]
                 for _ in range(steps):
                     self.engine.update(DT, 0.8)
+                    deaths_before = len(self.swarm.death_ages)
                     self.swarm.update(DT)
+                    self.social.on_death_pass(deaths_before)
+                    self.social.update(DT)
                 self._archive_recent_actions()
                 self._sample_series()
 
@@ -173,25 +183,14 @@ class LabSession:
             elif kind == "step":
                 for _ in range(max(1, int(params.get("steps", 1)))):
                     self.engine.update(DT, 0.8)
+                    deaths_before = len(self.swarm.death_ages)
                     self.swarm.update(DT)
+                    self.social.on_death_pass(deaths_before)
+                    self.social.update(DT)
                 self._sample_series()
             elif kind == "reset":
                 self._build(int(params.get("seed", self.seed + 1)))
                 self.running = True
-            elif kind == "catastrophe":
-                name = str(params.get("name", ""))
-                x = int(params.get("x", 0)); y = int(params.get("y", 0))
-                radius = int(params.get("radius", 12))
-                if name == "meteor":
-                    self.cats.meteor(x, y, radius)
-                elif name == "lightning":
-                    self.cats.lightning(x, y)
-                elif name == "flood":
-                    self.cats.flood(x, y, radius)
-                elif name == "heal":
-                    self.cats.heal(x, y, radius)
-                else:
-                    return {"ok": False, "error": f"unknown catastrophe {name}"}
             else:
                 return {"ok": False, "error": f"unknown command {kind}"}
             self.interventions.append(record)
@@ -220,6 +219,7 @@ class LabSession:
                 "deaths": self.swarm.deaths,
                 "satiation": round(self.swarm.mean_hunger(), 3),
                 "food_total": round(self.engine.food_capacity(), 0),
+                "social": dict(self.social.stats),
                 "interventions": list(self.interventions[-20:]),
                 "series": list(self.series[-120:]),
             }
@@ -256,6 +256,9 @@ class LabSession:
             entry = view[row]
             obs = self.swarm._observations(view, np.asarray([row]))[0]
             recent = self.agent_history.get("_dirty", [])[-AGENT_HISTORY:]
+            from .social_mech import SKILLS
+            skill_id = int(self.social.skills[row])
+            skill_name = SKILLS[skill_id]["name"] if skill_id else None
             return {
                 "ok": True,
                 "row": row,
@@ -265,6 +268,7 @@ class LabSession:
                 "age": round(float(entry["age"]), 1),
                 "breed_cd": round(float(entry["breed_cd"]), 1),
                 "alive": True,
+                "skill": skill_name,
                 "observation": [round(float(v), 3) for v in obs.tolist()],
                 "recent_actions": recent,
             }

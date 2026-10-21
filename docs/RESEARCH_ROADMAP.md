@@ -170,3 +170,45 @@ GET  /api/experiments      实验列表与结果
 3. P1 验收以配对 seed + 未见环境为准，失败如实报告；
 4. P2 起人工干预必须过 /command 且全量记录；
 5. 任何"智能涌现"声明必须附决策占比（防 V2 式 0.36% 假归因）。
+
+
+---
+
+## P4 执行结果（已运行，如实记录）
+
+三臂配对对照（rule / evolution / learning × 5 eval seeds，稀缺世界，
+120s 评估；evolution = 技能分布 θ 演化 4 代，learning = 策略梯度
+8 回合独立训练——OpenAI ES 理论依据见 REFERENCES 第二轮调研）：
+
+| 臂 | 进食效率 vs rule（配对） | 结论 |
+|---|---|---|
+| evolution（技能分布变异+选择） | 1/5 胜，Δ=-262±261 | **无效应** |
+| learning（NeuralSwarmPolicy REINFORCE） | **5/5 胜，Δ=+6368±3896** | 显著正效应 |
+
+**机制定性（诚实记录两个根本原因）**：
+
+1. **演化臂的表型太弱**：P3 技能中只有 slow_metabolism 在残食
+   环境有真实生理优势（bite 被 available≤0.008 的残食上限截断、
+   move 的 3 格探测半径有限）。θ 演化能在三个弱表型间重新分配，
+   但弱表型的组合怎么分配也超过不了无技能基线多少。
+2. **信号通道对比悬殊**：learning 每步获得连续稠密的
+   `(obs, reward)` 梯度信号（每回合 ~20 万条转移）；evolution 每
+   60s 一代、只有"整代存活饱足均值"一个标量。这是 ES vs PG 的
+   结构性差距在本环境的具体体现——**离散弱表型 + 短程评估下，
+   学习通道信息量高出演化通道三个数量级**。
+
+这与理论预期一致（OpenAI ES 需要海量并行 rollout 补偿信号稀疏——
+我们的演化臂每代只跑 1 个 rollout）。不是说演化无效，是当前
+实现规模下无效应——θ_final 分布显示演化确实在动（偏好 efficient_biter
+0.33-0.45，它有三技能中最强的代谢保护），只是表型增益 < 噪声。
+
+**技能接线（P4 另一半工作）**：bite/move/metabolism 三钩子已接
+入 swarm 行为层（`swarm.skill_effect`，依赖倒置设计），断粮存活
+测试证明 slow_metabolism ×0.75 端到端生效（存活时间 +>10%，
+test_metabolism_skill_improves_survival 锁定）。
+
+**灾害命令链已按用户定位移除**（抽象模拟≠上帝模拟器）：
+lab_server 的 catastrophe 命令、前端工具栏全部删除；世界动态只
+来自规则（生态/社会机制）——干预仅保留 pause/speed/step/reset
+四项实验控制。catastrophes.py 模块保留（其点燃/地形逻辑被
+MapEngine 的生态火蔓延使用），但不再从任何交互界面可达。

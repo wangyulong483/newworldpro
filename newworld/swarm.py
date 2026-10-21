@@ -118,6 +118,8 @@ class Swarm:
         # -- P1：策略注入 + 奖励/转移缓冲（见 swarm_policy.py） -----------
         #: None = V3 原规则行为；注入 SwarmPolicy 后移动决策由策略接管
         self.policy = None
+        #: P4：技能效果钩子 row -> kind -> 乘数（社会层注入；None = 无）
+        self.skill_effect = None
         #: (obs, action, reward) 转移缓冲（policy 非 None 时记录）
         self.transitions: list[tuple[np.ndarray, int, float]] = []
         #: 累计奖励（评估指标）
@@ -203,7 +205,12 @@ class Swarm:
         actions = np.asarray(self.policy.act(obs), dtype=np.int64)
         if actions.shape != (rows.size,):
             raise ValueError(f"policy.act 返回形状 {actions.shape} != ({rows.size},)")
-        step = cfg.move_speed * dt
+        # P4：移动步长受 skill_effect("move") 影响（long_sight ×1.4）
+        base_step = cfg.move_speed * dt
+        steps = np.full(rows.shape, base_step, dtype=np.float64)
+        if self.skill_effect is not None:
+            for i, row in enumerate(rows.tolist()):
+                steps[i] *= self.skill_effect(int(row), "move", 1.0)
         moved_x = view["x"][rows].copy()
         moved_y = view["y"][rows].copy()
         for action_id in range(len(ACTION_DELTAS)):
@@ -211,8 +218,8 @@ class Swarm:
             mask = actions == action_id
             if dx == 0 and dy == 0:
                 continue
-            moved_x[mask] += dx * step
-            moved_y[mask] += dy * step
+            moved_x[mask] += dx * steps[mask]
+            moved_y[mask] += dy * steps[mask]
         # 目标格不可走就别去（世界规则约束策略动作）
         nx_i = np.clip(moved_x.astype(np.int32), 0, engine.width - 1)
         ny_i = np.clip(moved_y.astype(np.int32), 0, engine.height - 1)
@@ -392,7 +399,14 @@ class Swarm:
 
         # -- 饥饿与年龄增长 ------------------------------------------
         view["age"] += dt
-        view["hunger"] -= cfg.metabolism_per_s * dt
+        # P4：代谢受 skill_effect("metabolism") 影响（slow_metabolism ×0.75）
+        if self.skill_effect is not None:
+            rates = np.full(self.count, cfg.metabolism_per_s, dtype=np.float64)
+            for row in np.nonzero(alive)[0].tolist():
+                rates[row] *= self.skill_effect(int(row), "metabolism", 1.0)
+            view["hunger"] -= rates * dt
+        else:
+            view["hunger"] -= cfg.metabolism_per_s * dt
 
         # -- 死亡判定（饥饿 / 老龄 / 水 / 火） --------------------------
         starve = alive & (view["hunger"] <= 0.0)
@@ -441,6 +455,9 @@ class Swarm:
         # -- 进食：从所在 cell 扣 bite_size（就地取食） ---------------
         # P1.5：门槛从"半口"降为"有残食就吃"（消除占位运气歧义——
         # 原 0.175 门槛让个体在残食格上挨饿，随机游走反而占优）。
+        # P4：skill_effect(row, "bite", base) 钩子让社会机制（如
+        # efficient_biter ×1.5）真实作用于世界规则层——swarm 不认识
+        # 社会层，只认识这个可注入的函数（依赖倒置，避免循环 import）。
         xs_i = xi[alive]
         ys_i = yi[alive]
         available = engine.food[ys_i, xs_i]
@@ -450,7 +467,11 @@ class Swarm:
         self._eat_amount: dict[int, float] | None = None
         if eat_mask.any():
             rows = np.nonzero(alive)[0][eat_mask]
-            eat_amount = np.minimum(cfg.bite_size, engine.food[ys_i[eat_mask], xs_i[eat_mask]])
+            bites = np.full(rows.shape, cfg.bite_size, dtype=np.float64)
+            if self.skill_effect is not None:
+                for i, row in enumerate(rows.tolist()):
+                    bites[i] *= self.skill_effect(int(row), "bite", 1.0)
+            eat_amount = np.minimum(bites, engine.food[ys_i[eat_mask], xs_i[eat_mask]])
             engine.food[ys_i[eat_mask], xs_i[eat_mask]] -= eat_amount
             view["hunger"][rows] = np.minimum(
                 1.0, view["hunger"][rows] + eat_amount

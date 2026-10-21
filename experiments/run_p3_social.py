@@ -72,6 +72,7 @@ def run_one(config_name: str, flags: dict[str, bool], seed: int) -> dict[str, fl
     )
     social = SocialLayer(swarm, SocialConfig(**flags), seed=seed)
     social.inject_initial_skills()
+    social.attach_to_swarm()  # 技能效果真实作用于觅食/移动/代谢
     for _ in range(int(RUN_SECONDS / DT)):
         deaths_before = len(swarm.death_ages)
         engine.update(DT, 0.8)

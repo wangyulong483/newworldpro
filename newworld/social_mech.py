@@ -289,28 +289,41 @@ class SocialLayer:
         self.stats["skilled_population"] = int((self.skills[alive] > 0).sum())
 
     # ------------------------------------------------------------------
-    # 世界规则应用：技能效果（swarm 行为层读取）
+    # 世界规则应用：技能效果（swarm.skill_effect 钩子的实现端）
     # ------------------------------------------------------------------
+    def effect(self, row: int, kind: str, base: float) -> float:
+        """统一效果入口：``kind`` ∈ {"bite", "move", "metabolism"}。
+
+        Swarm 的 ``skill_effect`` 钩子最终调到这里——技能在社会层
+        定义、在世界规则层生效（依赖倒置：swarm 不 import 本模块）。
+        """
+        skill = self.skills[row]
+        if skill == 0:
+            return base
+        entry = SKILLS[int(skill)]
+        if kind == "bite":
+            return base * entry.get("bite_multiplier", 1.0)
+        if kind == "move":
+            return base * entry.get("move_multiplier", 1.0)
+        if kind == "metabolism":
+            return base * entry.get("metabolism_multiplier", 1.0)
+        return base
+
     def bite_multiplier(self, row: int) -> float:
         """进食乘数（efficient_biter ×1.5）。"""
-        skill = self.skills[row]
-        if skill == 1:
-            return SKILLS[1]["bite_multiplier"]
-        return 1.0
+        return self.effect(row, "bite", 1.0)
 
     def move_multiplier(self, row: int) -> float:
         """移动乘数（long_sight ×1.4）。"""
-        skill = self.skills[row]
-        if skill == 2:
-            return SKILLS[2]["move_multiplier"]
-        return 1.0
+        return self.effect(row, "move", 1.0)
 
     def metabolism_multiplier(self, row: int) -> float:
         """代谢乘数（slow_metabolism ×0.75）。"""
-        skill = self.skills[row]
-        if skill == 3:
-            return SKILLS[3]["metabolism_multiplier"]
-        return 1.0
+        return self.effect(row, "metabolism", 1.0)
+
+    def attach_to_swarm(self) -> None:
+        """把效果钩子注入 swarm（接线入口——P4 修复"已实现未接线"）。"""
+        self.swarm.skill_effect = self.effect
 
     # ------------------------------------------------------------------
     def summary_zh(self) -> str:
