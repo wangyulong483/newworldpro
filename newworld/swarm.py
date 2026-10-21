@@ -31,6 +31,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
+from typing import Any
 
 import numpy as np
 
@@ -112,14 +113,24 @@ class Swarm:
         self.starvation_deaths = 0
         self.old_age_deaths = 0
         self.drowned = 0
-        self.burned = 0
         #: P1.6：逐个体死亡年龄（精确 mean_life 分子）
         self.death_ages: list[float] = []
+        #: 上一次 _compact 保留的旧行号（未压缩时=arange(count)）；
+        #: P6 记忆/通信等按行维护状态的层用它做重排。
+        self.compact_keep = np.arange(0, dtype=np.int64)
+        self.compact_generation = 0
+        #: 本帧吃到食物的旧行号（在 _compact 之前记录；P6 记忆层用）
+        self.last_eat_rows: np.ndarray = np.zeros(0, dtype=np.int64)
         # -- P1：策略注入 + 奖励/转移缓冲（见 swarm_policy.py） -----------
         #: None = V3 原规则行为；注入 SwarmPolicy 后移动决策由策略接管
         self.policy = None
         #: P4：技能效果钩子 row -> kind -> 乘数（社会层注入；None = 无）
         self.skill_effect = None
+        #: 观测扩展提供者（P5/P6）：callable(view, rows) -> (n, d) 数组。
+        #: 通信/记忆等层通过 register_obs_provider 注入额外观测列，
+        #: Swarm 不认识它们（依赖倒置，避免循环 import）。
+        self.obs_providers: list[tuple[Any, int]] = []
+        #: 观测总维度 = 基础 9 + 所有扩展列（policy 必须与之一致）
         #: (obs, action, reward) 转移缓冲（policy 非 None 时记录）
         self.transitions: list[tuple[np.ndarray, int, float]] = []
         #: 累计奖励（评估指标）
@@ -139,9 +150,46 @@ class Swarm:
         from .swarm_policy import SwarmPolicy  # noqa: F401 - 类型提示
         if not callable(getattr(policy, "act", None)):
             raise TypeError("policy 必须提供 act(obs_batch) -> actions")
+        expected = self.obs_dim
+        declared = getattr(policy, "obs_dim", None)
+        if declared is not None and int(declared) != expected:
+            raise ValueError(
+                f"policy.obs_dim={declared} 与 swarm.obs_dim={expected} 不一致"
+                "（先注册观测扩展，再构造/挂载策略）"
+            )
         self.policy = policy
         self.transitions.clear()
         self._pending.clear()
+
+    # -- P5/P6 观测扩展接口 ---------------------------------------------
+    @property
+    def obs_dim(self) -> int:
+        """当前观测向量维度（基础 9 + 扩展列）。"""
+        from .swarm_policy import OBS_DIM
+
+        return OBS_DIM + sum(int(dim) for _provider, dim in self.obs_providers)
+
+    def register_obs_provider(self, provider, dim: int) -> int:
+        """注册一个观测扩展列提供者，返回总观测维度。
+
+        provider 必须接受 (view, rows) 并返回 (len(rows), dim) 的
+        有限浮点数组；重复注册同一 provider 会替换而非叠加。
+        """
+        if not callable(provider):
+            raise TypeError("obs provider 必须可调用")
+        dim = int(dim)
+        if dim < 1:
+            raise ValueError("obs provider 的 dim 必须 >= 1")
+        self.obs_providers = [
+            (current, size) for current, size in self.obs_providers
+            if current is not provider
+        ]
+        self.obs_providers.append((provider, dim))
+        return self.obs_dim
+
+    def clear_obs_providers(self) -> None:
+        """清空扩展观测（重建仿真/切换机制时用）。"""
+        self.obs_providers.clear()
 
     def detach_policy(self) -> None:
         """卸载策略，回到 V3 原规则行为。"""
@@ -155,8 +203,12 @@ class Swarm:
         self.transitions = []
         return out
 
-    def _observations(self, view, rows: np.ndarray) -> np.ndarray:
-        """为给定行组装 (len(rows), 9) 观测（P1 冻结定义）。"""
+    def _base_observations(self, view, rows: np.ndarray) -> np.ndarray:
+        """组装基础 9 维观测（P1 冻结定义，不含扩展 provider）。
+
+        P6 的通信层需要"发送者自身状态"来采样符号，但不能再触发它
+        自己注册的观测 provider（否则递归），因此单独暴露本方法。
+        """
         engine = self.engine
         from .swarm_policy import OBS_DIM
 
@@ -182,6 +234,29 @@ class Swarm:
             near_water |= np.isin(engine.terrain[ny, nx], (1, 2))
         obs[:, 7] = near_water.astype(np.float64)
         obs[:, 8] = 1.0  # bias
+        return obs
+
+    def _observations(self, view, rows: np.ndarray) -> np.ndarray:
+        """为给定行组装 (len(rows), obs_dim) 观测。
+
+        基础 9 维是 P1 冻结定义；P5/P6 通过 obs_providers 追加列
+        （通信符号、记忆/反思特征等），维度由 obs_dim 属性给出。
+        """
+        obs = self._base_observations(view, rows)
+        n = rows.shape[0]
+        # P5/P6：追加扩展观测列（通信/记忆等），顺序 = 注册顺序
+        extra_blocks = []
+        for provider, dim in self.obs_providers:
+            block = np.asarray(provider(view, rows), dtype=np.float64)
+            if block.shape != (n, int(dim)):
+                raise ValueError(
+                    f"obs provider 返回形状 {block.shape} != {(n, int(dim))}"
+                )
+            if not np.all(np.isfinite(block)):
+                raise ValueError("obs provider 返回非有限值")
+            extra_blocks.append(block)
+        if extra_blocks:
+            obs = np.hstack([obs, *extra_blocks])
         return obs
 
     def _move_by_policy(self, dt: float) -> None:
@@ -336,9 +411,14 @@ class Swarm:
         alive_mask = self.data["alive"][: self.count]
         alive_count = int(alive_mask.sum())
         if alive_count == self.count:
+            self.compact_keep = np.arange(self.count, dtype=np.int64)
             return
+        #: 压缩前存活行的旧行号（按新顺序排列）；外部按行索引维护的
+        #: 状态（技能/通信符号/记忆）据此重排，避免压缩后错位。
+        self.compact_keep = np.nonzero(alive_mask)[0].astype(np.int64)
         self.data[:alive_count] = self.data[: self.count][alive_mask]
         self.count = alive_count
+        self.compact_generation += 1
 
     # ------------------------------------------------------------------
     # 查询
@@ -416,8 +496,7 @@ class Swarm:
         xi = np.clip(view["x"].astype(np.int32), 0, engine.width - 1)
         yi = np.clip(view["y"].astype(np.int32), 0, engine.height - 1)
         on_water = alive & np.isin(engine.terrain[yi, xi], (DEEP_WATER, SHALLOW_WATER))
-        on_fire = alive & engine.burning[yi, xi]
-        dying = starve | old | on_water | on_fire
+        dying = starve | old | on_water
         if dying.any():
             # P1：死亡帧补终止转移——奖励挂在"导致死亡的上一动作"上
             if self.policy is not None:
@@ -436,7 +515,6 @@ class Swarm:
             self.starvation_deaths += int(starve.sum())
             self.old_age_deaths += int(old.sum())
             self.drowned += int(on_water.sum())
-            self.burned += int(on_fire.sum())
             total_new_deaths = int(dying.sum())
             self.deaths += total_new_deaths
         else:
@@ -473,6 +551,7 @@ class Swarm:
                     bites[i] *= self.skill_effect(int(row), "bite", 1.0)
             eat_amount = np.minimum(bites, engine.food[ys_i[eat_mask], xs_i[eat_mask]])
             engine.food[ys_i[eat_mask], xs_i[eat_mask]] -= eat_amount
+            self.last_eat_rows = rows.astype(np.int64)
             view["hunger"][rows] = np.minimum(
                 1.0, view["hunger"][rows] + eat_amount
             )
@@ -538,6 +617,6 @@ class Swarm:
         return (
             f"人口 {self.population}（出生{self.births}/死亡{self.deaths}"
             f"：饿{self.starvation_deaths} 老{self.old_age_deaths}"
-            f" 溺{self.drowned} 焚{self.burned}）"
+            f" 溺{self.drowned}）"
             f" 均饱足 {self.mean_hunger():.2f}"
         )

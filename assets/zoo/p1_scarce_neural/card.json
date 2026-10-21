@@ -1,0 +1,46 @@
+{
+  "name": "p1_scarce_neural",
+  "kind": "neural",
+  "obs_dim": 9,
+  "n_actions": 5,
+  "hidden": 32,
+  "seed": 0,
+  "format_version": 1,
+  "created_at": "2026-10-21T06:48:17+00:00",
+  "git_commit": "fc502ff",
+  "config_hash": "ee7131b6a48669e342c83161dc93b70d4f746aa932d9653d37de00a18f21b258",
+  "weights_sha256": "6ca3dd7e38cdff4aa8cc974fe1f0decf2b90099c24b7f6c6ecd7538df507ec72",
+  "description": "P1.7 稀缺世界 REINFORCE 训练的策略（NeuralSwarmPolicy，obs=9、动作=5、参数共享）",
+  "tags": [
+    "p1",
+    "scarce"
+  ],
+  "metrics": {
+    "train_episodes": 10,
+    "train_seeds": [
+      500,
+      501,
+      502,
+      503
+    ],
+    "eval_seeds": [
+      900,
+      901,
+      902,
+      903,
+      904,
+      905
+    ],
+    "eval_seconds": 90.0,
+    "density": "normal",
+    "eat_events_mean": 19031.833333333332,
+    "eat_rate_mean": 1.7622067901234566,
+    "eat_rate_delta_vs_rule": 0.5218055555555556,
+    "mean_life_mean": 55.148050870650856,
+    "mean_life_delta_vs_rule": -24.178666506058132,
+    "gate_passed": true,
+    "trained_beats_random_eat_rate": false,
+    "event_count_artifact_signature": true
+  },
+  "extra": {}
+}

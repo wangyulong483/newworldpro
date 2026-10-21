@@ -1,0 +1,1162 @@
+{
+  "name": "p1_scarce",
+  "protocol": "learning_compare",
+  "experiment": {
+    "train_episodes": 10,
+    "train_seeds": [
+      500,
+      501,
+      502,
+      503
+    ],
+    "episode_seconds": 60.0,
+    "eval_seeds": [
+      900,
+      901,
+      902,
+      903,
+      904,
+      905
+    ],
+    "eval_seconds": 90.0,
+    "hidden": 32,
+    "food_regrow_per_s": 0.0005,
+    "policy": "neural"
+  },
+  "densities": {
+    "normal": {
+      "initial_population": 120
+    },
+    "dense3x": {
+      "initial_population": 360
+    }
+  },
+  "arms": [
+    "random",
+    "rule",
+    "untrained",
+    "trained"
+  ],
+  "per_arm": {
+    "normal": {
+      "random": {
+        "population": {
+          "mean": 247.16666666666666,
+          "std": 39.46482259205307,
+          "n": 6.0
+        },
+        "births": {
+          "mean": 127.66666666666667,
+          "std": 40.052743004970615,
+          "n": 6.0
+        },
+        "deaths": {
+          "mean": 0.5,
+          "std": 0.7637626158259734,
+          "n": 6.0
+        },
+        "starvation_deaths": {
+          "mean": 0.0,
+          "std": 0.0,
+          "n": 6.0
+        },
+        "old_age_deaths": {
+          "mean": 0.5,
+          "std": 0.7637626158259734,
+          "n": 6.0
+        },
+        "drowned": {
+          "mean": 0.0,
+          "std": 0.0,
+          "n": 6.0
+        },
+        "eat_events": {
+          "mean": 18492.833333333332,
+          "std": 2929.7078020778035,
+          "n": 6.0
+        },
+        "eat_rate": {
+          "mean": 1.7122993827160495,
+          "std": 0.27126924093312993,
+          "n": 6.0
+        },
+        "mean_life": {
+          "mean": 83.09235382080078,
+          "std": 5.193497361819927,
+          "n": 6.0
+        },
+        "satiation_mean": {
+          "mean": 0.9764833333333334,
+          "std": 0.005256556752179986,
+          "n": 6.0
+        },
+        "satiation_std": {
+          "mean": 0.05873333333333333,
+          "std": 0.016079248185851918,
+          "n": 6.0
+        },
+        "gini_hunger": {
+          "mean": 0.0152,
+          "std": 0.0045449605792203165,
+          "n": 6.0
+        },
+        "total_reward": {
+          "mean": 2083.128166666667,
+          "std": 374.24453888530184,
+          "n": 6.0
+        },
+        "survived_90s": {
+          "mean": 1.0,
+          "std": 0.0,
+          "n": 6.0
+        },
+        "carrying_capacity_estimate": {
+          "mean": 246.83333333333334,
+          "std": 40.026727181833,
+          "n": 6.0
+        }
+      },
+      "rule": {
+        "population": {
+          "mean": 265.5,
+          "std": 43.04551854335904,
+          "n": 6.0
+        },
+        "births": {
+          "mean": 145.66666666666666,
+          "std": 43.32307570901319,
+          "n": 6.0
+        },
+        "deaths": {
+          "mean": 0.16666666666666666,
+          "std": 0.372677996249965,
+          "n": 6.0
+        },
+        "starvation_deaths": {
+          "mean": 0.0,
+          "std": 0.0,
+          "n": 6.0
+        },
+        "old_age_deaths": {
+          "mean": 0.16666666666666666,
+          "std": 0.372677996249965,
+          "n": 6.0
+        },
+        "drowned": {
+          "mean": 0.0,
+          "std": 0.0,
+          "n": 6.0
+        },
+        "eat_events": {
+          "mean": 13396.333333333334,
+          "std": 2067.6657262612725,
+          "n": 6.0
+        },
+        "eat_rate": {
+          "mean": 1.2404012345679012,
+          "std": 0.19145053020937713,
+          "n": 6.0
+        },
+        "mean_life": {
+          "mean": 79.32671737670898,
+          "std": 5.178011102375311,
+          "n": 6.0
+        },
+        "satiation_mean": {
+          "mean": 0.9700000000000001,
+          "std": 0.0041311822359545725,
+          "n": 6.0
+        },
+        "satiation_std": {
+          "mean": 0.04851666666666667,
+          "std": 0.016768662903033013,
+          "n": 6.0
+        },
+        "gini_hunger": {
+          "mean": 0.0141,
+          "std": 0.0031827660925679096,
+          "n": 6.0
+        },
+        "total_reward": {
+          "mean": 1347.3531666666668,
+          "std": 237.24408461850476,
+          "n": 6.0
+        },
+        "survived_90s": {
+          "mean": 1.0,
+          "std": 0.0,
+          "n": 6.0
+        },
+        "carrying_capacity_estimate": {
+          "mean": 265.0,
+          "std": 42.8485705712571,
+          "n": 6.0
+        }
+      },
+      "untrained": {
+        "population": {
+          "mean": 224.83333333333334,
+          "std": 34.348297709719986,
+          "n": 6.0
+        },
+        "births": {
+          "mean": 107.5,
+          "std": 35.878266401820476,
+          "n": 6.0
+        },
+        "deaths": {
+          "mean": 2.6666666666666665,
+          "std": 1.7950549357115015,
+          "n": 6.0
+        },
+        "starvation_deaths": {
+          "mean": 2.5,
+          "std": 1.8929694486000912,
+          "n": 6.0
+        },
+        "old_age_deaths": {
+          "mean": 0.16666666666666666,
+          "std": 0.372677996249965,
+          "n": 6.0
+        },
+        "drowned": {
+          "mean": 0.0,
+          "std": 0.0,
+          "n": 6.0
+        },
+        "eat_events": {
+          "mean": 18815.166666666668,
+          "std": 3859.5126815297403,
+          "n": 6.0
+        },
+        "eat_rate": {
+          "mean": 1.7421450617283953,
+          "std": 0.35736228532682784,
+          "n": 6.0
+        },
+        "mean_life": {
+          "mean": 52.17329057057699,
+          "std": 7.792377119916811,
+          "n": 6.0
+        },
+        "satiation_mean": {
+          "mean": 0.8826,
+          "std": 0.029287824546501657,
+          "n": 6.0
+        },
+        "satiation_std": {
+          "mean": 0.17795000000000002,
+          "std": 0.017357971271628102,
+          "n": 6.0
+        },
+        "gini_hunger": {
+          "mean": 0.09291666666666666,
+          "std": 0.01977914867283782,
+          "n": 6.0
+        },
+        "total_reward": {
+          "mean": 3216.9616666666666,
+          "std": 750.7110881388096,
+          "n": 6.0
+        },
+        "survived_90s": {
+          "mean": 1.0,
+          "std": 0.0,
+          "n": 6.0
+        },
+        "carrying_capacity_estimate": {
+          "mean": 219.5,
+          "std": 30.516389039334257,
+          "n": 6.0
+        }
+      },
+      "trained": {
+        "population": {
+          "mean": 216.0,
+          "std": 25.80697580112788,
+          "n": 6.0
+        },
+        "births": {
+          "mean": 106.0,
+          "std": 30.397368307141328,
+          "n": 6.0
+        },
+        "deaths": {
+          "mean": 10.0,
+          "std": 7.831560082980487,
+          "n": 6.0
+        },
+        "starvation_deaths": {
+          "mean": 10.0,
+          "std": 7.831560082980487,
+          "n": 6.0
+        },
+        "old_age_deaths": {
+          "mean": 0.0,
+          "std": 0.0,
+          "n": 6.0
+        },
+        "drowned": {
+          "mean": 0.0,
+          "std": 0.0,
+          "n": 6.0
+        },
+        "eat_events": {
+          "mean": 19031.833333333332,
+          "std": 4718.755147164227,
+          "n": 6.0
+        },
+        "eat_rate": {
+          "mean": 1.7622067901234566,
+          "std": 0.4369217728855766,
+          "n": 6.0
+        },
+        "mean_life": {
+          "mean": 55.148050870650856,
+          "std": 5.4957730739859825,
+          "n": 6.0
+        },
+        "satiation_mean": {
+          "mean": 0.7815166666666666,
+          "std": 0.06665614291938056,
+          "n": 6.0
+        },
+        "satiation_std": {
+          "mean": 0.24316666666666667,
+          "std": 0.020782016798718606,
+          "n": 6.0
+        },
+        "gini_hunger": {
+          "mean": 0.16573333333333332,
+          "std": 0.03804469593634425,
+          "n": 6.0
+        },
+        "total_reward": {
+          "mean": 3492.0629999999996,
+          "std": 1040.5871222005715,
+          "n": 6.0
+        },
+        "survived_90s": {
+          "mean": 1.0,
+          "std": 0.0,
+          "n": 6.0
+        },
+        "carrying_capacity_estimate": {
+          "mean": 212.33333333333334,
+          "std": 24.14999424890661,
+          "n": 6.0
+        }
+      }
+    },
+    "dense3x": {
+      "random": {
+        "population": {
+          "mean": 359.6666666666667,
+          "std": 0.4714045207910317,
+          "n": 6.0
+        },
+        "births": {
+          "mean": 0.0,
+          "std": 0.0,
+          "n": 6.0
+        },
+        "deaths": {
+          "mean": 0.3333333333333333,
+          "std": 0.4714045207910317,
+          "n": 6.0
+        },
+        "starvation_deaths": {
+          "mean": 0.0,
+          "std": 0.0,
+          "n": 6.0
+        },
+        "old_age_deaths": {
+          "mean": 0.3333333333333333,
+          "std": 0.4714045207910317,
+          "n": 6.0
+        },
+        "drowned": {
+          "mean": 0.0,
+          "std": 0.0,
+          "n": 6.0
+        },
+        "eat_events": {
+          "mean": 31534.166666666668,
+          "std": 1929.1682505393067,
+          "n": 6.0
+        },
+        "eat_rate": {
+          "mean": 0.9732767489711934,
+          "std": 0.05954222995491686,
+          "n": 6.0
+        },
+        "mean_life": {
+          "mean": 90.00089772542317,
+          "std": 3.596531072929624e-06,
+          "n": 6.0
+        },
+        "satiation_mean": {
+          "mean": 0.9769666666666668,
+          "std": 0.006741331882911258,
+          "n": 6.0
+        },
+        "satiation_std": {
+          "mean": 0.05716666666666667,
+          "std": 0.026146489035602637,
+          "n": 6.0
+        },
+        "gini_hunger": {
+          "mean": 0.0151,
+          "std": 0.005967970062480766,
+          "n": 6.0
+        },
+        "total_reward": {
+          "mean": 3652.4825,
+          "std": 381.8864877677441,
+          "n": 6.0
+        },
+        "survived_90s": {
+          "mean": 1.0,
+          "std": 0.0,
+          "n": 6.0
+        },
+        "carrying_capacity_estimate": {
+          "mean": 207.0,
+          "std": 42.16238449929827,
+          "n": 6.0
+        }
+      },
+      "rule": {
+        "population": {
+          "mean": 359.6666666666667,
+          "std": 0.4714045207910317,
+          "n": 6.0
+        },
+        "births": {
+          "mean": 0.0,
+          "std": 0.0,
+          "n": 6.0
+        },
+        "deaths": {
+          "mean": 0.3333333333333333,
+          "std": 0.4714045207910317,
+          "n": 6.0
+        },
+        "starvation_deaths": {
+          "mean": 0.0,
+          "std": 0.0,
+          "n": 6.0
+        },
+        "old_age_deaths": {
+          "mean": 0.3333333333333333,
+          "std": 0.4714045207910317,
+          "n": 6.0
+        },
+        "drowned": {
+          "mean": 0.0,
+          "std": 0.0,
+          "n": 6.0
+        },
+        "eat_events": {
+          "mean": 21345.333333333332,
+          "std": 864.1820152928175,
+          "n": 6.0
+        },
+        "eat_rate": {
+          "mean": 0.6588065843621399,
+          "std": 0.02667228442261785,
+          "n": 6.0
+        },
+        "mean_life": {
+          "mean": 90.00089772542317,
+          "std": 3.596531072929624e-06,
+          "n": 6.0
+        },
+        "satiation_mean": {
+          "mean": 0.97555,
+          "std": 0.0005590169943749604,
+          "n": 6.0
+        },
+        "satiation_std": {
+          "mean": 0.015600000000000001,
+          "std": 0.0011718930554164635,
+          "n": 6.0
+        },
+        "gini_hunger": {
+          "mean": 0.008916666666666666,
+          "std": 0.00022669117514559085,
+          "n": 6.0
+        },
+        "total_reward": {
+          "mean": 2089.764333333333,
+          "std": 147.47732843126172,
+          "n": 6.0
+        },
+        "survived_90s": {
+          "mean": 1.0,
+          "std": 0.0,
+          "n": 6.0
+        },
+        "carrying_capacity_estimate": {
+          "mean": 244.5,
+          "std": 46.789421881446664,
+          "n": 6.0
+        }
+      },
+      "untrained": {
+        "population": {
+          "mean": 359.1666666666667,
+          "std": 1.0671873729054748,
+          "n": 6.0
+        },
+        "births": {
+          "mean": 0.0,
+          "std": 0.0,
+          "n": 6.0
+        },
+        "deaths": {
+          "mean": 0.8333333333333334,
+          "std": 1.0671873729054748,
+          "n": 6.0
+        },
+        "starvation_deaths": {
+          "mean": 0.16666666666666666,
+          "std": 0.37267799624996495,
+          "n": 6.0
+        },
+        "old_age_deaths": {
+          "mean": 0.6666666666666666,
+          "std": 0.74535599249993,
+          "n": 6.0
+        },
+        "drowned": {
+          "mean": 0.0,
+          "std": 0.0,
+          "n": 6.0
+        },
+        "eat_events": {
+          "mean": 32389.333333333332,
+          "std": 4033.9375580470037,
+          "n": 6.0
+        },
+        "eat_rate": {
+          "mean": 0.9996707818930042,
+          "std": 0.12450424561873466,
+          "n": 6.0
+        },
+        "mean_life": {
+          "mean": 89.67309867011177,
+          "std": 0.7329798333214902,
+          "n": 6.0
+        },
+        "satiation_mean": {
+          "mean": 0.8752,
+          "std": 0.03671448397204208,
+          "n": 6.0
+        },
+        "satiation_std": {
+          "mean": 0.18086666666666665,
+          "std": 0.025807922986728103,
+          "n": 6.0
+        },
+        "gini_hunger": {
+          "mean": 0.0974,
+          "std": 0.02573208114397279,
+          "n": 6.0
+        },
+        "total_reward": {
+          "mean": 5091.7266666666665,
+          "std": 997.3851106546333,
+          "n": 6.0
+        },
+        "survived_90s": {
+          "mean": 1.0,
+          "std": 0.0,
+          "n": 6.0
+        },
+        "carrying_capacity_estimate": {
+          "mean": 173.83333333333334,
+          "std": 26.860234962155904,
+          "n": 6.0
+        }
+      },
+      "trained": {
+        "population": {
+          "mean": 359.6666666666667,
+          "std": 0.4714045207910317,
+          "n": 6.0
+        },
+        "births": {
+          "mean": 0.0,
+          "std": 0.0,
+          "n": 6.0
+        },
+        "deaths": {
+          "mean": 0.3333333333333333,
+          "std": 0.4714045207910317,
+          "n": 6.0
+        },
+        "starvation_deaths": {
+          "mean": 0.0,
+          "std": 0.0,
+          "n": 6.0
+        },
+        "old_age_deaths": {
+          "mean": 0.3333333333333333,
+          "std": 0.4714045207910317,
+          "n": 6.0
+        },
+        "drowned": {
+          "mean": 0.0,
+          "std": 0.0,
+          "n": 6.0
+        },
+        "eat_events": {
+          "mean": 33093.166666666664,
+          "std": 4873.37690643995,
+          "n": 6.0
+        },
+        "eat_rate": {
+          "mean": 1.0213940329218107,
+          "std": 0.1504128674827145,
+          "n": 6.0
+        },
+        "mean_life": {
+          "mean": 90.00089772542317,
+          "std": 3.596531072929624e-06,
+          "n": 6.0
+        },
+        "satiation_mean": {
+          "mean": 0.7615833333333333,
+          "std": 0.05828720318865501,
+          "n": 6.0
+        },
+        "satiation_std": {
+          "mean": 0.24248333333333336,
+          "std": 0.024056836635120774,
+          "n": 6.0
+        },
+        "gini_hunger": {
+          "mean": 0.17490000000000003,
+          "std": 0.03350179099690045,
+          "n": 6.0
+        },
+        "total_reward": {
+          "mean": 5581.505,
+          "std": 1229.755731822923,
+          "n": 6.0
+        },
+        "survived_90s": {
+          "mean": 1.0,
+          "std": 0.0,
+          "n": 6.0
+        },
+        "carrying_capacity_estimate": {
+          "mean": 164.5,
+          "std": 22.728469665451154,
+          "n": 6.0
+        }
+      }
+    }
+  },
+  "paired": {
+    "normal": {
+      "random": {
+        "eat_events": {
+          "metric": "eat_events",
+          "n": 6.0,
+          "mean_delta": 5096.5,
+          "std_delta": 896.1969184652817,
+          "wins": 6.0,
+          "losses": 0.0,
+          "ties": 0.0,
+          "relative": 0.3804399213715195
+        },
+        "eat_rate": {
+          "metric": "eat_rate",
+          "n": 6.0,
+          "mean_delta": 0.4718981481481481,
+          "std_delta": 0.08298119615419268,
+          "wins": 6.0,
+          "losses": 0.0,
+          "ties": 0.0,
+          "relative": 0.38043992137121285
+        },
+        "mean_life": {
+          "metric": "mean_life",
+          "n": 6.0,
+          "mean_delta": 3.765636444091797,
+          "std_delta": 4.321196207866328,
+          "wins": 5.0,
+          "losses": 0.0,
+          "ties": 1.0,
+          "relative": 0.04746996432752143
+        }
+      },
+      "untrained": {
+        "eat_events": {
+          "metric": "eat_events",
+          "n": 6.0,
+          "mean_delta": 5418.833333333333,
+          "std_delta": 1832.6608539376716,
+          "wins": 6.0,
+          "losses": 0.0,
+          "ties": 0.0,
+          "relative": 0.40450123168031044
+        },
+        "eat_rate": {
+          "metric": "eat_rate",
+          "n": 6.0,
+          "mean_delta": 0.5017438271604938,
+          "std_delta": 0.16969081980904366,
+          "wins": 6.0,
+          "losses": 0.0,
+          "ties": 0.0,
+          "relative": 0.4045012316799844
+        },
+        "mean_life": {
+          "metric": "mean_life",
+          "n": 6.0,
+          "mean_delta": -27.153426806132,
+          "std_delta": 10.2967885829103,
+          "wins": 0.0,
+          "losses": 6.0,
+          "ties": 0.0,
+          "relative": -0.3422986315844218
+        }
+      },
+      "trained": {
+        "eat_events": {
+          "metric": "eat_events",
+          "n": 6.0,
+          "mean_delta": 5635.5,
+          "std_delta": 2784.9191939204748,
+          "wins": 6.0,
+          "losses": 0.0,
+          "ties": 0.0,
+          "relative": 0.4206748115155888
+        },
+        "eat_rate": {
+          "metric": "eat_rate",
+          "n": 6.0,
+          "mean_delta": 0.5218055555555556,
+          "std_delta": 0.2578628883259699,
+          "wins": 6.0,
+          "losses": 0.0,
+          "ties": 0.0,
+          "relative": 0.42067481151524977
+        },
+        "mean_life": {
+          "metric": "mean_life",
+          "n": 6.0,
+          "mean_delta": -24.178666506058132,
+          "std_delta": 7.9734227422460195,
+          "wins": 0.0,
+          "losses": 6.0,
+          "ties": 0.0,
+          "relative": -0.3047985257128123
+        }
+      }
+    },
+    "dense3x": {
+      "random": {
+        "eat_events": {
+          "metric": "eat_events",
+          "n": 6.0,
+          "mean_delta": 10188.833333333334,
+          "std_delta": 1102.55633516942,
+          "wins": 6.0,
+          "losses": 0.0,
+          "ties": 0.0,
+          "relative": 0.47733306265225817
+        },
+        "eat_rate": {
+          "metric": "eat_rate",
+          "n": 6.0,
+          "mean_delta": 0.3144701646090535,
+          "std_delta": 0.034029516517574646,
+          "wins": 6.0,
+          "losses": 0.0,
+          "ties": 0.0,
+          "relative": 0.47733306265153364
+        },
+        "mean_life": {
+          "metric": "mean_life",
+          "n": 6.0,
+          "mean_delta": 0.0,
+          "std_delta": 0.0,
+          "wins": 0.0,
+          "losses": 0.0,
+          "ties": 6.0,
+          "relative": 0.0
+        }
+      },
+      "untrained": {
+        "eat_events": {
+          "metric": "eat_events",
+          "n": 6.0,
+          "mean_delta": 11044.0,
+          "std_delta": 3443.537328581372,
+          "wins": 6.0,
+          "losses": 0.0,
+          "ties": 0.0,
+          "relative": 0.5173964644887251
+        },
+        "eat_rate": {
+          "metric": "eat_rate",
+          "n": 6.0,
+          "mean_delta": 0.3408641975308642,
+          "std_delta": 0.10628201631423984,
+          "wins": 6.0,
+          "losses": 0.0,
+          "ties": 0.0,
+          "relative": 0.5173964644879399
+        },
+        "mean_life": {
+          "metric": "mean_life",
+          "n": 6.0,
+          "mean_delta": -0.3277990553114141,
+          "std_delta": 0.7329809706365356,
+          "wins": 0.0,
+          "losses": 1.0,
+          "ties": 5.0,
+          "relative": -0.0036421753959773543
+        }
+      },
+      "trained": {
+        "eat_events": {
+          "metric": "eat_events",
+          "n": 6.0,
+          "mean_delta": 11747.833333333334,
+          "std_delta": 4425.724476160812,
+          "wins": 6.0,
+          "losses": 0.0,
+          "ties": 0.0,
+          "relative": 0.5503701043163222
+        },
+        "eat_rate": {
+          "metric": "eat_rate",
+          "n": 6.0,
+          "mean_delta": 0.3625874485596708,
+          "std_delta": 0.13659643444940775,
+          "wins": 6.0,
+          "losses": 0.0,
+          "ties": 0.0,
+          "relative": 0.5503701043154867
+        },
+        "mean_life": {
+          "metric": "mean_life",
+          "n": 6.0,
+          "mean_delta": 0.0,
+          "std_delta": 0.0,
+          "wins": 0.0,
+          "losses": 0.0,
+          "ties": 6.0,
+          "relative": 0.0
+        }
+      }
+    }
+  },
+  "secondary_paired": {
+    "normal": {
+      "trained_vs_random": {
+        "eat_events": {
+          "metric": "eat_events",
+          "n": 6.0,
+          "mean_delta": 539.0,
+          "std_delta": 2078.0127526076444,
+          "wins": 3.0,
+          "losses": 3.0,
+          "ties": 0.0,
+          "relative": 0.02914642609299098
+        },
+        "eat_rate": {
+          "metric": "eat_rate",
+          "n": 6.0,
+          "mean_delta": 0.04990740740740751,
+          "std_delta": 0.19240858820441162,
+          "wins": 3.0,
+          "losses": 3.0,
+          "ties": 0.0,
+          "relative": 0.029146426092974013
+        },
+        "mean_life": {
+          "metric": "mean_life",
+          "n": 6.0,
+          "mean_delta": -27.94430295014993,
+          "std_delta": 8.902427383672833,
+          "wins": 0.0,
+          "losses": 6.0,
+          "ties": 0.0,
+          "relative": -0.33630414430688815
+        },
+        "satiation_mean": {
+          "metric": "satiation_mean",
+          "n": 6.0,
+          "mean_delta": -0.19496666666666665,
+          "std_delta": 0.06376121252158103,
+          "wins": 0.0,
+          "losses": 6.0,
+          "ties": 0.0,
+          "relative": -0.1996620526035266
+        }
+      },
+      "trained_vs_untrained": {
+        "eat_events": {
+          "metric": "eat_events",
+          "n": 6.0,
+          "mean_delta": 216.66666666666666,
+          "std_delta": 1205.031488754086,
+          "wins": 3.0,
+          "losses": 3.0,
+          "ties": 0.0,
+          "relative": 0.01151553268196756
+        },
+        "eat_rate": {
+          "metric": "eat_rate",
+          "n": 6.0,
+          "mean_delta": 0.02006172839506178,
+          "std_delta": 0.11157698969945247,
+          "wins": 3.0,
+          "losses": 3.0,
+          "ties": 0.0,
+          "relative": 0.01151553268196098
+        },
+        "mean_life": {
+          "metric": "mean_life",
+          "n": 6.0,
+          "mean_delta": 2.974760300073868,
+          "std_delta": 11.170739141995405,
+          "wins": 4.0,
+          "losses": 2.0,
+          "ties": 0.0,
+          "relative": 0.057016919338252744
+        },
+        "satiation_mean": {
+          "metric": "satiation_mean",
+          "n": 6.0,
+          "mean_delta": -0.10108333333333332,
+          "std_delta": 0.04411021864476406,
+          "wins": 0.0,
+          "losses": 6.0,
+          "ties": 0.0,
+          "relative": -0.11452904297894718
+        }
+      }
+    },
+    "dense3x": {
+      "trained_vs_random": {
+        "eat_events": {
+          "metric": "eat_events",
+          "n": 6.0,
+          "mean_delta": 1559.0,
+          "std_delta": 3757.9275316766466,
+          "wins": 4.0,
+          "losses": 2.0,
+          "ties": 0.0,
+          "relative": 0.04943843978753204
+        },
+        "eat_rate": {
+          "metric": "eat_rate",
+          "n": 6.0,
+          "mean_delta": 0.04811728395061728,
+          "std_delta": 0.11598541764434096,
+          "wins": 4.0,
+          "losses": 2.0,
+          "ties": 0.0,
+          "relative": 0.04943843978748125
+        },
+        "mean_life": {
+          "metric": "mean_life",
+          "n": 6.0,
+          "mean_delta": 0.0,
+          "std_delta": 0.0,
+          "wins": 0.0,
+          "losses": 0.0,
+          "ties": 6.0,
+          "relative": 0.0
+        },
+        "satiation_mean": {
+          "metric": "satiation_mean",
+          "n": 6.0,
+          "mean_delta": -0.21538333333333334,
+          "std_delta": 0.057991879220762925,
+          "wins": 0.0,
+          "losses": 6.0,
+          "ties": 0.0,
+          "relative": -0.22046129175316068
+        }
+      },
+      "trained_vs_untrained": {
+        "eat_events": {
+          "metric": "eat_events",
+          "n": 6.0,
+          "mean_delta": 703.8333333333334,
+          "std_delta": 1356.1094371604215,
+          "wins": 4.0,
+          "losses": 2.0,
+          "ties": 0.0,
+          "relative": 0.02173040507162852
+        },
+        "eat_rate": {
+          "metric": "eat_rate",
+          "n": 6.0,
+          "mean_delta": 0.021723251028806567,
+          "std_delta": 0.04185522954198833,
+          "wins": 4.0,
+          "losses": 2.0,
+          "ties": 0.0,
+          "relative": 0.021730405071606763
+        },
+        "mean_life": {
+          "metric": "mean_life",
+          "n": 6.0,
+          "mean_delta": 0.3277990553114141,
+          "std_delta": 0.7329809706365356,
+          "wins": 1.0,
+          "losses": 0.0,
+          "ties": 5.0,
+          "relative": 0.0036554893292726886
+        },
+        "satiation_mean": {
+          "metric": "satiation_mean",
+          "n": 6.0,
+          "mean_delta": -0.11361666666666669,
+          "std_delta": 0.027316503965348272,
+          "wins": 0.0,
+          "losses": 6.0,
+          "ties": 0.0,
+          "relative": -0.12981794637401378
+        }
+      }
+    }
+  },
+  "gate": {
+    "primary_density": "normal",
+    "n_eval_seeds": 6,
+    "needed_wins": 5,
+    "eat_rate_wins": 6,
+    "mean_life_wins": 0,
+    "passed": true,
+    "rule": "trained 在 eat_rate 或 mean_life 的配对胜场 >= ceil(0.8*n)"
+  },
+  "honest_reading": {
+    "flags": {
+      "gate_passed": true,
+      "trained_beats_rule_eat_rate": true,
+      "random_also_beats_rule": true,
+      "untrained_also_beats_rule": true,
+      "trained_beats_random_eat_rate": false,
+      "trained_welfare_better_than_rule": false,
+      "event_count_artifact_signature": true
+    },
+    "statement": "trained vs rule eat_rate 6/6（Δ=+0.52181）；无学习成分的 random 6/6 胜 rule（Δ=+0.47190）、untrained 6/6 胜 rule（Δ=+0.50174）；trained vs random 配对 Δ=+0.04991（3/6 胜），trained vs untrained Δ=+0.02006（3/6 胜）；福利口径：trained satiation=0.782（rule=0.970，random=0.976，untrained=0.883），mean_life=55.1s（rule=79.3s），eat_events=19032（random=18493，untrained=18815，rule=13396）。判读：'eat_rate 胜 rule' 不能表述为学习到的觅食能力——无学习的 random/untrained 同样（甚至更大程度地）胜 rule，trained 未胜过 random/untrained（配对胜场未达门槛），且 satiation/mean_life 反而低于 rule。该优势符合'事件计数口径奖励移动频率'的伪影特征（eat_events 计事件数，不计量摄入能量/适应度）。P1.7 的'学习优势'在本次复现中不成立；预注册门槛只是'相对 rule'的门槛。"
+  },
+  "verdict": "trained vs rule（normal 主密度，n=6）：eat_rate 胜 6/6（Δ=+0.52181±0.25786），mean_life 胜 0/6（Δ=-24.2±8.0s）；预注册门槛 >= 5/6 → 通过。 全部密度：normal(pop=120): eat_rate 6/6 胜 (Δ=+0.52181), mean_life 0/6 胜 (Δ=-24.2s)；dense3x(pop=360): eat_rate 6/6 胜 (Δ=+0.36259), mean_life 0/6 胜 (Δ=+0.0s)。 诚实判读：eat_rate 优势是事件计数口径伪影，不宣称学习优势。 详细数字见 honest_reading；不做显著性检验。",
+  "train_log": [
+    {
+      "episode": 1.0,
+      "train_seed": 500.0,
+      "updates": 728.0,
+      "transitions": 185971.0,
+      "mean_return": 0.2778637059403569,
+      "weight_delta": 0.016068174030603517
+    },
+    {
+      "episode": 2.0,
+      "train_seed": 501.0,
+      "updates": 700.0,
+      "transitions": 178731.0,
+      "mean_return": 0.25193608569882087,
+      "weight_delta": 0.007713672828653366
+    },
+    {
+      "episode": 3.0,
+      "train_seed": 502.0,
+      "updates": 700.0,
+      "transitions": 178982.0,
+      "mean_return": 0.24084631177850063,
+      "weight_delta": 0.020128664317525795
+    },
+    {
+      "episode": 4.0,
+      "train_seed": 503.0,
+      "updates": 828.0,
+      "transitions": 211458.0,
+      "mean_return": 0.24102014651557585,
+      "weight_delta": 0.04394145503504658
+    },
+    {
+      "episode": 5.0,
+      "train_seed": 500.0,
+      "updates": 730.0,
+      "transitions": 186880.0,
+      "mean_return": 0.31181254773695294,
+      "weight_delta": 0.02614612461895454
+    },
+    {
+      "episode": 6.0,
+      "train_seed": 501.0,
+      "updates": 682.0,
+      "transitions": 174347.0,
+      "mean_return": 0.2528664138922707,
+      "weight_delta": 0.01147779065267574
+    },
+    {
+      "episode": 7.0,
+      "train_seed": 502.0,
+      "updates": 686.0,
+      "transitions": 175467.0,
+      "mean_return": 0.24227481850857102,
+      "weight_delta": 0.017412472707085958
+    },
+    {
+      "episode": 8.0,
+      "train_seed": 503.0,
+      "updates": 820.0,
+      "transitions": 209522.0,
+      "mean_return": 0.23000099480447925,
+      "weight_delta": 0.06688101996234425
+    },
+    {
+      "episode": 9.0,
+      "train_seed": 500.0,
+      "updates": 718.0,
+      "transitions": 183384.0,
+      "mean_return": 0.34345479718278193,
+      "weight_delta": 0.03226334066426341
+    },
+    {
+      "episode": 10.0,
+      "train_seed": 501.0,
+      "updates": 678.0,
+      "transitions": 173476.0,
+      "mean_return": 0.27251362185159905,
+      "weight_delta": 0.016375074435669684
+    }
+  ],
+  "zoo_model": {
+    "name": "p1_scarce_neural",
+    "directory": "C:\\Users\\27826\\Desktop\\vscode_win_ws\\ds_ws\\newworld\\newworldpro\\assets\\zoo\\p1_scarce_neural",
+    "weights_sha256": "6ca3dd7e38cdff4aa8cc974fe1f0decf2b90099c24b7f6c6ecd7538df507ec72",
+    "config_hash": "ee7131b6a48669e342c83161dc93b70d4f746aa932d9653d37de00a18f21b258",
+    "tags": [
+      "p1",
+      "scarce"
+    ]
+  },
+  "caveats": [
+    "P1.6 指标伪影教训：旧 mean_life 在无人死亡时用 fallback 逻辑（曾制造 trained 的假阳性）；本协议使用 Swarm.death_ages 逐个体死亡年龄；若评估窗口内无人死亡，则 mean_life 退化为存活者当前年龄（右删失下界，跨窗口不可比）。",
+    "P1.6 承载过剩诊断：默认 world.food_regrow_per_s=0.012 约为总代谢消耗的 10 倍，任何活法都饿不死 → 无觅食选择压力。本配置使用 food_regrow_per_s=0.0005（P1.7 稀缺）。 但 normal 档位仍可能远低于实际承载力（见每臂 carrying_capacity_estimate），低密度下站桩吃再生流是环境事实；只有 dense 档位才构成竞争压力。",
+    "eat_rate 分母 = 初始人口 × 模拟秒数（四臂同口径，可配对），不是存活个体·秒 per-capita；原始 eat_events 同时报告。",
+    "eat_events 口径警告（本次实测触发）：无学习的 random/untrained 臂在稀缺环境中也稳定胜过 rule 的进食事件数——rule 在饱足高时停止移动（事件少但饱足高），随机/神经策略持续移动会在残食格触发更多'小口事件'。eat_events 计的是事件数而非摄入能量，因此'eat_rate 胜过 rule'不等于觅食能力/适应度优势；必须同时看 satiation/mean_life/摄入量级的配对结果（见 honest_reading）。",
+    "评估时长 90s（旧 P1 为 120s）；短窗口下 mean_life 右删失更常见，绝对寿命值不可与旧 120s 结果直接对比。",
+    "配对差仅报告均值/标准差/胜场；n 很小，不做显著性检验，不把方向性差异表述为已确立效应。",
+    "trained 臂跨 eval seed 复用同一策略对象（采样 RNG 状态延续，与旧 P1 一致）；random/rule/untrained 每个 eval seed 以固定 seed 重建（同 seed 可复现）。"
+  ],
+  "wall_s": 258.7,
+  "train_wall_s": 130.7,
+  "eval_wall_s": 128.0,
+  "_artifact_dir": "C:\\Users\\27826\\Desktop\\vscode_win_ws\\ds_ws\\newworld\\newworldpro\\experiments\\results\\p1_scarce",
+  "config_hash": "ee7131b6a48669e342c83161dc93b70d4f746aa932d9653d37de00a18f21b258"
+}

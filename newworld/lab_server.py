@@ -1,26 +1,27 @@
-"""P2 实验平台后端：FastAPI + WebSocket 的仿真服务。
+"""P2 实验平台后端：FastAPI + WebSocket 的仿真服务（P5 配置化）。
 
 架构（docs/RESEARCH_ROADMAP.md §P2 接口契约）
 ================================================
-``GET  /api/snapshot``   只读世界快照（地形摘要 + 人口统计 + 个体位图）
-``WS   /api/stream``     增量帧流（个体位置/饱足 + 事件 + 指标，~15Hz）
-``GET  /api/agent/{id}``  个体详情（状态/最近动作/累计奖励）
-``POST /api/command``    实验控制（pause/resume/speed/seed/reset）
-``GET  /``               前端页面（static/index.html）
+GET  /api/snapshot        只读世界快照（地形摘要 + 人口统计 + 机制统计）
+WS   /api/stream          增量帧流（个体位置/饱足 + 指标，~15Hz）
+GET  /api/agent/{index}   个体详情（状态/最近动作/观测）
+POST /api/command         实验控制（pause/resume/speed/step/reset）
+GET  /                    前端页面（lab_static/index.html）
 
-铁律（与 ROADMAP 一致）：
-1. 仿真线程是**唯一的状态权威**，API 层只读快照/发命令；
-2. 一切干预走 /command 并记录（时间/类型/参数）到 interventions 列表，
-   人工操作造成的成果不可归功于智能体学习；
-3. 渲染层（前端）不写世界状态，点击个体只查询。
+铁律：
+1. 仿真线程是唯一的状态权威，API 层只读快照/发命令；
+2. 一切干预走 /command 并记录到 interventions（人工操作不可归功于学习）；
+3. 渲染层不写世界状态，点击个体只查询。
 
-世界配置：P1.7 稀缺环境（food_regrow=0.0005）——那里有真实的
-觅食选择压力，是学习实验的正确舞台。
+世界由 :func:`newworld.experiment.build_simulation` 按 ExperimentSettings
+构造——与无窗口实验跑的是同一套代码路径（P5 的单一代码路径要求）。
+默认配置是 P1.7 的稀缺环境（food_regrow=0.0005），那里存在真实的
+觅食选择压力。
 
 运行::
 
-    python -m newworld.lab_server              # http://127.0.0.1:8600
-    python -m newworld.lab_server --port 9000 --seed 42
+    python -m newworld.lab_server
+    python -m newworld --lab --port 8600 --seed 42
 """
 
 from __future__ import annotations
@@ -35,22 +36,31 @@ from typing import Any
 
 import numpy as np
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from .map_engine import MapConfig, MapEngine
-from .swarm import Swarm, SwarmConfig
-from .swarm_policy import RuleSwarmPolicy
-from .social_mech import SocialConfig, SocialLayer
+from .settings import ExperimentSettings, WorldSettings
 
 DT = 0.05
 #: 稀缺世界（P1.7 的结论环境）
 SCARCE_REGROW = 0.0005
 DEFAULT_PORT = 8600
 STREAM_HZ = 15.0
-
 #: 个体详情保留的最近动作数
 AGENT_HISTORY = 64
+
+
+def default_lab_settings(seed: int = 0) -> ExperimentSettings:
+    """实验平台默认配置（P1.7 稀缺世界 + P3 社会机制）。"""
+    return ExperimentSettings(
+        name=f"lab_seed{int(seed)}",
+        protocol="lab",
+        world=WorldSettings(width=256, height=160, seed=int(seed),
+                            food_regrow_per_s=SCARCE_REGROW),
+        policy=dataclasses.replace(
+            ExperimentSettings().policy, kind="rule", seed=int(seed)
+        ),
+    )
 
 
 class LabSession:
@@ -60,9 +70,10 @@ class LabSession:
     指标按秒级采样保留时间序列（前端画曲线）。
     """
 
-    def __init__(self, seed: int = 0) -> None:
+    def __init__(self, seed: int = 0, settings: ExperimentSettings | None = None) -> None:
         self.lock = threading.Lock()
         self.seed = int(seed)
+        self.settings = settings or default_lab_settings(seed)
         #: 干预记录（时间/类型/参数——实验审计用）
         self.interventions: list[dict[str, Any]] = []
         #: 个体动作历史（"_dirty" 键 = 最近转移窗口；详情面板用）
@@ -71,7 +82,7 @@ class LabSession:
         self.series: list[dict[str, float]] = []
         self._last_series_t = -1.0
         self._stop = False
-        self._build(seed)
+        self._build(self.seed)
         self.running = False
         self.speed_index = 2  # SPEEDS[2] = 4 步/tick
         self.thread = threading.Thread(target=self._loop, daemon=True)
@@ -79,29 +90,23 @@ class LabSession:
 
     # ------------------------------------------------------------------
     def _build(self, seed: int) -> None:
-        """（重）建世界：稀缺地图 + 群伙 + 规则策略 + 社会机制。
+        """（重）建世界：配置 -> 仿真组合（与无窗口实验同一路径）。"""
+        from .experiment import build_simulation
 
-        P4 起世界为**抽象模拟**（无灾害/神迹命令——环境变化只
-        来自世界自身的规则动态与社会机制）。
-        """
         self.seed = int(seed)
-        map_config = dataclasses.replace(
-            MapConfig(seed=self.seed, width=256, height=160),
-            food_regrow_per_s=SCARCE_REGROW,
+        self.settings = dataclasses.replace(
+            self.settings,
+            name=f"lab_seed{self.seed}",
+            world=dataclasses.replace(self.settings.world, seed=self.seed),
+            policy=dataclasses.replace(self.settings.policy, seed=self.seed),
         )
-        self.engine = MapEngine(map_config)
-        self.swarm = Swarm(
-            self.engine,
-            SwarmConfig(initial_population=120, capacity_hard=3000),
-            seed=self.seed,
-        )
-        # P2 默认规则策略（学习策略挂载接口在 /command 里：attach-trained）
-        self.policy = RuleSwarmPolicy(seed=self.seed)
-        self.swarm.attach_policy(self.policy)
-        # P3 社会机制（交换/教学/继承——个体交互产生，非神迹）
-        self.social = SocialLayer(self.swarm, SocialConfig(), seed=self.seed)
-        self.social.inject_initial_skills()
-        self.social.attach_to_swarm()  # 技能效果接线到世界规则层
+        self.sim = build_simulation(self.settings, seed=self.seed)
+        self.engine = self.sim.engine
+        self.swarm = self.sim.swarm
+        self.policy = self.sim.policy
+        self.social = self.sim.social
+        self.comm = self.sim.comm
+        self.memory = self.sim.memory
         self.agent_history.clear()
         self.series = []
         self._last_series_t = -1.0
@@ -123,27 +128,20 @@ class LabSession:
             with self.lock:
                 steps = speeds[self.speed_index]
                 for _ in range(steps):
-                    self.engine.update(DT, 0.8)
-                    deaths_before = len(self.swarm.death_ages)
-                    self.swarm.update(DT)
-                    self.social.on_death_pass(deaths_before)
-                    self.social.update(DT)
+                    self.sim.step()
                 self._archive_recent_actions()
                 self._sample_series()
 
     def _archive_recent_actions(self) -> None:
-        """把本 tick 的转移按个体行号归档（详情面板用，只留窗口）。"""
-        # transitions 是 (obs, action, reward) 的平铺流——我们无法从平铺流
-        # 恢复行号，因此在 Swarm 里 drain 到本地缓冲前先复制末尾窗口；
-        # 更简单的做法：让 Swarm 在 attach 状态下不 drain（我们定期取末尾）。
-        # 这里采用"读后截断"：取全部 transitions 的末尾，按帧边界近似归档。
-        # P2 一期：个体详情展示观测与状态为主，动作历史记全局统计。
+        """把最近转移按窗口归档（详情面板用）。"""
         transitions = self.swarm.transitions
         window = transitions[-32:]
-        if window and not self.agent_history.get("_dirty"):
-            self.agent_history["_dirty"] = [(round(self.engine.t, 2), int(a), float(r))
-                                            for (_o, a, r) in window]
-        # 防止缓冲无限增长（不 drain：训练器不在循环里）
+        if window:
+            self.agent_history["_dirty"] = [
+                (round(self.engine.t, 2), int(action), float(reward))
+                for (_obs, action, reward) in window
+            ]
+        # 防止缓冲无限增长（训练器不在循环里）
         if len(transitions) > 200_000:
             del transitions[:100_000]
 
@@ -167,11 +165,7 @@ class LabSession:
     # ------------------------------------------------------------------
     def command(self, kind: str, **params: Any) -> dict[str, Any]:
         """执行实验干预（全部记录在案）。"""
-        record = {
-            "t": round(self.engine.t, 2),
-            "kind": kind,
-            "params": params,
-        }
+        record = {"t": round(self.engine.t, 2), "kind": kind, "params": params}
         with self.lock:
             if kind == "pause":
                 self.running = False
@@ -182,11 +176,7 @@ class LabSession:
                 self.speed_index = max(0, min(4, index))
             elif kind == "step":
                 for _ in range(max(1, int(params.get("steps", 1)))):
-                    self.engine.update(DT, 0.8)
-                    deaths_before = len(self.swarm.death_ages)
-                    self.swarm.update(DT)
-                    self.social.on_death_pass(deaths_before)
-                    self.social.update(DT)
+                    self.sim.step()
                 self._sample_series()
             elif kind == "reset":
                 self._build(int(params.get("seed", self.seed + 1)))
@@ -204,34 +194,37 @@ class LabSession:
     def snapshot(self) -> dict[str, Any]:
         """完整快照（前端初次加载/重置用）。"""
         with self.lock:
-            xs, ys = self.swarm.positions_xy()
-            view = self.swarm.data[: self.swarm.count]
-            hungers = view["hunger"][view["alive"]] if self.swarm.count else np.zeros(0)
-            return {
+            payload = {
                 "t": round(self.engine.t, 2),
                 "running": self.running,
                 "speed_index": self.speed_index,
                 "seed": self.seed,
                 "map": {"width": self.engine.width, "height": self.engine.height},
-                "terrain": self.engine.terrain.tobytes().hex(),  # 压缩地形（uint8 网格 hex）
+                "terrain": self.engine.terrain.tobytes().hex(),
                 "population": self.swarm.population,
                 "births": self.swarm.births,
                 "deaths": self.swarm.deaths,
                 "satiation": round(self.swarm.mean_hunger(), 3),
                 "food_total": round(self.engine.food_capacity(), 0),
-                "social": dict(self.social.stats),
                 "interventions": list(self.interventions[-20:]),
                 "series": list(self.series[-120:]),
+                "config_hash": self.settings.hash(),
             }
+            if self.social is not None:
+                payload["social"] = {key: _plain(value) for key, value in self.social.stats.items()}
+            if self.comm is not None:
+                payload["comm"] = {key: _plain(value) for key, value in dict(self.comm.stats).items()}
+            if self.memory is not None:
+                payload["memory"] = {key: _plain(value) for key, value in dict(self.memory.stats).items()}
+            return payload
 
     def frame(self) -> dict[str, Any]:
-        """增量帧（WS 流推送：个体位置/饱足 + 事件摘要 + 最新指标）。"""
+        """增量帧（WS 流推送：个体位置/饱足 + 指标）。"""
         with self.lock:
             xs, ys = self.swarm.positions_xy()
             view = self.swarm.data[: self.swarm.count]
             alive = view["alive"]
             hungers = view["hunger"][alive].tolist() if self.swarm.count else []
-            # 编码为三个并行数组（JSON 更小更快）
             payload = {
                 "t": round(self.engine.t, 2),
                 "running": self.running,
@@ -240,9 +233,12 @@ class LabSession:
                 "h": [round(float(v), 2) for v in hungers],
                 "pop": self.swarm.population,
                 "food": round(self.engine.food_capacity(), 0),
-                "burn": int(self.engine.burning.sum()),
                 "sat": round(self.swarm.mean_hunger(), 3),
             }
+            if self.comm is not None:
+                payload["comm"] = {key: _plain(value) for key, value in dict(self.comm.stats).items()}
+            if self.memory is not None:
+                payload["memory"] = {key: _plain(value) for key, value in dict(self.memory.stats).items()}
             return payload
 
     def agent_detail(self, index: int) -> dict[str, Any]:
@@ -256,10 +252,7 @@ class LabSession:
             entry = view[row]
             obs = self.swarm._observations(view, np.asarray([row]))[0]
             recent = self.agent_history.get("_dirty", [])[-AGENT_HISTORY:]
-            from .social_mech import SKILLS
-            skill_id = int(self.social.skills[row])
-            skill_name = SKILLS[skill_id]["name"] if skill_id else None
-            return {
+            payload: dict[str, Any] = {
                 "ok": True,
                 "row": row,
                 "x": round(float(entry["x"]), 1),
@@ -268,20 +261,37 @@ class LabSession:
                 "age": round(float(entry["age"]), 1),
                 "breed_cd": round(float(entry["breed_cd"]), 1),
                 "alive": True,
-                "skill": skill_name,
                 "observation": [round(float(v), 3) for v in obs.tolist()],
                 "recent_actions": recent,
             }
+            if self.social is not None:
+                from .social_mech import SKILLS
+
+                skill_id = int(self.social.skills[row])
+                payload["skill"] = SKILLS[skill_id]["name"] if skill_id else None
+            if self.comm is not None:
+                payload["signal"] = _plain(self.comm.symbol_of(row))
+            if self.memory is not None:
+                payload["memory_n"] = _plain(self.memory.count_of(row))
+            return payload
 
     def close(self) -> None:
         self._stop = True
 
 
-def create_app(seed: int = 0) -> FastAPI:
+def _plain(value: Any) -> Any:
+    if isinstance(value, (np.floating, np.integer)):
+        return value.item()
+    if isinstance(value, np.ndarray):
+        return value.tolist()
+    return value
+
+
+def create_app(seed: int = 0, settings: ExperimentSettings | None = None) -> FastAPI:
     """构建实验平台 app（lab_session 挂在 app.state 上）。"""
     from contextlib import asynccontextmanager
 
-    session = LabSession(seed=seed)
+    session = LabSession(seed=seed, settings=settings)
 
     @asynccontextmanager
     async def lifespan(_: FastAPI):
@@ -330,15 +340,27 @@ async def asyncio_sleep(seconds: float) -> None:
 
 def main(argv: list[str] | None = None) -> int:
     """CLI 入口：python -m newworld.lab_server [--port 8600] [--seed 0]。"""
+    from .settings import apply_overrides, load_config
+
     parser = argparse.ArgumentParser(description="newworld 实验平台服务器")
     parser.add_argument("--port", type=int, default=DEFAULT_PORT)
     parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--config", metavar="YAML", help="用一份实验配置启动（可选）")
+    parser.add_argument("--set", dest="overrides", action="append", default=[], metavar="KEY=VALUE")
     args = parser.parse_args(argv)
 
+    settings = None
+    if args.config:
+        settings = apply_overrides(load_config(args.config), list(args.overrides))
+        settings = dataclasses.replace(
+            settings,
+            world=dataclasses.replace(settings.world, seed=int(args.seed)),
+            policy=dataclasses.replace(settings.policy, seed=int(args.seed)),
+        )
     import uvicorn
 
-    app = create_app(seed=args.seed)
-    print(f"实验平台: http://127.0.0.1:{args.port}  (seed={args.seed}, 稀缺世界)")
+    app = create_app(seed=args.seed, settings=settings)
+    print(f"实验平台: http://127.0.0.1:{args.port}  (seed={args.seed}, 稀缺世界默认)")
     uvicorn.run(app, host="127.0.0.1", port=args.port, log_level="warning")
     return 0
 

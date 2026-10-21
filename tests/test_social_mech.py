@@ -1,7 +1,7 @@
 """P3 社会机制单元测试：交换 / 教学 / 继承（独立开关 + 守恒律）。
 
 只验证**机制正确性**：开关独立性、转移守恒、技能真实生效、
-统计准确。社会指标的效应量由 experiments/run_p3_social.py 的
+统计准确。社会指标的效应量由实验协议（P5/P6 重建后）的
 配对对照回答。
 """
 
@@ -10,13 +10,6 @@ from __future__ import annotations
 import unittest
 
 import numpy as np
-
-try:
-    from tests._env_compat import patch_tempdir
-except ImportError:
-    from _env_compat import patch_tempdir
-
-patch_tempdir()
 
 from newworld.map_engine import MapConfig, MapEngine  # noqa: E402
 from newworld.swarm import Swarm, SwarmConfig  # noqa: E402

@@ -1,0 +1,22 @@
+{
+  "name": "p6-comm-sender",
+  "kind": "neural",
+  "obs_dim": 9,
+  "n_actions": 4,
+  "hidden": 32,
+  "seed": 12345,
+  "format_version": 1,
+  "created_at": "2026-10-21T06:44:55+00:00",
+  "git_commit": "fc502ff",
+  "config_hash": "27fe3de8fa1c0278e93478b78ec841c6aaa976cbc241592cb859f7a69a087d01",
+  "weights_sha256": "ab84d78081ca6179bd2df88c745756afcca773a316d276e44220bea6698da28d",
+  "description": "P6-A trained symbol sender (obs=9, n_symbols=K)",
+  "tags": [
+    "p6-comm",
+    "sender"
+  ],
+  "metrics": {
+    "sender_weight_delta": 0.2632728109429339
+  },
+  "extra": {}
+}

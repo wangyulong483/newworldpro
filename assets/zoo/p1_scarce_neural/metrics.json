@@ -1,0 +1,27 @@
+{
+  "train_episodes": 10,
+  "train_seeds": [
+    500,
+    501,
+    502,
+    503
+  ],
+  "eval_seeds": [
+    900,
+    901,
+    902,
+    903,
+    904,
+    905
+  ],
+  "eval_seconds": 90.0,
+  "density": "normal",
+  "eat_events_mean": 19031.833333333332,
+  "eat_rate_mean": 1.7622067901234566,
+  "eat_rate_delta_vs_rule": 0.5218055555555556,
+  "mean_life_mean": 55.148050870650856,
+  "mean_life_delta_vs_rule": -24.178666506058132,
+  "gate_passed": true,
+  "trained_beats_random_eat_rate": false,
+  "event_count_artifact_signature": true
+}

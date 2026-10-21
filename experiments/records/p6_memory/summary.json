@@ -1,0 +1,2202 @@
+{
+  "name": "p6_memory",
+  "protocol": "memory_ablation",
+  "description": "P6-B 去 LLM 生成式记忆与反思：记忆流（新近×重要×相关检索）+ 周期反思， 配对种子消融 off / recency / full / full+reflection（稀缺世界，128x80）。",
+  "design": {
+    "arms": [
+      "off",
+      "off_padded",
+      "recency",
+      "full",
+      "full_reflect"
+    ],
+    "controls": [
+      "off",
+      "off_padded"
+    ],
+    "train_seeds": [
+      1000,
+      1001,
+      1002
+    ],
+    "eval_seeds": [
+      0,
+      1,
+      2
+    ],
+    "policy_seed": 7,
+    "train_episodes": 3,
+    "train_seconds": 40.0,
+    "eval_seconds": 40.0,
+    "reflection_every_s": 20.0,
+    "primary_metric": "eat_rate",
+    "paired": true,
+    "n_seeds": 3,
+    "n_per_arm": 3
+  },
+  "config": {
+    "world": {
+      "width": 128,
+      "height": 80,
+      "food_regrow_per_s": 5e-05
+    },
+    "swarm": {
+      "initial_population": 120,
+      "metabolism_per_s": 0.04,
+      "bite_size": 0.35
+    },
+    "policy": {
+      "kind": "neural",
+      "hidden": 32,
+      "lr": 0.02
+    },
+    "memory": {
+      "enabled": true,
+      "capacity": 24,
+      "recency_halflife_s": 30.0,
+      "weight_recency": 1.0,
+      "weight_importance": 1.0,
+      "weight_relevance": 1.0,
+      "top_k": 3,
+      "reflection_every_s": 20.0,
+      "reflection_min_events": 6,
+      "seed": 0
+    }
+  },
+  "arms": {
+    "off": {
+      "memory_config": {
+        "enabled": false,
+        "capacity": 24,
+        "recency_halflife_s": 30.0,
+        "weight_recency": 1.0,
+        "weight_importance": 1.0,
+        "weight_relevance": 1.0,
+        "top_k": 3,
+        "reflection_every_s": 20.0,
+        "reflection_min_events": 6,
+        "seed": 0
+      },
+      "is_control": true,
+      "obs_dim": 9,
+      "n_seeds": 3,
+      "train": {
+        "episodes": 3,
+        "seconds_per_episode": 40.0,
+        "seeds": [
+          1000,
+          1001,
+          1002
+        ],
+        "policy_seed": 7,
+        "wall_s": 12.622,
+        "history": [
+          {
+            "episode": 1.0,
+            "train_seed": 1000.0,
+            "updates": 376.0,
+            "transitions": 95870.0,
+            "mean_return": 0.20795882927424209,
+            "weight_delta": 0.007805008588296044
+          },
+          {
+            "episode": 2.0,
+            "train_seed": 1001.0,
+            "updates": 370.0,
+            "transitions": 94218.0,
+            "mean_return": 0.12774284320249168,
+            "weight_delta": 0.010621519991132361
+          },
+          {
+            "episode": 3.0,
+            "train_seed": 1002.0,
+            "updates": 374.0,
+            "transitions": 95483.0,
+            "mean_return": 0.21075588319494626,
+            "weight_delta": 0.010382549550346593
+          }
+        ]
+      },
+      "eval": {
+        "seeds": [
+          0,
+          1,
+          2
+        ],
+        "n_seeds": 3,
+        "seconds": 40.0,
+        "wall_s": 1.534,
+        "summary": {
+          "eat_events": {
+            "mean": 3212.3333333333335,
+            "std": 216.08228885208422,
+            "n": 3.0
+          },
+          "eat_rate": {
+            "mean": 0.6692361111111111,
+            "std": 0.045017143510850885,
+            "n": 3.0
+          },
+          "satiation_mean": {
+            "mean": 0.6801666666666666,
+            "std": 0.028138506633358408,
+            "n": 3.0
+          },
+          "satiation_std": {
+            "mean": 0.2624,
+            "std": 0.01153458567381884,
+            "n": 3.0
+          },
+          "population": {
+            "mean": 113.0,
+            "std": 2.943920288775949,
+            "n": 3.0
+          },
+          "mean_life": {
+            "mean": 35.15558300018311,
+            "std": 0.7102600415958652,
+            "n": 3.0
+          },
+          "starvation_deaths": {
+            "mean": 7.0,
+            "std": 2.943920288775949,
+            "n": 3.0
+          },
+          "births": {
+            "mean": 0.0,
+            "std": 0.0,
+            "n": 3.0
+          },
+          "total_reward": {
+            "mean": 641.5383333333334,
+            "std": 54.6303995795585,
+            "n": 3.0
+          },
+          "gini_hunger": {
+            "mean": 0.2158,
+            "std": 0.014187553230443463,
+            "n": 3.0
+          }
+        },
+        "runs": [
+          {
+            "seed": 0,
+            "eat_events": 2911,
+            "eat_rate": 0.6064583333333333,
+            "satiation_mean": 0.6622,
+            "satiation_std": 0.2475,
+            "population": 110,
+            "mean_life": 34.17976455688476,
+            "starvation_deaths": 10,
+            "births": 0,
+            "total_reward": 568.165,
+            "gini_hunger": 0.2109,
+            "memory": null
+          },
+          {
+            "seed": 1,
+            "eat_events": 3319,
+            "eat_rate": 0.6914583333333333,
+            "satiation_mean": 0.7199,
+            "satiation_std": 0.2641,
+            "population": 112,
+            "mean_life": 35.43724536895752,
+            "starvation_deaths": 8,
+            "births": 0,
+            "total_reward": 657.273,
+            "gini_hunger": 0.2014,
+            "memory": null
+          },
+          {
+            "seed": 2,
+            "eat_events": 3407,
+            "eat_rate": 0.7097916666666667,
+            "satiation_mean": 0.6584,
+            "satiation_std": 0.2756,
+            "population": 117,
+            "mean_life": 35.84973907470703,
+            "starvation_deaths": 3,
+            "births": 0,
+            "total_reward": 699.177,
+            "gini_hunger": 0.2351,
+            "memory": null
+          }
+        ]
+      },
+      "memory_stats": {},
+      "wall_s": 14.156
+    },
+    "off_padded": {
+      "memory_config": {
+        "enabled": true,
+        "capacity": 24,
+        "recency_halflife_s": 30.0,
+        "weight_recency": 1.0,
+        "weight_importance": 1.0,
+        "weight_relevance": 1.0,
+        "top_k": 3,
+        "reflection_every_s": 0.0,
+        "reflection_min_events": 6,
+        "seed": 0,
+        "zero_observation": true
+      },
+      "is_control": true,
+      "obs_dim": 15,
+      "n_seeds": 3,
+      "train": {
+        "episodes": 3,
+        "seconds_per_episode": 40.0,
+        "seeds": [
+          1000,
+          1001,
+          1002
+        ],
+        "policy_seed": 7,
+        "wall_s": 12.757,
+        "history": [
+          {
+            "episode": 1.0,
+            "train_seed": 1000.0,
+            "updates": 376.0,
+            "transitions": 95805.0,
+            "mean_return": 0.2763134586325691,
+            "weight_delta": 0.013703749765709448
+          },
+          {
+            "episode": 2.0,
+            "train_seed": 1001.0,
+            "updates": 364.0,
+            "transitions": 93072.0,
+            "mean_return": 0.12072794368171573,
+            "weight_delta": 0.012317320475180586
+          },
+          {
+            "episode": 3.0,
+            "train_seed": 1002.0,
+            "updates": 376.0,
+            "transitions": 96000.0,
+            "mean_return": 0.32169308082456816,
+            "weight_delta": 0.022156207408952418
+          }
+        ]
+      },
+      "eval": {
+        "seeds": [
+          0,
+          1,
+          2
+        ],
+        "n_seeds": 3,
+        "seconds": 40.0,
+        "wall_s": 1.579,
+        "summary": {
+          "eat_events": {
+            "mean": 3538.6666666666665,
+            "std": 127.87841447597357,
+            "n": 3.0
+          },
+          "eat_rate": {
+            "mean": 0.7372222222222223,
+            "std": 0.02664133634916116,
+            "n": 3.0
+          },
+          "satiation_mean": {
+            "mean": 0.6871666666666667,
+            "std": 0.039485468494399587,
+            "n": 3.0
+          },
+          "satiation_std": {
+            "mean": 0.2752,
+            "std": 0.01113941949415079,
+            "n": 3.0
+          },
+          "population": {
+            "mean": 113.33333333333333,
+            "std": 0.4714045207910317,
+            "n": 3.0
+          },
+          "mean_life": {
+            "mean": 34.184288297380725,
+            "std": 0.49702727458084034,
+            "n": 3.0
+          },
+          "starvation_deaths": {
+            "mean": 6.666666666666667,
+            "std": 0.4714045207910317,
+            "n": 3.0
+          },
+          "births": {
+            "mean": 0.0,
+            "std": 0.0,
+            "n": 3.0
+          },
+          "total_reward": {
+            "mean": 717.3796666666667,
+            "std": 37.520460838795074,
+            "n": 3.0
+          },
+          "gini_hunger": {
+            "mean": 0.22216666666666665,
+            "std": 0.026836583654076054,
+            "n": 3.0
+          }
+        },
+        "runs": [
+          {
+            "seed": 0,
+            "eat_events": 3358,
+            "eat_rate": 0.6995833333333333,
+            "satiation_mean": 0.6563,
+            "satiation_std": 0.2849,
+            "population": 113,
+            "mean_life": 34.8568970816476,
+            "starvation_deaths": 7,
+            "births": 0,
+            "total_reward": 664.788,
+            "gini_hunger": 0.2443,
+            "memory": {
+              "memory_obs_dim": 6,
+              "updates": 800,
+              "events_recorded": 0,
+              "retrievals": 0,
+              "reflections": 0,
+              "insights": 0,
+              "mean_memories": 0.0,
+              "total_memories": 0,
+              "agents_with_memory": 0,
+              "reindexed": 0,
+              "obs_food_dir_abs_mean": 0.0,
+              "obs_success_mean": 0.0,
+              "obs_danger_mean": 0.0,
+              "obs_reflect_food_mean": 0.0,
+              "obs_reflect_risk_mean": 0.0,
+              "obs_food_dir_nonzero_frac": 0.0
+            }
+          },
+          {
+            "seed": 1,
+            "eat_events": 3636,
+            "eat_rate": 0.7575,
+            "satiation_mean": 0.7429,
+            "satiation_std": 0.2596,
+            "population": 113,
+            "mean_life": 33.67120088849749,
+            "starvation_deaths": 7,
+            "births": 0,
+            "total_reward": 749.78,
+            "gini_hunger": 0.1844,
+            "memory": {
+              "memory_obs_dim": 6,
+              "updates": 800,
+              "events_recorded": 0,
+              "retrievals": 0,
+              "reflections": 0,
+              "insights": 0,
+              "mean_memories": 0.0,
+              "total_memories": 0,
+              "agents_with_memory": 0,
+              "reindexed": 0,
+              "obs_food_dir_abs_mean": 0.0,
+              "obs_success_mean": 0.0,
+              "obs_danger_mean": 0.0,
+              "obs_reflect_food_mean": 0.0,
+              "obs_reflect_risk_mean": 0.0,
+              "obs_food_dir_nonzero_frac": 0.0
+            }
+          },
+          {
+            "seed": 2,
+            "eat_events": 3622,
+            "eat_rate": 0.7545833333333334,
+            "satiation_mean": 0.6623,
+            "satiation_std": 0.2811,
+            "population": 114,
+            "mean_life": 34.02476692199707,
+            "starvation_deaths": 6,
+            "births": 0,
+            "total_reward": 737.571,
+            "gini_hunger": 0.2378,
+            "memory": {
+              "memory_obs_dim": 6,
+              "updates": 800,
+              "events_recorded": 0,
+              "retrievals": 0,
+              "reflections": 0,
+              "insights": 0,
+              "mean_memories": 0.0,
+              "total_memories": 0,
+              "agents_with_memory": 0,
+              "reindexed": 0,
+              "obs_food_dir_abs_mean": 0.0,
+              "obs_success_mean": 0.0,
+              "obs_danger_mean": 0.0,
+              "obs_reflect_food_mean": 0.0,
+              "obs_reflect_risk_mean": 0.0,
+              "obs_food_dir_nonzero_frac": 0.0
+            }
+          }
+        ]
+      },
+      "memory_stats": {
+        "memory_obs_dim": {
+          "mean": 6.0,
+          "std": 0.0,
+          "n": 3.0
+        },
+        "updates": {
+          "mean": 800.0,
+          "std": 0.0,
+          "n": 3.0
+        },
+        "events_recorded": {
+          "mean": 0.0,
+          "std": 0.0,
+          "n": 3.0
+        },
+        "retrievals": {
+          "mean": 0.0,
+          "std": 0.0,
+          "n": 3.0
+        },
+        "reflections": {
+          "mean": 0.0,
+          "std": 0.0,
+          "n": 3.0
+        },
+        "insights": {
+          "mean": 0.0,
+          "std": 0.0,
+          "n": 3.0
+        },
+        "mean_memories": {
+          "mean": 0.0,
+          "std": 0.0,
+          "n": 3.0
+        },
+        "total_memories": {
+          "mean": 0.0,
+          "std": 0.0,
+          "n": 3.0
+        },
+        "agents_with_memory": {
+          "mean": 0.0,
+          "std": 0.0,
+          "n": 3.0
+        },
+        "reindexed": {
+          "mean": 0.0,
+          "std": 0.0,
+          "n": 3.0
+        },
+        "obs_food_dir_abs_mean": {
+          "mean": 0.0,
+          "std": 0.0,
+          "n": 3.0
+        },
+        "obs_success_mean": {
+          "mean": 0.0,
+          "std": 0.0,
+          "n": 3.0
+        },
+        "obs_danger_mean": {
+          "mean": 0.0,
+          "std": 0.0,
+          "n": 3.0
+        },
+        "obs_reflect_food_mean": {
+          "mean": 0.0,
+          "std": 0.0,
+          "n": 3.0
+        },
+        "obs_reflect_risk_mean": {
+          "mean": 0.0,
+          "std": 0.0,
+          "n": 3.0
+        },
+        "obs_food_dir_nonzero_frac": {
+          "mean": 0.0,
+          "std": 0.0,
+          "n": 3.0
+        }
+      },
+      "wall_s": 14.337
+    },
+    "recency": {
+      "memory_config": {
+        "enabled": true,
+        "capacity": 24,
+        "recency_halflife_s": 30.0,
+        "weight_recency": 1.0,
+        "weight_importance": 0.0,
+        "weight_relevance": 0.0,
+        "top_k": 3,
+        "reflection_every_s": 0.0,
+        "reflection_min_events": 6,
+        "seed": 0
+      },
+      "is_control": false,
+      "obs_dim": 15,
+      "n_seeds": 3,
+      "train": {
+        "episodes": 3,
+        "seconds_per_episode": 40.0,
+        "seeds": [
+          1000,
+          1001,
+          1002
+        ],
+        "policy_seed": 7,
+        "wall_s": 21.918,
+        "history": [
+          {
+            "episode": 1.0,
+            "train_seed": 1000.0,
+            "updates": 374.0,
+            "transitions": 95597.0,
+            "mean_return": 0.2659165637199186,
+            "weight_delta": 0.010358680055665625
+          },
+          {
+            "episode": 2.0,
+            "train_seed": 1001.0,
+            "updates": 366.0,
+            "transitions": 93626.0,
+            "mean_return": 0.12771040848203677,
+            "weight_delta": 0.014251665986919508
+          },
+          {
+            "episode": 3.0,
+            "train_seed": 1002.0,
+            "updates": 374.0,
+            "transitions": 95683.0,
+            "mean_return": 0.2964783961957276,
+            "weight_delta": 0.01946437465096098
+          }
+        ]
+      },
+      "eval": {
+        "seeds": [
+          0,
+          1,
+          2
+        ],
+        "n_seeds": 3,
+        "seconds": 40.0,
+        "wall_s": 10.798,
+        "summary": {
+          "eat_events": {
+            "mean": 3777.0,
+            "std": 121.88519188154072,
+            "n": 3.0
+          },
+          "eat_rate": {
+            "mean": 0.7868750000000001,
+            "std": 0.02539274830865428,
+            "n": 3.0
+          },
+          "satiation_mean": {
+            "mean": 0.6796000000000001,
+            "std": 0.028852845035917448,
+            "n": 3.0
+          },
+          "satiation_std": {
+            "mean": 0.2733333333333333,
+            "std": 0.006866504852462335,
+            "n": 3.0
+          },
+          "population": {
+            "mean": 113.0,
+            "std": 2.943920288775949,
+            "n": 3.0
+          },
+          "mean_life": {
+            "mean": 36.75430860519409,
+            "std": 1.1467262313211974,
+            "n": 3.0
+          },
+          "starvation_deaths": {
+            "mean": 7.0,
+            "std": 2.943920288775949,
+            "n": 3.0
+          },
+          "births": {
+            "mean": 0.0,
+            "std": 0.0,
+            "n": 3.0
+          },
+          "total_reward": {
+            "mean": 770.531,
+            "std": 44.47008435641497,
+            "n": 3.0
+          },
+          "gini_hunger": {
+            "mean": 0.22456666666666666,
+            "std": 0.012082034412943688,
+            "n": 3.0
+          }
+        },
+        "runs": [
+          {
+            "seed": 0,
+            "eat_events": 3615,
+            "eat_rate": 0.753125,
+            "satiation_mean": 0.6995,
+            "satiation_std": 0.283,
+            "population": 112,
+            "mean_life": 36.668476581573486,
+            "starvation_deaths": 8,
+            "births": 0,
+            "total_reward": 724.743,
+            "gini_hunger": 0.2232,
+            "memory": {
+              "memory_obs_dim": 6,
+              "updates": 800,
+              "events_recorded": 3332,
+              "retrievals": 95459,
+              "reflections": 0,
+              "insights": 0,
+              "mean_memories": 22.4196,
+              "total_memories": 2511,
+              "agents_with_memory": 112,
+              "reindexed": 8,
+              "obs_food_dir_abs_mean": 0.46875,
+              "obs_success_mean": 0.5803571428571429,
+              "obs_danger_mean": 0.03273809523809523,
+              "obs_reflect_food_mean": 0.0,
+              "obs_reflect_risk_mean": 0.0,
+              "obs_food_dir_nonzero_frac": 0.9375
+            }
+          },
+          {
+            "seed": 1,
+            "eat_events": 3807,
+            "eat_rate": 0.793125,
+            "satiation_mean": 0.7005,
+            "satiation_std": 0.2677,
+            "population": 117,
+            "mean_life": 38.199703216552734,
+            "starvation_deaths": 3,
+            "births": 0,
+            "total_reward": 830.761,
+            "gini_hunger": 0.2105,
+            "memory": {
+              "memory_obs_dim": 6,
+              "updates": 800,
+              "events_recorded": 3525,
+              "retrievals": 95889,
+              "reflections": 0,
+              "insights": 0,
+              "mean_memories": 22.8205,
+              "total_memories": 2670,
+              "agents_with_memory": 117,
+              "reindexed": 3,
+              "obs_food_dir_abs_mean": 0.47435897435897434,
+              "obs_success_mean": 0.564102564102564,
+              "obs_danger_mean": 0.028490028490028487,
+              "obs_reflect_food_mean": 0.0,
+              "obs_reflect_risk_mean": 0.0,
+              "obs_food_dir_nonzero_frac": 0.9487179487179487
+            }
+          },
+          {
+            "seed": 2,
+            "eat_events": 3909,
+            "eat_rate": 0.814375,
+            "satiation_mean": 0.6388,
+            "satiation_std": 0.2693,
+            "population": 110,
+            "mean_life": 35.39474601745606,
+            "starvation_deaths": 10,
+            "births": 0,
+            "total_reward": 756.089,
+            "gini_hunger": 0.24,
+            "memory": {
+              "memory_obs_dim": 6,
+              "updates": 800,
+              "events_recorded": 3367,
+              "retrievals": 95069,
+              "reflections": 0,
+              "insights": 0,
+              "mean_memories": 22.9364,
+              "total_memories": 2523,
+              "agents_with_memory": 110,
+              "reindexed": 10,
+              "obs_food_dir_abs_mean": 0.4681818181818182,
+              "obs_success_mean": 0.5363636363636363,
+              "obs_danger_mean": 0.0303030303030303,
+              "obs_reflect_food_mean": 0.0,
+              "obs_reflect_risk_mean": 0.0,
+              "obs_food_dir_nonzero_frac": 0.9363636363636364
+            }
+          }
+        ]
+      },
+      "memory_stats": {
+        "memory_obs_dim": {
+          "mean": 6.0,
+          "std": 0.0,
+          "n": 3.0
+        },
+        "updates": {
+          "mean": 800.0,
+          "std": 0.0,
+          "n": 3.0
+        },
+        "events_recorded": {
+          "mean": 3408.0,
+          "std": 83.9563378588339,
+          "n": 3.0
+        },
+        "retrievals": {
+          "mean": 95472.33333333333,
+          "std": 334.89633553617085,
+          "n": 3.0
+        },
+        "reflections": {
+          "mean": 0.0,
+          "std": 0.0,
+          "n": 3.0
+        },
+        "insights": {
+          "mean": 0.0,
+          "std": 0.0,
+          "n": 3.0
+        },
+        "mean_memories": {
+          "mean": 22.7255,
+          "std": 0.22141862312521648,
+          "n": 3.0
+        },
+        "total_memories": {
+          "mean": 2568.0,
+          "std": 72.29107828771127,
+          "n": 3.0
+        },
+        "agents_with_memory": {
+          "mean": 113.0,
+          "std": 2.943920288775949,
+          "n": 3.0
+        },
+        "reindexed": {
+          "mean": 7.0,
+          "std": 2.943920288775949,
+          "n": 3.0
+        },
+        "obs_food_dir_abs_mean": {
+          "mean": 0.4704302641802642,
+          "std": 0.0027876848693080673,
+          "n": 3.0
+        },
+        "obs_success_mean": {
+          "mean": 0.5602744477744478,
+          "std": 0.01816311297409754,
+          "n": 3.0
+        },
+        "obs_danger_mean": {
+          "mean": 0.030510384677051344,
+          "std": 0.0017404529393861507,
+          "n": 3.0
+        },
+        "obs_reflect_food_mean": {
+          "mean": 0.0,
+          "std": 0.0,
+          "n": 3.0
+        },
+        "obs_reflect_risk_mean": {
+          "mean": 0.0,
+          "std": 0.0,
+          "n": 3.0
+        },
+        "obs_food_dir_nonzero_frac": {
+          "mean": 0.9408605283605284,
+          "std": 0.0055753697386161346,
+          "n": 3.0
+        }
+      },
+      "wall_s": 32.716
+    },
+    "full": {
+      "memory_config": {
+        "enabled": true,
+        "capacity": 24,
+        "recency_halflife_s": 30.0,
+        "weight_recency": 1.0,
+        "weight_importance": 1.0,
+        "weight_relevance": 1.0,
+        "top_k": 3,
+        "reflection_every_s": 0.0,
+        "reflection_min_events": 6,
+        "seed": 0
+      },
+      "is_control": false,
+      "obs_dim": 15,
+      "n_seeds": 3,
+      "train": {
+        "episodes": 3,
+        "seconds_per_episode": 40.0,
+        "seeds": [
+          1000,
+          1001,
+          1002
+        ],
+        "policy_seed": 7,
+        "wall_s": 22.246,
+        "history": [
+          {
+            "episode": 1.0,
+            "train_seed": 1000.0,
+            "updates": 374.0,
+            "transitions": 95487.0,
+            "mean_return": 0.25659793657710295,
+            "weight_delta": 0.010599885500483935
+          },
+          {
+            "episode": 2.0,
+            "train_seed": 1001.0,
+            "updates": 366.0,
+            "transitions": 93429.0,
+            "mean_return": 0.10337591716721241,
+            "weight_delta": 0.016880992856605725
+          },
+          {
+            "episode": 3.0,
+            "train_seed": 1002.0,
+            "updates": 374.0,
+            "transitions": 95515.0,
+            "mean_return": 0.310770674594091,
+            "weight_delta": 0.0074448292895046494
+          }
+        ]
+      },
+      "eval": {
+        "seeds": [
+          0,
+          1,
+          2
+        ],
+        "n_seeds": 3,
+        "seconds": 40.0,
+        "wall_s": 10.676,
+        "summary": {
+          "eat_events": {
+            "mean": 3704.0,
+            "std": 120.53491886862771,
+            "n": 3.0
+          },
+          "eat_rate": {
+            "mean": 0.7716666666666666,
+            "std": 0.025111441430964106,
+            "n": 3.0
+          },
+          "satiation_mean": {
+            "mean": 0.5645666666666666,
+            "std": 0.06032121425244101,
+            "n": 3.0
+          },
+          "satiation_std": {
+            "mean": 0.2934,
+            "std": 0.012047683041426133,
+            "n": 3.0
+          },
+          "population": {
+            "mean": 101.66666666666667,
+            "std": 2.357022603955158,
+            "n": 3.0
+          },
+          "mean_life": {
+            "mean": 35.37169081370036,
+            "std": 0.9017679981488846,
+            "n": 3.0
+          },
+          "starvation_deaths": {
+            "mean": 18.333333333333332,
+            "std": 2.3570226039551585,
+            "n": 3.0
+          },
+          "births": {
+            "mean": 0.0,
+            "std": 0.0,
+            "n": 3.0
+          },
+          "total_reward": {
+            "mean": 636.2733333333334,
+            "std": 5.613088058774369,
+            "n": 3.0
+          },
+          "gini_hunger": {
+            "mean": 0.30150000000000005,
+            "std": 0.03967980174681656,
+            "n": 3.0
+          }
+        },
+        "runs": [
+          {
+            "seed": 0,
+            "eat_events": 3575,
+            "eat_rate": 0.7447916666666666,
+            "satiation_mean": 0.5387,
+            "satiation_std": 0.3098,
+            "population": 105,
+            "mean_life": 35.0730842590332,
+            "starvation_deaths": 15,
+            "births": 0,
+            "total_reward": 642.842,
+            "gini_hunger": 0.3307,
+            "memory": {
+              "memory_obs_dim": 6,
+              "updates": 800,
+              "events_recorded": 3266,
+              "retrievals": 94507,
+              "reflections": 0,
+              "insights": 0,
+              "mean_memories": 22.4762,
+              "total_memories": 2360,
+              "agents_with_memory": 105,
+              "reindexed": 14,
+              "obs_food_dir_abs_mean": 0.4857142857142857,
+              "obs_success_mean": 0.9015873015873016,
+              "obs_danger_mean": 0.04126984126984127,
+              "obs_reflect_food_mean": 0.0,
+              "obs_reflect_risk_mean": 0.0,
+              "obs_food_dir_nonzero_frac": 0.9714285714285714
+            }
+          },
+          {
+            "seed": 1,
+            "eat_events": 3672,
+            "eat_rate": 0.765,
+            "satiation_mean": 0.6479,
+            "satiation_std": 0.2812,
+            "population": 100,
+            "mean_life": 34.44726047515869,
+            "starvation_deaths": 20,
+            "births": 0,
+            "total_reward": 636.849,
+            "gini_hunger": 0.2454,
+            "memory": {
+              "memory_obs_dim": 6,
+              "updates": 800,
+              "events_recorded": 3418,
+              "retrievals": 93759,
+              "reflections": 0,
+              "insights": 0,
+              "mean_memories": 23.04,
+              "total_memories": 2304,
+              "agents_with_memory": 100,
+              "reindexed": 19,
+              "obs_food_dir_abs_mean": 0.47,
+              "obs_success_mean": 0.8999999999999999,
+              "obs_danger_mean": 0.006666666666666666,
+              "obs_reflect_food_mean": 0.0,
+              "obs_reflect_risk_mean": 0.0,
+              "obs_food_dir_nonzero_frac": 0.94
+            }
+          },
+          {
+            "seed": 2,
+            "eat_events": 3865,
+            "eat_rate": 0.8052083333333333,
+            "satiation_mean": 0.5071,
+            "satiation_std": 0.2892,
+            "population": 100,
+            "mean_life": 36.59472770690918,
+            "starvation_deaths": 20,
+            "births": 0,
+            "total_reward": 629.129,
+            "gini_hunger": 0.3284,
+            "memory": {
+              "memory_obs_dim": 6,
+              "updates": 800,
+              "events_recorded": 3310,
+              "retrievals": 94618,
+              "reflections": 0,
+              "insights": 0,
+              "mean_memories": 22.77,
+              "total_memories": 2277,
+              "agents_with_memory": 100,
+              "reindexed": 17,
+              "obs_food_dir_abs_mean": 0.49,
+              "obs_success_mean": 0.9166666666666665,
+              "obs_danger_mean": 0.03,
+              "obs_reflect_food_mean": 0.0,
+              "obs_reflect_risk_mean": 0.0,
+              "obs_food_dir_nonzero_frac": 0.98
+            }
+          }
+        ]
+      },
+      "memory_stats": {
+        "memory_obs_dim": {
+          "mean": 6.0,
+          "std": 0.0,
+          "n": 3.0
+        },
+        "updates": {
+          "mean": 800.0,
+          "std": 0.0,
+          "n": 3.0
+        },
+        "events_recorded": {
+          "mean": 3331.3333333333335,
+          "std": 63.860960079082915,
+          "n": 3.0
+        },
+        "retrievals": {
+          "mean": 94294.66666666667,
+          "std": 381.47462417425476,
+          "n": 3.0
+        },
+        "reflections": {
+          "mean": 0.0,
+          "std": 0.0,
+          "n": 3.0
+        },
+        "insights": {
+          "mean": 0.0,
+          "std": 0.0,
+          "n": 3.0
+        },
+        "mean_memories": {
+          "mean": 22.762066666666666,
+          "std": 0.23023873600147232,
+          "n": 3.0
+        },
+        "total_memories": {
+          "mean": 2313.6666666666665,
+          "std": 34.56716489515576,
+          "n": 3.0
+        },
+        "agents_with_memory": {
+          "mean": 101.66666666666667,
+          "std": 2.357022603955158,
+          "n": 3.0
+        },
+        "reindexed": {
+          "mean": 16.666666666666668,
+          "std": 2.0548046676563256,
+          "n": 3.0
+        },
+        "obs_food_dir_abs_mean": {
+          "mean": 0.4819047619047619,
+          "std": 0.008597842897746575,
+          "n": 3.0
+        },
+        "obs_success_mean": {
+          "mean": 0.9060846560846559,
+          "std": 0.007510618818295396,
+          "n": 3.0
+        },
+        "obs_danger_mean": {
+          "mean": 0.02597883597883598,
+          "std": 0.014410002156332825,
+          "n": 3.0
+        },
+        "obs_reflect_food_mean": {
+          "mean": 0.0,
+          "std": 0.0,
+          "n": 3.0
+        },
+        "obs_reflect_risk_mean": {
+          "mean": 0.0,
+          "std": 0.0,
+          "n": 3.0
+        },
+        "obs_food_dir_nonzero_frac": {
+          "mean": 0.9638095238095238,
+          "std": 0.01719568579549315,
+          "n": 3.0
+        }
+      },
+      "wall_s": 32.922
+    },
+    "full_reflect": {
+      "memory_config": {
+        "enabled": true,
+        "capacity": 24,
+        "recency_halflife_s": 30.0,
+        "weight_recency": 1.0,
+        "weight_importance": 1.0,
+        "weight_relevance": 1.0,
+        "top_k": 3,
+        "reflection_every_s": 20.0,
+        "reflection_min_events": 6,
+        "seed": 0
+      },
+      "is_control": false,
+      "obs_dim": 15,
+      "n_seeds": 3,
+      "train": {
+        "episodes": 3,
+        "seconds_per_episode": 40.0,
+        "seeds": [
+          1000,
+          1001,
+          1002
+        ],
+        "policy_seed": 7,
+        "wall_s": 22.35,
+        "history": [
+          {
+            "episode": 1.0,
+            "train_seed": 1000.0,
+            "updates": 374.0,
+            "transitions": 95577.0,
+            "mean_return": 0.2688956829232099,
+            "weight_delta": 0.010562566375178384
+          },
+          {
+            "episode": 2.0,
+            "train_seed": 1001.0,
+            "updates": 364.0,
+            "transitions": 92885.0,
+            "mean_return": 0.10845384025747777,
+            "weight_delta": 0.021195292976305312
+          },
+          {
+            "episode": 3.0,
+            "train_seed": 1002.0,
+            "updates": 376.0,
+            "transitions": 95860.0,
+            "mean_return": 0.3264585944715885,
+            "weight_delta": 0.020545837095388847
+          }
+        ]
+      },
+      "eval": {
+        "seeds": [
+          0,
+          1,
+          2
+        ],
+        "n_seeds": 3,
+        "seconds": 40.0,
+        "wall_s": 10.867,
+        "summary": {
+          "eat_events": {
+            "mean": 3931.0,
+            "std": 117.33996193397485,
+            "n": 3.0
+          },
+          "eat_rate": {
+            "mean": 0.8189583333333333,
+            "std": 0.024445825402911438,
+            "n": 3.0
+          },
+          "satiation_mean": {
+            "mean": 0.5735,
+            "std": 0.0373163056406535,
+            "n": 3.0
+          },
+          "satiation_std": {
+            "mean": 0.30546666666666666,
+            "std": 0.009569860094182273,
+            "n": 3.0
+          },
+          "population": {
+            "mean": 104.0,
+            "std": 4.242640687119285,
+            "n": 3.0
+          },
+          "mean_life": {
+            "mean": 35.354758282641434,
+            "std": 0.8074413182444526,
+            "n": 3.0
+          },
+          "starvation_deaths": {
+            "mean": 16.0,
+            "std": 4.242640687119285,
+            "n": 3.0
+          },
+          "births": {
+            "mean": 0.0,
+            "std": 0.0,
+            "n": 3.0
+          },
+          "total_reward": {
+            "mean": 712.8883333333333,
+            "std": 32.669824214743244,
+            "n": 3.0
+          },
+          "gini_hunger": {
+            "mean": 0.3057,
+            "std": 0.01456662852779142,
+            "n": 3.0
+          }
+        },
+        "runs": [
+          {
+            "seed": 0,
+            "eat_events": 3783,
+            "eat_rate": 0.788125,
+            "satiation_mean": 0.5741,
+            "satiation_std": 0.2988,
+            "population": 107,
+            "mean_life": 35.58051241361178,
+            "starvation_deaths": 13,
+            "births": 0,
+            "total_reward": 700.579,
+            "gini_hunger": 0.2991,
+            "memory": {
+              "memory_obs_dim": 6,
+              "updates": 800,
+              "events_recorded": 3636,
+              "retrievals": 94838,
+              "reflections": 2,
+              "insights": 204,
+              "mean_memories": 23.0467,
+              "total_memories": 2466,
+              "agents_with_memory": 107,
+              "reindexed": 11,
+              "obs_food_dir_abs_mean": 0.5484244822624286,
+              "obs_success_mean": 0.7196261682242991,
+              "obs_danger_mean": 0.031152647975077878,
+              "obs_reflect_food_mean": 0.7750640821913511,
+              "obs_reflect_risk_mean": 0.0,
+              "obs_food_dir_nonzero_frac": 1.0
+            }
+          },
+          {
+            "seed": 1,
+            "eat_events": 3940,
+            "eat_rate": 0.8208333333333333,
+            "satiation_mean": 0.6189,
+            "satiation_std": 0.319,
+            "population": 98,
+            "mean_life": 34.27249041470614,
+            "starvation_deaths": 22,
+            "births": 0,
+            "total_reward": 680.477,
+            "gini_hunger": 0.2921,
+            "memory": {
+              "memory_obs_dim": 6,
+              "updates": 800,
+              "events_recorded": 3760,
+              "retrievals": 93458,
+              "reflections": 2,
+              "insights": 199,
+              "mean_memories": 23.2959,
+              "total_memories": 2283,
+              "agents_with_memory": 98,
+              "reindexed": 21,
+              "obs_food_dir_abs_mean": 0.5519361827106293,
+              "obs_success_mean": 0.6394557823129251,
+              "obs_danger_mean": 0.013605442176870748,
+              "obs_reflect_food_mean": 0.7900169122800681,
+              "obs_reflect_risk_mean": 0.0,
+              "obs_food_dir_nonzero_frac": 1.0
+            }
+          },
+          {
+            "seed": 2,
+            "eat_events": 4070,
+            "eat_rate": 0.8479166666666667,
+            "satiation_mean": 0.5275,
+            "satiation_std": 0.2986,
+            "population": 107,
+            "mean_life": 36.21127201960637,
+            "starvation_deaths": 13,
+            "births": 0,
+            "total_reward": 757.609,
+            "gini_hunger": 0.3259,
+            "memory": {
+              "memory_obs_dim": 6,
+              "updates": 800,
+              "events_recorded": 3666,
+              "retrievals": 95002,
+              "reflections": 2,
+              "insights": 209,
+              "mean_memories": 22.972,
+              "total_memories": 2458,
+              "agents_with_memory": 107,
+              "reindexed": 13,
+              "obs_food_dir_abs_mean": 0.5241071408506993,
+              "obs_success_mean": 0.7601246105919004,
+              "obs_danger_mean": 0.03426791277258567,
+              "obs_reflect_food_mean": 0.7851639332748821,
+              "obs_reflect_risk_mean": 0.0,
+              "obs_food_dir_nonzero_frac": 1.0
+            }
+          }
+        ]
+      },
+      "memory_stats": {
+        "memory_obs_dim": {
+          "mean": 6.0,
+          "std": 0.0,
+          "n": 3.0
+        },
+        "updates": {
+          "mean": 800.0,
+          "std": 0.0,
+          "n": 3.0
+        },
+        "events_recorded": {
+          "mean": 3687.3333333333335,
+          "std": 52.822554105440815,
+          "n": 3.0
+        },
+        "retrievals": {
+          "mean": 94432.66666666667,
+          "std": 692.4378832951171,
+          "n": 3.0
+        },
+        "reflections": {
+          "mean": 2.0,
+          "std": 0.0,
+          "n": 3.0
+        },
+        "insights": {
+          "mean": 204.0,
+          "std": 4.08248290463863,
+          "n": 3.0
+        },
+        "mean_memories": {
+          "mean": 23.10486666666667,
+          "std": 0.13848062038502718,
+          "n": 3.0
+        },
+        "total_memories": {
+          "mean": 2402.3333333333335,
+          "std": 84.44459064314829,
+          "n": 3.0
+        },
+        "agents_with_memory": {
+          "mean": 104.0,
+          "std": 4.242640687119285,
+          "n": 3.0
+        },
+        "reindexed": {
+          "mean": 15.0,
+          "std": 4.320493798938574,
+          "n": 3.0
+        },
+        "obs_food_dir_abs_mean": {
+          "mean": 0.541489268607919,
+          "std": 0.012374349384532099,
+          "n": 3.0
+        },
+        "obs_success_mean": {
+          "mean": 0.7064021870430416,
+          "std": 0.05014244235686237,
+          "n": 3.0
+        },
+        "obs_danger_mean": {
+          "mean": 0.026342000974844765,
+          "std": 0.009095462832289325,
+          "n": 3.0
+        },
+        "obs_reflect_food_mean": {
+          "mean": 0.7834149759154337,
+          "std": 0.006228478722737255,
+          "n": 3.0
+        },
+        "obs_reflect_risk_mean": {
+          "mean": 0.0,
+          "std": 0.0,
+          "n": 3.0
+        },
+        "obs_food_dir_nonzero_frac": {
+          "mean": 1.0,
+          "std": 0.0,
+          "n": 3.0
+        }
+      },
+      "wall_s": 33.217
+    }
+  },
+  "paired": {
+    "recency_vs_off": {
+      "eat_events": {
+        "metric": "eat_events",
+        "n": 3.0,
+        "mean_delta": 564.6666666666666,
+        "std_delta": 98.68918661918111,
+        "wins": 3.0,
+        "losses": 0.0,
+        "ties": 0.0,
+        "relative": 0.17578084466120156
+      },
+      "eat_rate": {
+        "metric": "eat_rate",
+        "n": 3.0,
+        "mean_delta": 0.11763888888888889,
+        "std_delta": 0.020560247212329436,
+        "wins": 3.0,
+        "losses": 0.0,
+        "ties": 0.0,
+        "relative": 0.17578084466093896
+      },
+      "satiation_mean": {
+        "metric": "satiation_mean",
+        "n": 3.0,
+        "mean_delta": -0.0005666666666666412,
+        "std_delta": 0.02677590127127167,
+        "wins": 1.0,
+        "losses": 2.0,
+        "ties": 0.0,
+        "relative": -0.0008331291350146653
+      },
+      "satiation_std": {
+        "metric": "satiation_std",
+        "n": 3.0,
+        "mean_delta": 0.010933333333333314,
+        "std_delta": 0.01783523354362245,
+        "wins": 2.0,
+        "losses": 1.0,
+        "ties": 0.0,
+        "relative": 0.041666666666507805
+      },
+      "population": {
+        "metric": "population",
+        "n": 3.0,
+        "mean_delta": 0.0,
+        "std_delta": 5.0990195135927845,
+        "wins": 2.0,
+        "losses": 1.0,
+        "ties": 0.0,
+        "relative": 0.0
+      },
+      "mean_life": {
+        "metric": "mean_life",
+        "n": 3.0,
+        "mean_delta": 1.5987256050109881,
+        "std_delta": 1.4564922363180162,
+        "wins": 2.0,
+        "losses": 1.0,
+        "ties": 0.0,
+        "relative": 0.045475724439063225
+      },
+      "starvation_deaths": {
+        "metric": "starvation_deaths",
+        "n": 3.0,
+        "mean_delta": 0.0,
+        "std_delta": 5.0990195135927845,
+        "wins": 1.0,
+        "losses": 2.0,
+        "ties": 0.0,
+        "relative": 0.0
+      },
+      "births": {
+        "metric": "births",
+        "n": 3.0,
+        "mean_delta": 0.0,
+        "std_delta": 0.0,
+        "wins": 0.0,
+        "losses": 0.0,
+        "ties": 3.0,
+        "relative": 0.0
+      },
+      "total_reward": {
+        "metric": "total_reward",
+        "n": 3.0,
+        "mean_delta": 128.99266666666668,
+        "std_delta": 51.43412554153342,
+        "wins": 3.0,
+        "losses": 0.0,
+        "ties": 0.0,
+        "relative": 0.2010677460167355
+      },
+      "gini_hunger": {
+        "metric": "gini_hunger",
+        "n": 3.0,
+        "mean_delta": 0.008766666666666664,
+        "std_delta": 0.0030302181806302767,
+        "wins": 3.0,
+        "losses": 0.0,
+        "ties": 0.0,
+        "relative": 0.040624034599749954
+      }
+    },
+    "full_vs_off": {
+      "eat_events": {
+        "metric": "eat_events",
+        "n": 3.0,
+        "mean_delta": 491.6666666666667,
+        "std_delta": 129.17774146070556,
+        "wins": 3.0,
+        "losses": 0.0,
+        "ties": 0.0,
+        "relative": 0.1530559302687558
+      },
+      "eat_rate": {
+        "metric": "eat_rate",
+        "n": 3.0,
+        "mean_delta": 0.10243055555555554,
+        "std_delta": 0.0269120294709803,
+        "wins": 3.0,
+        "losses": 0.0,
+        "ties": 0.0,
+        "relative": 0.1530559302685271
+      },
+      "satiation_mean": {
+        "metric": "satiation_mean",
+        "n": 3.0,
+        "mean_delta": -0.1156,
+        "std_delta": 0.0328524986365827,
+        "wins": 0.0,
+        "losses": 3.0,
+        "ties": 0.0,
+        "relative": -0.16995834354299935
+      },
+      "satiation_std": {
+        "metric": "satiation_std",
+        "n": 3.0,
+        "mean_delta": 0.03100000000000001,
+        "std_delta": 0.022178518135048318,
+        "wins": 3.0,
+        "losses": 0.0,
+        "ties": 0.0,
+        "relative": 0.11814024390198884
+      },
+      "population": {
+        "metric": "population",
+        "n": 3.0,
+        "mean_delta": -11.333333333333334,
+        "std_delta": 4.921607686744467,
+        "wins": 0.0,
+        "losses": 3.0,
+        "ties": 0.0,
+        "relative": -0.10029498525073659
+      },
+      "mean_life": {
+        "metric": "mean_life",
+        "n": 3.0,
+        "mean_delta": 0.2161078135172545,
+        "std_delta": 0.8549835244255211,
+        "wins": 2.0,
+        "losses": 1.0,
+        "ties": 0.0,
+        "relative": 0.006147183322663793
+      },
+      "starvation_deaths": {
+        "metric": "starvation_deaths",
+        "n": 3.0,
+        "mean_delta": 11.333333333333334,
+        "std_delta": 4.921607686744467,
+        "wins": 3.0,
+        "losses": 0.0,
+        "ties": 0.0,
+        "relative": 1.619047619047388
+      },
+      "births": {
+        "metric": "births",
+        "n": 3.0,
+        "mean_delta": 0.0,
+        "std_delta": 0.0,
+        "wins": 0.0,
+        "losses": 0.0,
+        "ties": 3.0,
+        "relative": 0.0
+      },
+      "total_reward": {
+        "metric": "total_reward",
+        "n": 3.0,
+        "mean_delta": -5.264999999999986,
+        "std_delta": 60.04819101910288,
+        "wins": 1.0,
+        "losses": 2.0,
+        "ties": 0.0,
+        "relative": -0.008206836172429255
+      },
+      "gini_hunger": {
+        "metric": "gini_hunger",
+        "n": 3.0,
+        "mean_delta": 0.0857,
+        "std_delta": 0.03140838529225382,
+        "wins": 3.0,
+        "losses": 0.0,
+        "ties": 0.0,
+        "relative": 0.39712696941428577
+      }
+    },
+    "full_reflect_vs_off": {
+      "eat_events": {
+        "metric": "eat_events",
+        "n": 3.0,
+        "mean_delta": 718.6666666666666,
+        "std_delta": 109.77046759286195,
+        "wins": 3.0,
+        "losses": 0.0,
+        "ties": 0.0,
+        "relative": 0.22372107502334743
+      },
+      "eat_rate": {
+        "metric": "eat_rate",
+        "n": 3.0,
+        "mean_delta": 0.1497222222222222,
+        "std_delta": 0.022868847415179566,
+        "wins": 3.0,
+        "losses": 0.0,
+        "ties": 0.0,
+        "relative": 0.2237210750230132
+      },
+      "satiation_mean": {
+        "metric": "satiation_mean",
+        "n": 3.0,
+        "mean_delta": -0.10666666666666665,
+        "std_delta": 0.017926578653558605,
+        "wins": 0.0,
+        "losses": 3.0,
+        "ties": 0.0,
+        "relative": -0.15682430776747341
+      },
+      "satiation_std": {
+        "metric": "satiation_std",
+        "n": 3.0,
+        "mean_delta": 0.04306666666666666,
+        "std_delta": 0.014265186839139406,
+        "wins": 3.0,
+        "losses": 0.0,
+        "ties": 0.0,
+        "relative": 0.1641260162595371
+      },
+      "population": {
+        "metric": "population",
+        "n": 3.0,
+        "mean_delta": -9.0,
+        "std_delta": 4.546060565661952,
+        "wins": 0.0,
+        "losses": 3.0,
+        "ties": 0.0,
+        "relative": -0.07964601769911435
+      },
+      "mean_life": {
+        "metric": "mean_life",
+        "n": 3.0,
+        "mean_delta": 0.19917528245832491,
+        "std_delta": 1.053635350014255,
+        "wins": 2.0,
+        "losses": 1.0,
+        "ties": 0.0,
+        "relative": 0.005665537745662811
+      },
+      "starvation_deaths": {
+        "metric": "starvation_deaths",
+        "n": 3.0,
+        "mean_delta": 9.0,
+        "std_delta": 4.546060565661952,
+        "wins": 3.0,
+        "losses": 0.0,
+        "ties": 0.0,
+        "relative": 1.285714285714102
+      },
+      "births": {
+        "metric": "births",
+        "n": 3.0,
+        "mean_delta": 0.0,
+        "std_delta": 0.0,
+        "wins": 0.0,
+        "losses": 0.0,
+        "ties": 3.0,
+        "relative": 0.0
+      },
+      "total_reward": {
+        "metric": "total_reward",
+        "n": 3.0,
+        "mean_delta": 71.34999999999998,
+        "std_delta": 45.510892967142134,
+        "wins": 3.0,
+        "losses": 0.0,
+        "ties": 0.0,
+        "relative": 0.11121704860452587
+      },
+      "gini_hunger": {
+        "metric": "gini_hunger",
+        "n": 3.0,
+        "mean_delta": 0.08990000000000002,
+        "std_delta": 0.0012027745701779387,
+        "wins": 3.0,
+        "losses": 0.0,
+        "ties": 0.0,
+        "relative": 0.4165894346597935
+      }
+    },
+    "full_reflect_vs_full": {
+      "eat_events": {
+        "metric": "eat_events",
+        "n": 3.0,
+        "mean_delta": 227.0,
+        "std_delta": 29.017236257093817,
+        "wins": 3.0,
+        "losses": 0.0,
+        "ties": 0.0,
+        "relative": 0.06128509719222461
+      },
+      "eat_rate": {
+        "metric": "eat_rate",
+        "n": 3.0,
+        "mean_delta": 0.047291666666666655,
+        "std_delta": 0.006045257553561187,
+        "wins": 3.0,
+        "losses": 0.0,
+        "ties": 0.0,
+        "relative": 0.06128509719214519
+      },
+      "satiation_mean": {
+        "metric": "satiation_mean",
+        "n": 3.0,
+        "mean_delta": 0.008933333333333349,
+        "std_delta": 0.02751306760230293,
+        "wins": 2.0,
+        "losses": 1.0,
+        "ties": 0.0,
+        "relative": 0.015823345338579785
+      },
+      "satiation_std": {
+        "metric": "satiation_std",
+        "n": 3.0,
+        "mean_delta": 0.012066666666666651,
+        "std_delta": 0.020011552219211342,
+        "wins": 2.0,
+        "losses": 1.0,
+        "ties": 0.0,
+        "relative": 0.04112701658699906
+      },
+      "population": {
+        "metric": "population",
+        "n": 3.0,
+        "mean_delta": 2.3333333333333335,
+        "std_delta": 3.681787005729087,
+        "wins": 2.0,
+        "losses": 1.0,
+        "ties": 0.0,
+        "relative": 0.022950819672130925
+      },
+      "mean_life": {
+        "metric": "mean_life",
+        "n": 3.0,
+        "mean_delta": -0.016932531058929595,
+        "std_delta": 0.38044098902470913,
+        "wins": 1.0,
+        "losses": 2.0,
+        "ties": 0.0,
+        "relative": -0.0004787029025022098
+      },
+      "starvation_deaths": {
+        "metric": "starvation_deaths",
+        "n": 3.0,
+        "mean_delta": -2.3333333333333335,
+        "std_delta": 3.681787005729087,
+        "wins": 1.0,
+        "losses": 2.0,
+        "ties": 0.0,
+        "relative": -0.12727272727272035
+      },
+      "births": {
+        "metric": "births",
+        "n": 3.0,
+        "mean_delta": 0.0,
+        "std_delta": 0.0,
+        "wins": 0.0,
+        "losses": 0.0,
+        "ties": 3.0,
+        "relative": 0.0
+      },
+      "total_reward": {
+        "metric": "total_reward",
+        "n": 3.0,
+        "mean_delta": 76.61499999999997,
+        "std_delta": 37.12366396249167,
+        "wins": 3.0,
+        "losses": 0.0,
+        "ties": 0.0,
+        "relative": 0.12041208704854281
+      },
+      "gini_hunger": {
+        "metric": "gini_hunger",
+        "n": 3.0,
+        "mean_delta": 0.0042,
+        "std_delta": 0.03231501199133308,
+        "wins": 1.0,
+        "losses": 2.0,
+        "ties": 0.0,
+        "relative": 0.013930348258660262
+      }
+    },
+    "recency_vs_off_padded": {
+      "eat_events": {
+        "metric": "eat_events",
+        "n": 3.0,
+        "mean_delta": 238.33333333333334,
+        "std_delta": 49.16186417223099,
+        "wins": 3.0,
+        "losses": 0.0,
+        "ties": 0.0,
+        "relative": 0.06735116804822908
+      },
+      "eat_rate": {
+        "metric": "eat_rate",
+        "n": 3.0,
+        "mean_delta": 0.04965277777777777,
+        "std_delta": 0.010242055035881423,
+        "wins": 3.0,
+        "losses": 0.0,
+        "ties": 0.0,
+        "relative": 0.0673511680481377
+      },
+      "satiation_mean": {
+        "metric": "satiation_mean",
+        "n": 3.0,
+        "mean_delta": -0.007566666666666648,
+        "std_delta": 0.036717328636792494,
+        "wins": 1.0,
+        "losses": 2.0,
+        "ties": 0.0,
+        "relative": -0.011011399466391904
+      },
+      "satiation_std": {
+        "metric": "satiation_std",
+        "n": 3.0,
+        "mean_delta": -0.0018666666666666831,
+        "std_delta": 0.008124175171808053,
+        "wins": 1.0,
+        "losses": 2.0,
+        "ties": 0.0,
+        "relative": -0.006782945736409521
+      },
+      "population": {
+        "metric": "population",
+        "n": 3.0,
+        "mean_delta": -0.3333333333333333,
+        "std_delta": 3.299831645537221,
+        "wins": 1.0,
+        "losses": 2.0,
+        "ties": 0.0,
+        "relative": -0.0029411764705882092
+      },
+      "mean_life": {
+        "metric": "mean_life",
+        "n": 3.0,
+        "mean_delta": 2.5700203078133725,
+        "std_delta": 1.3965413460914433,
+        "wins": 3.0,
+        "losses": 0.0,
+        "ties": 0.0,
+        "relative": 0.07518133141915427
+      },
+      "starvation_deaths": {
+        "metric": "starvation_deaths",
+        "n": 3.0,
+        "mean_delta": 0.3333333333333333,
+        "std_delta": 3.299831645537221,
+        "wins": 2.0,
+        "losses": 1.0,
+        "ties": 0.0,
+        "relative": 0.049999999999992495
+      },
+      "births": {
+        "metric": "births",
+        "n": 3.0,
+        "mean_delta": 0.0,
+        "std_delta": 0.0,
+        "wins": 0.0,
+        "losses": 0.0,
+        "ties": 3.0,
+        "relative": 0.0
+      },
+      "total_reward": {
+        "metric": "total_reward",
+        "n": 3.0,
+        "mean_delta": 53.151333333333355,
+        "std_delta": 25.950260144275145,
+        "wins": 3.0,
+        "losses": 0.0,
+        "ties": 0.0,
+        "relative": 0.07409093929341916
+      },
+      "gini_hunger": {
+        "metric": "gini_hunger",
+        "n": 3.0,
+        "mean_delta": 0.0023999999999999946,
+        "std_delta": 0.019269838262597486,
+        "wins": 2.0,
+        "losses": 1.0,
+        "ties": 0.0,
+        "relative": 0.010802700675120144
+      }
+    },
+    "full_vs_off_padded": {
+      "eat_events": {
+        "metric": "eat_events",
+        "n": 3.0,
+        "mean_delta": 165.33333333333334,
+        "std_delta": 92.06640115819789,
+        "wins": 3.0,
+        "losses": 0.0,
+        "ties": 0.0,
+        "relative": 0.04672192916352674
+      },
+      "eat_rate": {
+        "metric": "eat_rate",
+        "n": 3.0,
+        "mean_delta": 0.03444444444444442,
+        "std_delta": 0.019180500241291167,
+        "wins": 3.0,
+        "losses": 0.0,
+        "ties": 0.0,
+        "relative": 0.04672192916346334
+      },
+      "satiation_mean": {
+        "metric": "satiation_mean",
+        "n": 3.0,
+        "mean_delta": -0.1226,
+        "std_delta": 0.024829552284861424,
+        "wins": 0.0,
+        "losses": 3.0,
+        "ties": 0.0,
+        "relative": -0.1784137763761653
+      },
+      "satiation_std": {
+        "metric": "satiation_std",
+        "n": 3.0,
+        "mean_delta": 0.01820000000000001,
+        "std_delta": 0.007267736924242662,
+        "wins": 3.0,
+        "losses": 0.0,
+        "ties": 0.0,
+        "relative": 0.0661337209299923
+      },
+      "population": {
+        "metric": "population",
+        "n": 3.0,
+        "mean_delta": -11.666666666666666,
+        "std_delta": 2.6246692913372702,
+        "wins": 0.0,
+        "losses": 3.0,
+        "ties": 0.0,
+        "relative": -0.10294117647058733
+      },
+      "mean_life": {
+        "metric": "mean_life",
+        "n": 3.0,
+        "mean_delta": 1.187402516319639,
+        "std_delta": 1.0039803461579253,
+        "wins": 3.0,
+        "losses": 0.0,
+        "ties": 0.0,
+        "relative": 0.03473532945866787
+      },
+      "starvation_deaths": {
+        "metric": "starvation_deaths",
+        "n": 3.0,
+        "mean_delta": 11.666666666666666,
+        "std_delta": 2.6246692913372702,
+        "wins": 3.0,
+        "losses": 0.0,
+        "ties": 0.0,
+        "relative": 1.7499999999997373
+      },
+      "births": {
+        "metric": "births",
+        "n": 3.0,
+        "mean_delta": 0.0,
+        "std_delta": 0.0,
+        "wins": 0.0,
+        "losses": 0.0,
+        "ties": 3.0,
+        "relative": 0.0
+      },
+      "total_reward": {
+        "metric": "total_reward",
+        "n": 3.0,
+        "mean_delta": -81.10633333333332,
+        "std_delta": 41.87279594464907,
+        "wins": 0.0,
+        "losses": 3.0,
+        "ties": 0.0,
+        "relative": -0.11305914720192312
+      },
+      "gini_hunger": {
+        "metric": "gini_hunger",
+        "n": 3.0,
+        "mean_delta": 0.07933333333333334,
+        "std_delta": 0.01307652689193716,
+        "wins": 3.0,
+        "losses": 0.0,
+        "ties": 0.0,
+        "relative": 0.35708927231647225
+      }
+    },
+    "full_reflect_vs_off_padded": {
+      "eat_events": {
+        "metric": "eat_events",
+        "n": 3.0,
+        "mean_delta": 392.3333333333333,
+        "std_delta": 63.162928649292034,
+        "wins": 3.0,
+        "losses": 0.0,
+        "ties": 0.0,
+        "relative": 0.11087038432554631
+      },
+      "eat_rate": {
+        "metric": "eat_rate",
+        "n": 3.0,
+        "mean_delta": 0.08173611111111108,
+        "std_delta": 0.013158943468602472,
+        "wins": 3.0,
+        "losses": 0.0,
+        "ties": 0.0,
+        "relative": 0.1108703843253959
+      },
+      "satiation_mean": {
+        "metric": "satiation_mean",
+        "n": 3.0,
+        "mean_delta": -0.11366666666666665,
+        "std_delta": 0.02268293533816903,
+        "wins": 0.0,
+        "losses": 3.0,
+        "ties": 0.0,
+        "relative": -0.16541353383434573
+      },
+      "satiation_std": {
+        "metric": "satiation_std",
+        "n": 3.0,
+        "mean_delta": 0.030266666666666664,
+        "std_delta": 0.02065273724123647,
+        "wins": 3.0,
+        "losses": 0.0,
+        "ties": 0.0,
+        "relative": 0.10998062015463912
+      },
+      "population": {
+        "metric": "population",
+        "n": 3.0,
+        "mean_delta": -9.333333333333334,
+        "std_delta": 4.027681991198191,
+        "wins": 0.0,
+        "losses": 3.0,
+        "ties": 0.0,
+        "relative": -0.08235294117646988
+      },
+      "mean_life": {
+        "metric": "mean_life",
+        "n": 3.0,
+        "mean_delta": 1.1704699852607092,
+        "std_delta": 0.720178872610753,
+        "wins": 3.0,
+        "losses": 0.0,
+        "ties": 0.0,
+        "relative": 0.03423999865313442
+      },
+      "starvation_deaths": {
+        "metric": "starvation_deaths",
+        "n": 3.0,
+        "mean_delta": 9.333333333333334,
+        "std_delta": 4.027681991198191,
+        "wins": 3.0,
+        "losses": 0.0,
+        "ties": 0.0,
+        "relative": 1.39999999999979
+      },
+      "births": {
+        "metric": "births",
+        "n": 3.0,
+        "mean_delta": 0.0,
+        "std_delta": 0.0,
+        "wins": 0.0,
+        "losses": 0.0,
+        "ties": 3.0,
+        "relative": 0.0
+      },
+      "total_reward": {
+        "metric": "total_reward",
+        "n": 3.0,
+        "mean_delta": -4.4913333333333485,
+        "std_delta": 46.27780860796624,
+        "wins": 2.0,
+        "losses": 1.0,
+        "ties": 0.0,
+        "relative": -0.006260748027892262
+      },
+      "gini_hunger": {
+        "metric": "gini_hunger",
+        "n": 3.0,
+        "mean_delta": 0.08353333333333335,
+        "std_delta": 0.021836411996683187,
+        "wins": 3.0,
+        "losses": 0.0,
+        "ties": 0.0,
+        "relative": 0.3759939984979326
+      }
+    }
+  },
+  "best_arm": "full_reflect",
+  "best_overall_arm": "full_reflect",
+  "best_arm_reason": "记忆臂中 mean eat_rate 最高（并列时看 satiation_mean）",
+  "zoo": {
+    "name": "p6-memory",
+    "arm": "full_reflect",
+    "card": {
+      "name": "p6-memory",
+      "kind": "neural",
+      "obs_dim": 15,
+      "n_actions": 5,
+      "hidden": 32,
+      "seed": 7,
+      "format_version": 1,
+      "created_at": "2026-10-21T07:02:42+00:00",
+      "git_commit": "fc502ff",
+      "config_hash": "4b0e962b2f4bc82aa2ec04944aaf3adb956c4b6070fec160cde480d3cfb752db",
+      "weights_sha256": "1c3e28d3ca11b22ede6c0f3c1939d989ee363131b8274c28b854a06afaa47e0d",
+      "description": "P6-B 去 LLM 生成式记忆/反思消融的最佳记忆臂模型（arm=full_reflect，obs_dim=15）",
+      "tags": [
+        "p6-memory",
+        "memory_ablation",
+        "arm:full_reflect"
+      ],
+      "metrics": {
+        "arm": "full_reflect",
+        "best_overall_arm": "full_reflect",
+        "eval_seeds": [
+          0,
+          1,
+          2
+        ],
+        "n_seeds": 3,
+        "eval_seconds": 40.0,
+        "train_episodes": 3,
+        "train_seconds": 40.0,
+        "policy_seed": 7,
+        "eat_events_mean": 3931.0,
+        "eat_rate_mean": 0.8189583333333333,
+        "satiation_mean_mean": 0.5735,
+        "satiation_std_mean": 0.30546666666666666,
+        "population_mean": 104.0,
+        "mean_life_mean": 35.354758282641434,
+        "starvation_deaths_mean": 16.0,
+        "births_mean": 0.0,
+        "total_reward_mean": 712.8883333333333,
+        "gini_hunger_mean": 0.3057,
+        "eat_events_std": 117.33996193397485,
+        "eat_rate_std": 0.024445825402911438,
+        "satiation_mean_std": 0.0373163056406535,
+        "satiation_std_std": 0.009569860094182273,
+        "population_std": 4.242640687119285,
+        "mean_life_std": 0.8074413182444526,
+        "starvation_deaths_std": 4.242640687119285,
+        "births_std": 0.0,
+        "total_reward_std": 32.669824214743244,
+        "gini_hunger_std": 0.01456662852779142
+      },
+      "extra": {}
+    }
+  },
+  "zoo_saved": true,
+  "zoo_error": "",
+  "verdict": "记忆效应依赖检索权重，不能判为整体净收益（配对 n=3，仅效应量+胜负计数，不做显著性声称）：所有记忆臂 eat_rate 都高于 off_padded，但福利/结局方向分裂——recency_vs_off_padded（eat_rate +6.7%，W/L=3/0；福利改善：satiation_mean Δ=-0.0076（W/L=1/2），population Δ=-0.3333（W/L=1/2），total_reward Δ=+53.1513（W/L=3/0），gini_hunger Δ=+0.0024（越低越好，W/L=2/1））；full_reflect_vs_off_padded（eat_rate +11.1%，W/L=3/0；福利恶化：satiation_mean Δ=-0.1137（W/L=0/3），population Δ=-9.3333（W/L=0/3），total_reward Δ=-4.4913（W/L=2/1），gini_hunger Δ=+0.0835（越低越好，W/L=3/0））。相对 off 的原始比较：recency_vs_off: eat_rate Δ=+0.118（rel=+17.6%，W/L=3/0）；sat Δ=-0.001（W/L=1/2）；full_vs_off: eat_rate Δ=+0.102（rel=+15.3%，W/L=3/0）；sat Δ=-0.116（W/L=0/3）；full_reflect_vs_off: eat_rate Δ=+0.150（rel=+22.4%，W/L=3/0）；sat Δ=-0.107（W/L=0/3）。也就是说：recency-only 在 obs_dim 对照下有干净的净摄入收益；full(1/1/1) 与 full_reflect 则把策略推向'高频进食/局部抢占'，总摄入不升（甚至下降）、satiation/population 变差、饥饿基尼上升。记忆的价值取决于权重设计，而不是'开了记忆就更聪明'。最佳记忆臂：full_reflect。 反思相对 full 有可检出增量，福利多数指标改善：full_reflect vs full: eat_rate Δ=+0.047（rel=+6.1%，W/L=3/0）；sat Δ=+0.009（W/L=2/1）；福利：satiation_mean Δ=+0.0089（W/L=2/1），population Δ=+2.3333（W/L=2/1），total_reward Δ=+76.6150（W/L=3/0），gini_hunger Δ=+0.0042（越低越好，W/L=1/2）。",
+  "diagnosis": "记忆机制确实在运行：full_reflect 臂评估回合平均 3687 条事件、2.0 次反思、204.0 条洞察、23.1 条/个体记忆。记忆方向特征并非全零（|food_dir| 均值=0.541，非零占比=100.0%，成功率均值=0.71，危险率均值=0.03，反思风险偏置=0.00：机制有信号，问题在策略能否兑现）。指标口径提示：eat_events/eat_rate 计的是“该帧吃到东西的个体数”（微吃也计数），是行为频率指标；total_reward（累计进食量-时间成本）才是净摄入代理，satiation/population/starvation/gini 是福利/结局。最强臂 vs off_padded 的 total_reward Δ=-4.49（W/L=2/1）、satiation Δ=-0.114、population Δ=-9.3；与 eat_rate 反向/未升 → 在 obs_dim 对照下记忆没有带来净摄入收益。 饥饿基尼：off=0.216、off_padded=0.222、recency=0.225、full=0.302、full_reflect=0.306——记忆特征（full/full_reflect）明显加剧饥饿不平等，与 population 下降、starvation_deaths 上升一致；反思提高了 total_reward/population，但没有降低不平等。分权重看（off_padded 对照，n=3）：recency-only 的 total_reward Δ=+53.15（W/L=3/0）、sat Δ=-0.008、pop Δ=-0.33、gini Δ=+0.0024；full 的 total_reward Δ=-81.11（W/L=0/3）、sat Δ=-0.123、pop Δ=-11.67、gini Δ=+0.0793。即控制 obs_dim 后只有 recency-only 保留了净摄入收益（且 gini 几乎不变），全权重记忆与反思版都没有。",
+  "honest_notes": [
+    "配对设计：每个臂用相同 train_seeds=[1000, 1001, 1002]、相同 policy seed=7 从同初始化训练；评估用相同 eval seeds=[0, 1, 2]（同地图/同初始人口），每臂 n=3。",
+    "obs_dim 混淆控制：off 臂 obs_dim=9，记忆臂 obs_dim=15，W1 初始化尺度按 1/sqrt(obs_dim) 缩放——off_padded 用 6 维恒零观测把这条混淆路径单独控制，因此判断记忆信息收益应以 full vs off_padded 为准（full vs off 只作参考）。",
+    "n 很小，本报告只给效应量（mean_delta / relative）与 wins-loses-ties，不做 p 值或显著性声称；结论不外推到其他预算/世界。",
+    "福利方向判定使用实质阈值（satiation 0.02、population 2 个个体、total_reward 10、gini 0.02）：|mean_delta| 低于阈值视为无实质变化，避免把 n=3 的微小抖动当成福利效应。",
+    "eat_events/eat_rate 是行为频率指标（该帧吃到东西的个体数，微吃也计数），不等于摄入量；total_reward 才是净摄入代理。只凭 eat_rate 上升不能宣称“记忆有用”——必须同时看 total_reward、satiation、population、starvation。",
+    "记忆特征只来自已存事件 + 作为检索 query 的当前感知，无硬编码答案特征。",
+    "事件节流：小于一口 5% 的微吃不入记忆；濒死仅在进入 <0.2 时记录一次；休息事件每 5 世界秒最多一条。这些只影响采样率，不影响检索/反思逻辑。",
+    "off_padded 是空记忆对照（NullMemoryLayer）：走 memory.enabled 构造路径但观测恒 0、不记录事件、不检索、不反思，与 off 的唯一差别是 obs_dim=15。"
+  ],
+  "wall_s": 127.392,
+  "report_path": "C:\\Users\\27826\\Desktop\\vscode_win_ws\\ds_ws\\newworld\\newworldpro\\experiments\\results\\p6_memory\\report.md",
+  "_artifact_dir": "C:\\Users\\27826\\Desktop\\vscode_win_ws\\ds_ws\\newworld\\newworldpro\\experiments\\results\\p6_memory",
+  "config_hash": "4b0e962b2f4bc82aa2ec04944aaf3adb956c4b6070fec160cde480d3cfb752db"
+}

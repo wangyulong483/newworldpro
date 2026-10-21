@@ -1,4 +1,4 @@
-"""俯视地图世界引擎（世界盒子风格重构 V3）：地形 + 食物网格。
+"""俯视地图世界引擎（V3）：地形 + 食物网格。
 
 这是新世界的地基：一张由 cell 组成的俯视地图（默认 512×320，每 cell
 在屏幕上渲染为固定大小的色块）。地形由 seed 确定性生成（值噪声 →
@@ -8,22 +8,22 @@
 ----------------------------------------------------------------
 1. **确定性**：同 seed 必得同地图（值噪声用整数格点哈希，无 Python
    随机漂移）。
-2. **网格即真相**：``terrain``/``food``/``burning`` 都是与地图同形状
-   的 numpy 数组，任何模块（群伙/灾害/渲染）都只通过 MapEngine 的公开
-   方法修改它们，方便审计与测试。
+2. **网格即真相**：``terrain``/``food`` 都是与地图同形状的 numpy
+   数组，任何模块（群伙/渲染）都只通过 MapEngine 的公开方法读取它们，
+   方便审计与测试。
 3. **地形语义**（:data:`TERRAIN_IDS`）：深水/浅水/沙滩/草地/森林/
-   山地/雪原 + 二期动态地形（焦土/燃烧标记存在独立通道里）。
+   山地/雪原。
+4. **只读世界**：地图本身不会被外部"上帝之手"改写；地形唯一的
+   自发变化是森林蔓延（草地邻接森林时小概率长树），其余变化都由
+   时间与食物再生驱动。
 
-复用关系
---------
-- 地形色板风格沿用 :mod:`newworld.materials` 的注册表思路；
-- chunk 确定性生成借鉴 :mod:`newworld.infinite_scene` 的 splitmix64
-  （但地图是有限大的一整张，无需分块加载）。
+坐标约定：``terrain[y, x]``，y 向下、x 向右（与图像数组一致）；
+cell 索引从 0 开始。群伙（:mod:`newworld.swarm`）只读取地形/食物，
+渲染（:mod:`newworld.map_render`）只消费本模块暴露的网格。
 """
 
 from __future__ import annotations
 
-import math
 from dataclasses import dataclass
 
 import numpy as np
@@ -55,7 +55,7 @@ TERRAIN_INFO: dict[int, tuple[str, tuple[int, int, int]]] = {
 WALKABLE = frozenset({SAND, GRASS, FOREST, MOUNTAIN, SNOW})
 #: 可再生食物的地形（食物密度上限不同）
 FOOD_TERRAIN = {GRASS: 1.0, FOREST: 0.7, SAND: 0.15}
-#: 水域（洪水/饮水相关）
+#: 水域（群伙溺亡规则用）
 WATER = frozenset({DEEP_WATER, SHALLOW_WATER})
 
 
@@ -125,8 +125,7 @@ class MapEngine:
     """俯视世界：地形网格 + 食物网格 + 昼夜驱动的再生循环。
 
     坐标约定：``terrain[y, x]``，y 向下、x 向右（与图像数组一致）；
-    cell 索引从 0 开始。群伙（:mod:`newworld.swarm`）与灾害
-    （:mod:`newworld.catastrophes`）都通过本类的公开方法与世界交互。
+    cell 索引从 0 开始。群伙（:mod:`newworld.swarm`）只读取地形与食物。
     """
 
     def __init__(self, config: MapConfig | None = None) -> None:
@@ -139,14 +138,8 @@ class MapEngine:
         self.terrain = self._generate_terrain()
         #: 每 cell 的食物量 0..1（陆地才有）
         self.food = self._initial_food()
-        #: 燃烧标记与剩余燃烧时间（秒）；闪电/陨石点燃，向邻格蔓延
-        self.burning = np.zeros_like(self.terrain, dtype=bool)
-        self.burn_left = np.zeros_like(self.terrain, dtype=np.float32)
         #: 修改过的地形 cell（渲染层增量重画用）：set of (y, x)
         self.dirty_terrain: set[tuple[int, int]] = set()
-        #: 统计：累计出生/死亡/烧毁 cell 数（telemetry 审计用）
-        self.cells_burned = 0
-        self.terraformed = 0
 
     # ------------------------------------------------------------------
     # 生成
@@ -199,7 +192,7 @@ class MapEngine:
         return food
 
     # ------------------------------------------------------------------
-    # 查询（群伙/灾害/渲染共用）
+    # 查询（群伙/渲染共用）
     # ------------------------------------------------------------------
     def terrain_at(self, x: int, y: int) -> int:
         """(x, y) 处的地形编号；越界返回 0。"""
@@ -233,48 +226,17 @@ class MapEngine:
         return 0.0
 
     # ------------------------------------------------------------------
-    # 修改（灾害/上帝之手的唯一入口）
-    # ------------------------------------------------------------------
-    def set_terrain(self, x: int, y: int, tid: int, *, clear_food: bool = False) -> bool:
-        """设置一个 cell 的地形（登记脏区，供渲染增量重画）。"""
-        if not (0 <= x < self.width and 0 <= y < self.height):
-            return False
-        if tid not in TERRAIN_INFO:
-            return False
-        self.terrain[y, x] = tid
-        if tid not in FOOD_TERRAIN or clear_food:
-            self.food[y, x] = 0.0 if tid not in FOOD_TERRAIN else self.food[y, x]
-        if tid not in FOOD_TERRAIN:
-            self.food[y, x] = 0.0
-            self.burning[y, x] = False
-        self.dirty_terrain.add((y, x))
-        self.terraformed += 1
-        return True
-
-    def ignite(self, x: int, y: int) -> bool:
-        """点燃一个 cell（仅森林/草地可燃）。"""
-        if not (0 <= x < self.width and 0 <= y < self.height):
-            return False
-        if self.terrain[y, x] not in (FOREST, GRASS):
-            return False
-        if self.burning[y, x]:
-            return False
-        self.burning[y, x] = True
-        self.burn_left[y, x] = 3.0  # 燃烧持续约 3 秒
-        return True
-
-    # ------------------------------------------------------------------
     # 每帧推进（世界规则）
     # ------------------------------------------------------------------
     def update(self, dt: float, daylight: float) -> None:
-        """推进一个物理步：食物再生 + 森林蔓延 + 燃烧扩散与熄灭。
+        """推进一个物理步：食物再生 + 森林蔓延。
 
         Parameters
         ----------
         dt:
             步长（世界秒）。
         daylight:
-            白昼强度 0..1（来自 DayCycle，夜间再生减半）。
+            白昼强度 0..1（夜间再生减半）。
         """
         cfg = self.config
         self.t += dt
@@ -282,46 +244,13 @@ class MapEngine:
 
         # -- 食物再生：可食地形按速率回填（夜间 ×0.5） ----------
         regrow = cfg.food_regrow_per_s * dt * (0.5 + 0.5 * daylight)
-        burn_or_gone = self.burning  # 燃烧中的格子不长食物
         for tid, cap in FOOD_TERRAIN.items():
-            mask = (self.terrain == tid) & (~burn_or_gone)
+            mask = self.terrain == tid
             if not mask.any():
                 continue
             room = cap - self.food[mask]
             grow = np.clip(room, 0.0, None) * min(1.0, regrow * 8.0)
             self.food[mask] += grow.astype(self.food.dtype)
-
-        # -- 燃烧：倒计时 + 概率蔓延到四邻的可燃格 -----------------
-        burning_now = np.nonzero(self.burning)
-        if burning_now[0].size:
-            self.burn_left[burning_now] -= dt
-            burnt = self.burn_left <= 0.0
-            cells = np.nonzero(burnt & self.burning)
-            if cells[0].size:
-                self.burning[cells] = False
-                self.burn_left[cells] = 0.0
-                # 烧完：森林变草地、食物清零（焦土后可恢复）
-                for y, x in zip(cells[0].tolist(), cells[1].tolist()):
-                    if self.terrain[y, x] == FOREST:
-                        self.terrain[y, x] = GRASS
-                        self.dirty_terrain.add((y, x))
-                    self.food[y, x] = 0.0
-                    self.cells_burned += 1
-            # 蔓延：每个燃烧格每秒有概率点燃一个随机四邻。
-            # 概率刻意压在亚临界（0.55/s：平均后代 < 火焰寿命内的
-            # 可燃邻居半数），否则火的分支过程超临界 → 小图烧穿不止。
-            chance = 0.55 * dt
-            ys, xs = burning_now
-            count = ys.shape[0]
-            if count:
-                rng_draw = np.random.default_rng(self.steps)
-                picks = rng_draw.random(count)
-                spread_idx = np.nonzero(picks < chance)[0]
-                for i in spread_idx.tolist():
-                    y, x = int(ys[i]), int(xs[i])
-                    direction = int(rng_draw.integers(0, 4))
-                    dx, dy = ((1, 0), (-1, 0), (0, 1), (0, -1))[direction]
-                    self.ignite(x + dx, y + dy)
 
         # -- 森林蔓延（低频事件：草地上小概率长树） ------------------
         if self.steps % 32 == 0 and cfg.forest_spread_per_s > 0.0:
@@ -356,5 +285,4 @@ class MapEngine:
             f"陆地 {parts.get('草地', 0) + parts.get('森林', 0) + parts.get('山地', 0)}"
             f"{parts.get('沙滩', 0) and '+' + str(parts['沙滩']) or ''}格"
             f" 食物 {self.food_capacity():.0f}"
-            f" 燃烧 {int(self.burning.sum())}"
         )

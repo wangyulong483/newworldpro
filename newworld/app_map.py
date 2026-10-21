@@ -1,18 +1,19 @@
-"""俯视地图世界的 GUI（V3 世界盒子）：画布 + 缩放平移 + 上帝之手。
+"""俯视地图世界的 GUI（V3）：画布 + 缩放平移 + 社会机制实时统计。
 
-复用 :mod:`newworld.ui_state.Viewport`（世界↔屏幕变换、滚轮缩放、
-拖动平移）与旧 GUI 的布局思想（控制栏/右侧面板/状态栏），但世界
-渲染、选择逻辑、交互全部是新的：
+复用 :mod:`newworld.viewport.Viewport`（世界↔屏幕变换、滚轮缩放、
+拖动平移）与实验室前端的布局思想（控制栏/右侧面板/状态栏）：
 
 * 画布：``MapRenderer`` 的底图 PhotoImage + 群伙散点 Canvas 矩形；
-* 上帝之手工具栏：观察 / 陨石 / 闪电 / 洪水 / 治愈，点击地图施放；
-* 右侧面板：人口统计（人口/出生死亡/死因/食物/地形分布）+ 灾害史；
-* 底部控制：开始/暂停/单步/速度/重置（沿用旧交互习惯）。
+* 顶部：社会机制实时统计（交换/教学/继承/技能人口，来自 SocialLayer）；
+* 右侧面板：人口统计（人口/出生死亡/死因/食物/地形分布）+ 社会机制明细；
+* 底部控制：开始/暂停/单步/速度/重置。
+
+世界是**抽象模拟**：地图与群伙只按世界规则演化，界面不提供任何
+改写地图的"上帝之手"工具。
 
 运行::
 
     python -m newworld            # 新世界（俯视地图）
-    python -m newworld --classic # 旧世界（侧视像素小人）
 """
 
 from __future__ import annotations
@@ -21,7 +22,6 @@ import time
 import tkinter as tk
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable
 
 from PIL import Image, ImageTk
 
@@ -31,23 +31,17 @@ try:
 except ImportError:  # pragma: no cover
     TK_AVAILABLE = False
 
-from .catastrophes import Catastrophes
-from .map_engine import MapConfig, MapEngine, TERRAIN_INFO
+from .map_engine import MapConfig, MapEngine
 from .map_render import MapRenderer
+from .social_mech import SocialConfig, SocialLayer
 from .swarm import Swarm, SwarmConfig
-from .ui_state import Viewport
-
-#: 上帝之手的工具（标签 → 内部名）
-TOOLS: tuple[tuple[str, str], ...] = (
-    (" 观察 ", "observe"),
-    (" ☄ 陨石 ", "meteor"),
-    (" ⚡ 闪电 ", "lightning"),
-    (" 🌊 洪水 ", "flood"),
-    (" ✚ 治愈 ", "heal"),
-)
+from .viewport import Viewport
 
 #: 仿真速度档（每 tick 推进的物理步数）
 SPEEDS: tuple[int, ...] = (1, 2, 4, 8, 16)
+
+#: 物理步长（世界秒，与实验室后端一致）
+DT = 0.05
 
 
 @dataclass
@@ -58,7 +52,7 @@ class MapAppConfig:
     height: int = 320
     cell_px: int = 3
     seed: int = 0
-    window_title: str = "newworld · 像素世界盒子"
+    window_title: str = "newworld · 俯视地图世界"
     tick_ms: int = 33  # ~30 ticks/s
 
 
@@ -75,14 +69,17 @@ class MapWorldApp:
         # -- 世界 ---------------------------------------------------
         self.engine = MapEngine(MapConfig(seed=cfg.seed, width=cfg.width, height=cfg.height))
         self.swarm = Swarm(self.engine, SwarmConfig(), seed=cfg.seed)
-        self.cats = Catastrophes(self.engine, self.swarm)
+        self.social = self._build_social(cfg.seed)
         self.renderer = MapRenderer(self.engine, cell_px=cfg.cell_px)
 
         # -- 状态 ----------------------------------------------------
         self.running = False
         self.speed_index = 1
-        self.selected_tool = "observe"
         self._drag_last: tuple[int, int] | None = None
+        self._vp: Viewport | None = None
+        self._draw_scale = 1.0
+        self._draw_ox = 0
+        self._draw_oy = 0
         self._photo: ImageTk.PhotoImage | None = None
         self._agent_ids: list[int] = []
         self._frames = 0
@@ -94,26 +91,34 @@ class MapWorldApp:
         self._refresh_all(force=True)
 
     # ==================================================================
+    # 世界接线
+    # ==================================================================
+    def _build_social(self, seed: int) -> SocialLayer:
+        """构造 P3 社会层并接线（技能效果注入 swarm 的世界规则）。"""
+        social = SocialLayer(self.swarm, SocialConfig(), seed=seed)
+        social.inject_initial_skills()
+        social.attach_to_swarm()
+        return social
+
+    # ==================================================================
     # UI 构建
     # ==================================================================
     def _build_ui(self) -> None:
         self.master.columnconfigure(0, weight=1)
         self.master.rowconfigure(1, weight=1)
 
-        # -- 顶部：上帝之手工具栏 ------------------------------------
+        # -- 顶部：社会机制实时统计 ----------------------------------
         toolbar = tk.Frame(self.master, bg="#1a1e26")
         toolbar.grid(row=0, column=0, sticky="ew", padx=4, pady=4)
-        self.tool_buttons: dict[str, tk.Button] = {}
-        for label, name in TOOLS:
-            state = tk.DISABLED if name != "observe" else tk.NORMAL
-            button = tk.Button(
-                toolbar, text=label, relief=tk.FLAT, font=("Microsoft YaHei UI", 10),
-                bg="#2a3140" if name != self.selected_tool else "#3d6ea5",
-                fg="#e8ecf2", padx=8, pady=2, state=state,
-                command=lambda n=name: self._select_tool(n),
-            )
-            button.pack(side=tk.LEFT, padx=3)
-            self.tool_buttons[name] = button
+        tk.Label(
+            toolbar, text="社会机制", bg="#1a1e26", fg="#8a94a6",
+            font=("Microsoft YaHei UI", 10), padx=4,
+        ).pack(side=tk.LEFT, padx=3)
+        self.social_label = tk.Label(
+            toolbar, text="", bg="#1a1e26", fg="#e8ecf2",
+            font=("Consolas", 9), anchor="w", padx=6,
+        )
+        self.social_label.pack(side=tk.LEFT, padx=6)
 
         # -- 中部：地图画布 + 右侧面板 --------------------------------
         middle = tk.Frame(self.master, bg="#101216")
@@ -124,7 +129,7 @@ class MapWorldApp:
         canvas_frame = tk.Frame(middle, bg="#0a0c10")
         canvas_frame.grid(row=0, column=0, sticky="nsew")
         self.canvas = tk.Canvas(
-            canvas_frame, bg="#07090c", highlightthickness=0, cursor="crosshair"
+            canvas_frame, bg="#07090c", highlightthickness=0, cursor="fleur"
         )
         self.canvas.pack(fill=tk.BOTH, expand=True)
 
@@ -156,7 +161,7 @@ class MapWorldApp:
         self.status.grid(row=3, column=0, sticky="ew")
 
     def _build_panel(self, parent: tk.Frame) -> None:
-        """右侧信息面板（人口/地图/灾害/事件）。"""
+        """右侧信息面板（人口/地图/社会机制）。"""
         self.stat_text = tk.Text(parent, bg="#161a22", fg="#c8d0da", relief=tk.FLAT,
                                  font=("Consolas", 9), height=26, wrap=tk.NONE,
                                  state=tk.DISABLED)
@@ -167,14 +172,10 @@ class MapWorldApp:
     # ==================================================================
     def _bind_events(self) -> None:
         self.canvas.bind("<Configure>", lambda e: self._on_resize())
-        self.canvas.bind("<Button-1>", self._on_click)
-        self.canvas.bind("<B1-Motion>", self._on_drag)
-        self.canvas.bind("<ButtonRelease-1>", lambda e: self._drag_stop())
-        # 中键或右键平移；滚轮缩放
-        self.canvas.bind("<Button-2>", self._pan_start)
-        self.canvas.bind("<B2-Motion>", self._pan_move)
-        self.canvas.bind("<Button-3>", self._pan_start)
-        self.canvas.bind("<B3-Motion>", self._pan_move)
+        # 左键拖动平移；滚轮缩放（锚定光标）
+        self.canvas.bind("<Button-1>", self._on_pan_start)
+        self.canvas.bind("<B1-Motion>", self._on_pan_move)
+        self.canvas.bind("<ButtonRelease-1>", self._on_pan_stop)
         self.canvas.bind("<MouseWheel>", self._on_wheel)
         self.master.bind("<space>", lambda e: self._toggle_run())
         self.master.bind("<Escape>", lambda e: self.master.destroy())
@@ -182,76 +183,52 @@ class MapWorldApp:
         self.master.bind("<equal>", lambda e: self._change_speed(1))
         self.master.bind("<minus>", lambda e: self._change_speed(-1))
 
-    def _viewport(self) -> Viewport | None:
-        canvas_w = max(1, self.canvas.winfo_width())
-        canvas_h = max(1, self.canvas.winfo_height())
-        world_w = self.engine.width * self.config.cell_px
-        world_h = self.engine.height * self.config.cell_px
-        scale = min(canvas_w / world_w, canvas_h / world_h)
-        if not hasattr(self, "_vp") or self._vp is None:
-            self._vp = Viewport(world_w, world_h, canvas_w, canvas_h, scale=scale)
-        else:
-            self._vp = Viewport(world_w, world_h, canvas_w, canvas_h,
-                                scale=self._vp.scale, offset_x=self._vp.offset_x,
-                                offset_y=self._vp.offset_y)
-        return self._vp
-
     def _on_resize(self) -> None:
         self._refresh_all(force=True)
 
-    def _on_click(self, event) -> None:
-        """点击地图：按当前工具施放（观察模式只统计位置）。"""
-        scale = getattr(self, "_draw_scale", 1.0)
-        ox = getattr(self, "_draw_ox", 0)
-        oy = getattr(self, "_draw_oy", 0)
-        wx = (event.x - ox) / scale
-        wy = (event.y - oy) / scale
-        cx = int(wx // self.config.cell_px)
-        cy = int(wy // self.config.cell_px)
-        tool = self.selected_tool
-        if tool == "meteor":
-            self.cats.meteor(cx, cy)
-        elif tool == "lightning":
-            self.cats.lightning(cx, cy)
-        elif tool == "flood":
-            self.cats.flood(cx, cy)
-        elif tool == "heal":
-            self.cats.heal(cx, cy)
-        self._refresh_all(force=True)
+    def _on_pan_start(self, event) -> None:
+        self._drag_last = (event.x, event.y)
+
+    def _on_pan_move(self, event) -> None:
+        if self._drag_last is None:
+            return
+        dx = event.x - self._drag_last[0]
+        dy = event.y - self._drag_last[1]
+        self._drag_last = (event.x, event.y)
+        self._vp = self._viewport().pan(dx, dy)
+        self._refresh_all()
+
+    def _on_pan_stop(self, event) -> None:
+        self._drag_last = None
 
     def _on_wheel(self, event) -> None:
-        """滚轮：一期不做视口缩放（整图可视），留给二期。"""
-        self._change_speed(1 if event.delta > 0 else -1)
-
-    def _on_drag(self, event) -> None:
-        """左键拖动：一期不做视口平移（工具施放优先）。"""
-
-    def _drag_stop(self) -> None:
-        """结束拖动（一期无操作）。"""
-
-    def _pan_start(self, event) -> None:
-        """中/右键按下（一期无操作）。"""
-
-    def _pan_move(self, event) -> None:
-        """中/右键拖动（一期无操作）。"""
-
-    def _on_wheel(self, event) -> None:
+        """滚轮：以光标为锚点缩放（唯一一份实现）。"""
         vp = self._viewport()
         factor = 1.15 if event.delta > 0 else 1 / 1.15
         self._vp = vp.zoom_at(event.x, event.y, factor)
         self._refresh_all()
 
+    def _viewport(self) -> Viewport:
+        """当前视口（世界尺寸 = 底图像素尺寸；首次调用按画布取适配缩放）。"""
+        canvas_w = max(1, self.canvas.winfo_width())
+        canvas_h = max(1, self.canvas.winfo_height())
+        world_w = max(1, self.renderer.display.width)
+        world_h = max(1, self.renderer.display.height)
+        if self._vp is None:
+            scale = min(canvas_w / world_w, canvas_h / world_h)
+            vp = Viewport(world_w, world_h, canvas_w, canvas_h, scale=scale)
+        else:
+            vp = Viewport(
+                world_w, world_h, canvas_w, canvas_h,
+                scale=self._vp.scale,
+                offset_x=self._vp.offset_x,
+                offset_y=self._vp.offset_y,
+            )
+        return vp.clamp()
+
     # ==================================================================
     # 控制
     # ==================================================================
-    def _select_tool(self, name: str) -> None:
-        self.selected_tool = name
-        for tool_name, button in self.tool_buttons.items():
-            button.configure(
-                bg="#3d6ea5" if tool_name == name else "#2a3140",
-                state=tk.NORMAL if tool_name == "observe" or True else tk.DISABLED,
-            )
-
     def _toggle_run(self) -> None:
         self.running = not self.running
         self.start_button.configure(
@@ -273,9 +250,10 @@ class MapWorldApp:
         self.engine = MapEngine(MapConfig(seed=self.config.seed,
                                           width=self.config.width, height=self.config.height))
         self.swarm = Swarm(self.engine, SwarmConfig(), seed=self.config.seed)
-        self.cats = Catastrophes(self.engine, self.swarm)
+        self.social = self._build_social(self.config.seed)
         self.renderer = MapRenderer(self.engine, cell_px=self.config.cell_px)
         self._vp = None
+        self._drag_last = None
         self._refresh_all(force=True)
 
     # ==================================================================
@@ -289,9 +267,13 @@ class MapWorldApp:
         self.master.after(self.config.tick_ms, self._tick)
 
     def _advance(self, steps: int) -> None:
+        """推进 N 个物理步：世界 → 群伙 → 社会层（死亡继承 → 机制）。"""
         for _ in range(steps):
-            self.engine.update(0.05, 0.8)
-            self.swarm.update(0.05)
+            self.engine.update(DT, 0.8)
+            deaths_before = len(self.swarm.death_ages)
+            self.swarm.update(DT)
+            self.social.on_death_pass(deaths_before)
+            self.social.update(DT)
         self.renderer.refresh()
 
     # ==================================================================
@@ -304,7 +286,7 @@ class MapWorldApp:
         self._refresh_panel()
 
     def _draw_map(self) -> None:
-        """把整张地图缩放到画布内并居中（一期：整图可视，世界盒子式）。"""
+        """按视口（缩放/平移）把底图贴到画布上（超出画布部分自动裁剪）。"""
         display = self.renderer.display
         canvas_w = max(1, self.canvas.winfo_width())
         canvas_h = max(1, self.canvas.winfo_height())
@@ -312,17 +294,16 @@ class MapWorldApp:
             # 尚未完成布局：用请求尺寸
             canvas_w = max(1, self.canvas.winfo_reqwidth())
             canvas_h = max(1, int(canvas_w * display.height / max(1, display.width)))
-        scale = min(canvas_w / display.width, canvas_h / display.height)
-        if scale <= 0:
-            scale = 1.0
-        self._draw_scale = scale
-        sw = max(1, int(display.width * scale))
-        sh = max(1, int(display.height * scale))
+        vp = self._viewport()
+        scale = vp.scale
+        sw = max(1, int(round(display.width * scale)))
+        sh = max(1, int(round(display.height * scale)))
         image = display.resize((sw, sh), Image.NEAREST)
         photo = ImageTk.PhotoImage(image)
         self._photo = photo  # 防 GC
-        self._draw_ox = (canvas_w - sw) // 2
-        self._draw_oy = (canvas_h - sh) // 2
+        self._draw_scale = scale
+        self._draw_ox = int(round(-vp.offset_x * scale))
+        self._draw_oy = int(round(-vp.offset_y * scale))
         self.canvas.delete("map")
         self.canvas.create_image(self._draw_ox, self._draw_oy, image=photo,
                                  anchor="nw", tags="map")
@@ -330,9 +311,9 @@ class MapWorldApp:
 
     def _draw_agents(self) -> None:
         """群伙散点（使用 _draw_map 计算的缩放与偏移）。"""
-        scale = getattr(self, "_draw_scale", 1.0)
-        ox = getattr(self, "_draw_ox", 0)
-        oy = getattr(self, "_draw_oy", 0)
+        scale = self._draw_scale
+        ox = self._draw_ox
+        oy = self._draw_oy
         points = self.renderer.agent_points(self.swarm)
         self.canvas.delete("agent")
         if not points:
@@ -354,25 +335,23 @@ class MapWorldApp:
         self.status.configure(
             text=(
                 f"人口 {swarm.population}  出生 {swarm.births}  死亡 {swarm.deaths}  "
-                f"食物 {engine.food_capacity():.0f}  燃烧 {int(engine.burning.sum())}  "
+                f"食物 {engine.food_capacity():.0f}  "
                 f"速度 ×{SPEEDS[self.speed_index]}  "
-                f"{self.fps:.0f} FPS  工具：{self._tool_name()}"
+                f"{self.fps:.0f} FPS"
             )
         )
-
-    def _tool_name(self) -> str:
-        for label, name in TOOLS:
-            if name == self.selected_tool:
-                return label.strip()
-        return "?"
+        self.social_label.configure(text=f"社会：{self.social.summary_zh()}")
+        self.speed_label.configure(text=f"速度 ×{SPEEDS[self.speed_index]}")
 
     def _refresh_panel(self) -> None:
         swarm = self.swarm
         engine = self.engine
+        social = self.social
+        stats = social.stats
         summary = engine.terrain_summary()
         death = (
             f"饿死 {swarm.starvation_deaths}  老死 {swarm.old_age_deaths}  "
-            f"溺亡 {swarm.drowned}  烧亡 {swarm.burned}\n"
+            f"溺亡 {swarm.drowned}\n"
         )
         lines = [
             "── 人口 ──",
@@ -385,17 +364,13 @@ class MapWorldApp:
             lines.append(f"{name}  {count}")
         lines.append(f"食物总量 {engine.food_capacity():.0f}")
         lines.append("")
-        lines.append("── 灾害史 ──")
-        for event in list(self.cats.history)[-8:]:
-            names = {"meteor": "陨石", "lightning": "闪电", "flood": "洪水", "heal": "治愈"}
-            killed = event.killed
-            effect = f"治愈{-killed}" if killed < 0 else f"击杀{killed}"
-            lines.append(
-                f"[{event.t:7.1f}s] {names.get(event.kind, event.kind)}"
-                f" @({event.x},{event.y}) {effect}"
-            )
-        if not self.cats.history:
-            lines.append("（无）")
+        lines.append("── 社会机制 ──")
+        lines.append(
+            f"交换 {stats['barter_events']}（转移 {stats['barter_transfer_total']:.0f} 能）"
+        )
+        lines.append(f"教学 {stats['teach_events']}")
+        lines.append(f"继承 {stats['inherit_events']}   失传 {stats['knowledge_lost']}")
+        lines.append(f"技能人口 {stats['skilled_population']}")
         self.stat_text.configure(state=tk.NORMAL)
         self.stat_text.delete("1.0", tk.END)
         self.stat_text.insert("1.0", "\n".join(lines))
@@ -443,14 +418,10 @@ def run_map_app(
         def _auto_close() -> None:
             if screenshot:
                 try:
-                    import io
+                    from PIL import ImageGrab
 
                     x = root.winfo_rootx() + app.canvas.winfo_x()
                     y = root.winfo_rooty() + app.canvas.winfo_y()
-                    ps = app.canvas.postscript()
-                    # 用 PIL 从 canvas 内容抓图更可靠：直接抓主窗
-                    from PIL import ImageGrab
-
                     img = ImageGrab.grab((x, y, x + app.canvas.winfo_width(),
                                           y + app.canvas.winfo_height()))
                     path = Path(screenshot)

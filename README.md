@@ -1,280 +1,270 @@
-# newworld — 像素世界盒子（V3）+ 微型文明（v0.9.2）
+# newworld — 开放式人工社会研究平台
 
-> **V3 重构（当前默认）**：世界盒子风格的俯视地图世界——
-> 一张 512×320 的岛屿地图（值噪声确定性生成：深海/浅海/沙滩/草地/森林/山地/雪原），
-> **千人群伙**（numpy 结构化数组，纯数据粒子）在上面繁衍、迁徙、觅食，
-> 人口自然收敛到**动态承载力**（食物再生 vs 消耗的平衡，实测 ≈5000）。
-> 你是神：工具栏选 **陨石 / 闪电 / 洪水 / 治愈之雨**，点击地图施放。
+> 一张确定性生成的俯视地图 + 千级规则驱动群伙。世界动态全部来自规则
+> （食物再生、森林蔓延、代谢、繁衍、死亡、社会机制）——作为设计原则，
+> 平台没有"上帝之手"式干预：不存在改写地图或直接修改个体的入口；
+> 人对平台的干预只限于实验控制（暂停 / 继续 / 单步 / 调速 / 重置），
+> 且在实验平台中全部入审计记录。
 >
-> ```powershell
-> python -m newworld              # 新世界（俯视地图 + 上帝之手）
-> python -m newworld --classic    # 旧世界（侧视像素小人 + 8 人文明）
-> ```
->
-> 旧的"微型文明"世界（目标规划/知识/记忆/神经策略）仍完整保留，
-> 加 `--classic` 进入——两条世界线共用一套测试与实验框架。
->
-> **v0.9.1 本轮升级**：
-> - **鼠标主导交互**：点击个体选中/查看详情、右侧面板、底部控制栏（开始/暂停/继续/
->   单步/重置/速度）、智能体列表、事件日志、滚轮缩放、拖动平移；键盘仅作可选辅助。
->   鼠标选择**只观察**，不暂停仿真、不改变行为。
-> - **真实学习型决策**：新增高层目标选择策略（REINFORCE，真实奖励/采样/参数更新/
->   checkpoint/独立评估）；修复神经网络在逐帧决策中只占 0.3% 的问题（现约 66%）；
->   修复 BC 训练数据 16 维文明上下文全零的"死特征"。
-> - **有限组合式创新**：属性规则驱动的两技术组合 → 真实材料成本 → 真实世界效果
->   （采集/负重/恢复），上限 3 项/世界。
->
-> 底层动作策略仍是行为克隆 MLP（输入 40 → 64 → 32 → 58）；旧 24 维 checkpoint
-> **零初始化迁移**，行为逐比特一致。
->
-> **v0.9.2 V2 升级**（回应"感知与决策断开 / BC 天花板 / 8 人上限 / 屏幕即世界"）：
-> - **感知进入决策**：观测 **40 → 56 维**，新增 16 维**真实视网膜特征**
->   （低分辨率学习档，可注入视网膜参数）；`perception_stride` 控制刷新；
->   旧 24/40 维 checkpoint 双链零初始化迁移、逐比特一致。
-> - **低层动作策略从 BC 升级为真实 RL**：新增 `rewards.py`（只奖励真实世界变化，
->   含反刷分测试）与 `lowlevel_rl.py`（REINFORCE，手写梯度经有限差分校验），
->   语言头保持 argmax 不参与 RL；训练脚本 `tools/train_lowlevel_rl.py`。
-> - **人口上限可控**：`--cap` / `RunSpec.max_agents_created` 可放开做对照实验
->   （硬约束语义不变：累计创建、死亡不退还）。
-> - **无限世界**：`--infinite` 开启确定性分块 `InfiniteScene`，屏幕只是局部窗口，
->   人口迁移时世界自动滚动（`window_origin_px` 可审计）。
-
-![社会世界](assets/gui_pixel_world.png)
+> 纯 Python + numpy 实现（无 PyTorch、无 LLM），目标是让"个体策略 /
+> 社会机制 / 实验协议"都能被配置、复现和测量，而不是做视觉演示。
 
 ---
 
-## 1. 快速开始
+## 1. 平台定位
+
+这是一个**可复现的人工社会实验台**，不是游戏：
+
+* **世界规则唯一权威**：地形与食物网格只由 `MapEngine` 按规则推进，
+  界面只读；没有任何点击改写地图的交互。
+* **个体是被测量的对象**：群伙个体是结构化数组里的一行，行为由可注入
+  策略决定（规则基线 / 随机基线 / numpy 神经网络），所有转移与奖励可审计。
+* **机制独立开关**：交换、教学、继承、通信、记忆各有一套参数与开关，
+  支持同 seed 的配对消融实验。
+* **实验即配置**：一份 YAML 描述世界、群伙、策略、机制与预算，走
+  `load_config -> build_simulation -> protocol -> summary.json` 单一代码路径。
+* **诚实的指标**：实验报告必须区分"机制已被触发"与"机制产生了统计上
+  可辨识的效应"；没有效应就写没有效应。
+
+研究问题（详见 [docs/RESEARCH_ROADMAP.md](docs/RESEARCH_ROADMAP.md)）：
+学习策略能否在无剧本环境胜过规则策略；社会机制能否产生可测的宏观差异；
+演化与学习两条适应路径的差距；平台自身的吞吐/学习标度关系；通信协议
+与记忆机制能否在受控任务中被测量。
+
+---
+
+## 2. 世界是什么
+
+### 2.1 地图与生态（`newworld/map_engine.py`）
+
+* 默认地图 **512×320** cell（GUI 默认；配置化实验默认 256×160），
+  值噪声 + 双尺度叠加确定性生成：**深海 / 浅海 / 沙滩 / 草地 / 森林 /
+  山地 / 雪原**七种地形；同 seed 必得同地图。
+* 食物是叠加在地形上的 `food[y, x]` 网格：草地/森林/沙滩各有密度
+  上限，按 `food_regrow_per_s` 每秒再生（夜间 `daylight` 越低再生越慢）。
+* 森林蔓延：邻接森林的草地以 `forest_spread_per_s` 的小概率长树，
+  这是地形唯一的自发变化。
+* 群伙只能站上陆地；踏入深/浅水会溺亡（`drowned` 计数）。
+
+### 2.2 群伙与人口动态（`newworld/swarm.py`）
+
+* 全体个体保存在一个 numpy 结构化数组（SoA）里，逐帧整批更新；
+  死者的行会被压实复用（compact），阵列容量由 `capacity_hard` 给定。
+* 每步顺序：**饥饿/年龄 → 死亡判定 → 进食 → 移动 → 繁衍 → 压实**。
+* 饥饿按 `metabolism_per_s` 下降，进食从脚下 cell 扣食物并回补饱足；
+  繁殖需要成年、饱足、冷却结束，且人口低于**涌现承载力**估计；
+  死亡原因分饥饿 / 老龄 / 溺亡。
+* **承载力是涌现的**：人口增长到"食物再生流量 ≈ 消耗流量"附近自然
+  收敛，不是硬编码上限（`capacity_hard` 只是数组保险丝）。
+* 确定性：同 seed（地图 + 个体初始化 + 策略采样随机数）得到同一轨迹。
+
+### 2.3 策略层（`newworld/swarm_policy.py`）
+
+* 协议：批量接口 `act(obs_batch) -> actions`，5 个离散动作
+  （右 / 左 / 下 / 上 / 原地）。
+* 内置三种策略（注册表名）：
+  * `rule` —— 4 方向食物梯度探测 + 随机抖动（规则基线）；
+  * `random` —— 均匀随机动作（下界基线）；
+  * `neural` —— numpy MLP（默认 9→32→5，softmax 采样），全体个体共享
+    参数，REINFORCE 训练（minibatch + 优势标准化 + 梯度裁剪）。
+* **基础观测 9 维**：饱足、年龄/100、脚下食物、东南西北 3 格食物
+  （不可走为 -1）、邻水警示、bias。通信/记忆等机制层通过
+  `register_obs_provider` 追加观测列，`swarm.obs_dim = 9 + Σprovider`。
+* 奖励由世界规则结算：进食按实际吃到的食物量、每步时间成本、死亡惩罚；
+  `drain_swarm_transitions()` 给训练器取走转移。
+
+### 2.4 社会机制（`newworld/social_mech.py`，P3）
+
+三个可独立开关的机制，效果落在世界规则层（不是标签）：
+
+| 机制 | 规则 | 参数 |
+|---|---|---|
+| 交换 | 饱足差足够的邻近个体间转移能量（守恒） | `barter_gap / transfer / radius / interval_s` |
+| 教学 | 有技能个体把技能传给半径内无技能邻居 | `teach_radius / chance_per_s / interval_s` |
+| 继承 | 个体死亡时技能传给最近存活邻居，无继承人则失传 | `inherit_radius` |
+
+技能三种，真实改变个体参数：`efficient_biter`（进食 ×1.5）、
+`long_sight`（移动 ×1.4）、`slow_metabolism`（代谢 ×0.75）。
+统计字段（交换/教学/继承/失传/技能人口）同时出现在 GUI、实验平台与
+`summary.json` 中。
+
+### 2.5 工程化（P5）
+
+* `newworld/settings.py`：严格 YAML 配置（未知字段报错、`_base` 继承、
+  `--set a.b=value` 覆盖、sha256 配置指纹）；
+* `newworld/registry.py`：`POLICIES / PROTOCOLS / MECHANISMS` 注册表，
+  新增策略/协议 = 新文件 + 装饰器；
+* `newworld/experiment.py`：唯一的世界构造 / 推进 / 指标 / 产物路径；
+* `newworld/zoo.py`：模型 zoo（自描述目录：权重 + card + metrics + config）；
+* `newworld/protocols/`：P1 / P3 / P4 / P5 / P6 实验协议（注册名调用）。
+
+### 2.6 通信与记忆（P6）
+
+P6-A 通信：群伙带一个**离散信号通道**（K 个符号、半径内广播），发送者
+策略与移动策略分离（发送者用群体奖励训练），接收者观测追加"上一帧听到
+的符号直方图"；语义不硬编码，用互信息 / 对齐率测量是否形成。另有一个
+受控**指称博弈**（发送者看隐藏线索发符号、听者据符号猜线索）作为协议
+形成的干净证据。
+
+P6-B 记忆：每个体维护固定容量**记忆流**（吃到 / 濒死 / 休息 / 反思
+事件），按"新近 × 重要 × 相关"检索 top-k，周期性把事件聚合成更高层
+反思；检索结果以 6 维观测 provider 接入移动策略。全部是 numpy 机制层，
+**没有 LLM**。
+
+> 具体模块与配置见 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)；
+> 实验协议与最新数字见 [docs/EXPERIMENTS.md](docs/EXPERIMENTS.md)。
+
+---
+
+## 3. 快速开始
+
+依赖：Python 3.10+，运行时依赖见 `requirements.txt`
+（numpy / pillow / pyyaml / fastapi / uvicorn）。
 
 ```powershell
-# 依赖：Python 3.11+，numpy 与 pillow（见 requirements.txt）
 cd C:\Users\27826\Desktop\vscode_win_ws\ds_ws\newworld\newworldpro
 python -m pip install -r requirements.txt
+```
 
-# 新世界（默认）：俯视地图 + 千人群伙 + 上帝之手（陨石/闪电/洪水/治愈）
-python -m newworld
+### 3.1 桌面 GUI
 
-# 实验平台（P2 推荐）：浏览器界面 + 实时统计 + 个体详情 + 干预审计
-python -m newworld.lab_server          # 打开 http://127.0.0.1:8600
+```powershell
+python -m newworld                         # 512×320 地图，窗口 1280×800
+python -m newworld --seed 7 --size 256x160 # 指定 seed 与地图尺寸
+python -m newworld --cell-px 2             # 每个 cell 的屏幕像素
+```
 
-# 旧世界：侧视像素小人文明（V1/V2 机制全部保留）
-python -m newworld --classic --windowed --size 1280x800
+界面：顶部实时社会机制统计；中间地图 + 群伙散点；右侧人口/地形/社会
+明细；底部开始/暂停、单步、速度、重置；鼠标拖动平移、滚轮缩放；空格
+开始/暂停，`+`/`-` 调速，Esc 退出。**界面只观察与控制，不提供任何
+改写世界的工具。** 完整说明见 [docs/USER_GUIDE.md](docs/USER_GUIDE.md)。
 
-# 旧世界：无人工鼠标自检（13 项断言，输出 JSON）
-python -m newworld --classic --ui-test .tmp\ui_test.json --windowed --size 1280x800
+### 3.2 浏览器实验平台（lab）
 
-# 旧世界：无窗口单个体仿真 / 无窗口文明实验（A/B/C/D 消融）
-python -m newworld --classic --headless --steps 600 --log run.jsonl
-python -m newworld.simulation --group D --seed 0 --steps 24000 --dt 0.05
+```powershell
+python -m newworld --lab                   # 打开 http://127.0.0.1:8600
+python -m newworld --lab --port 8601 --seed 3
+```
 
-# 训练高层目标策略（真实 REINFORCE）
-python tools/train_goal_policy.py --episodes 30 --steps 4000 `
-    --eval-seeds 100 101 102 103 104 105 106 107 108 109 --out assets/goal_policy.npz
+平台与无窗口实验共用 `build_simulation` 同一条代码路径；默认是 P1.7
+的稀缺环境（`food_regrow_per_s=0.0005`）。支持 `/api/snapshot`、
+`/api/stream`（WebSocket）、`/api/agent/{index}`、`/api/command`
+（pause / resume / speed / step / reset，全部入审计）。也可以直接启动
+后端：`python -m newworld.lab_server --port 8600`，或双击
+`start_world.bat`（打开浏览器并启动 8600 端口服务）。
 
-# 本轮升级的 6 配置 × 10 seed 正式实验
-python experiments/run_upgrade_experiments.py --seed-start 100 --num-seeds 10
+### 3.3 配置化实验
 
-# V2：低层 RL 训练 + 感知/RL/cap/无限世界实验矩阵
-python tools/train_lowlevel_rl.py --episodes 30 --steps 4000 --seeds 0 \
-    --eval-seeds 100,101,102,103,104,105,106,107,108,109 --eval-steps 4000 \
-    --out assets/lowlevel_rl.npz --json experiments/results/lowlevel_rl_training.json
-python experiments/run_v2_experiments.py --seed-start 200 --num-seeds 6 --tag final
+一份 YAML = 一次可复现实验（`configs/base.yaml` 是公共基线，其余配置
+用 `_base` 继承它）：
 
-# GUI 无限世界（旧世界线：屏幕只是窗口，人口迁移时自动滚动）
-python -m newworld --classic --infinite --windowed --size 960x600
+| 配置 | 协议 | 内容 |
+|---|---|---|
+| `configs/p1_scarce.yaml` | `learning_compare` | P1.7 稀缺世界 random/rule/untrained/trained 四臂配对 + 密度梯度 |
+| `configs/p3_social.yaml` | `social_ablation` | 交换/教学/继承五配置配对消融 |
+| `configs/p4_evolution.yaml` | `evolution_compare` | 演化（技能分布 θ 变异+选择）vs 学习（策略梯度）三臂配对 |
+| `configs/p5_scaling.yaml` | `scaling_sweep` | 人口→吞吐 / 学习算力→性能 单维扫描 + 幂律拟合 |
+| `configs/p6_communication.yaml` | `communication` | 指称博弈 + 世界内信号通道 off/on 消融 |
+| `configs/p6_memory.yaml` | `memory_ablation` | 记忆流 / 检索 / 反思五臂配对消融（含同维空对照，P6-B） |
 
-# 测试（沙箱环境请先设置可写 TEMP；见 §9）
+```powershell
+python -m newworld --config configs/p1_scarce.yaml          # 完整实验（数分钟）
+python experiments/run.py --config configs/p1_scarce.yaml --json
+python -m newworld --info                  # 版本 / 依赖 / 已注册组件
+python -m newworld --list-components       # 策略与协议注册表
+```
+
+调试时用 `--set protocol_params.<...>` 缩短训练/评估（见
+[docs/USER_GUIDE.md](docs/USER_GUIDE.md) §4.2），产物只用于链路验证。
+
+产物写到 `<run.output_dir 或 --out>/<name>/`：`config.yaml`（配置快照）+
+`summary.json`（指标与结论）；训练类协议还会把模型写入 `assets/zoo/`。
+配置字段、覆盖语法与输出口径见 [docs/USER_GUIDE.md](docs/USER_GUIDE.md) §4；
+各协议的实测数字见 [docs/EXPERIMENTS.md](docs/EXPERIMENTS.md)。
+
+### 3.4 测试
+
+```powershell
 python -m unittest discover -s tests
 ```
 
-桌面快捷方式：`newworld 像素世界`（`start_world.bat`）。
-图标由角色蓝图 `ref/blueprint.pdf` 生成（16–256 px 多尺寸 `.ico`）：
-
-```powershell
-# 1) 从蓝图 PDF 重新生成图标（assets/newworld.ico + 预览 PNG）
-python tools/make_icon.py
-
-# 2) 创建/修复桌面快捷方式并绑定该图标（写入桌面，需要相应权限）
-powershell -ExecutionPolicy Bypass -File tools/update_shortcut.ps1
-```
-
-> 当前桌面上的 `newworld 像素世界.lnk` 已使用该图标；若项目目录移动，
-> 重新执行上面的第 1、2 步即可修复。
-鼠标操作完整说明见 `docs/USER_GUIDE.md`；决策架构见 `docs/IMPLEMENTATION_REPORT.md`；
-实验结果见 `docs/EXPERIMENT_REPORT.md`。
+当前 **165 个测试全部通过**（`python -m unittest discover -s tests`，
+约 15s）：地图/食物/森林/确定性、群伙人口动态、三种策略与训练器、
+社会机制、配置层、注册表、实验运行器/协议、lab API 契约、模型 zoo、
+通信通道/指称博弈、记忆流/反思。
+若前一次运行把临时目录指向了 `.tmp`，可先
+`$env:TEMP=(Resolve-Path .tmp).Path`（受限环境下的临时目录问题）。
 
 ---
 
-## 2. 硬约束：最多创建 8 个 Agent（旧世界 · --classic）
-
-> V3 新世界没有此约束（人口由食物承载力决定，实测可达数千）。
-> 以下内容适用于 `--classic` 的旧世界。
-
-- `CivilizationConfig.max_agents_created = 8` 约束的是**历史累计创建数**，
-  不是当前存活数。`world.registry.total_created` 只增不减。
-- 唯一受约束的创建路径是 `World.create_agent()` →
-  `AgentRegistry.register()`；第 9 次创建直接返回 `None` 并记录拒绝
-  （`world.creation_denied`）。
-- `World.spawn()` 保留为几何/测试原语（不做预算检查），模拟内部不得使用。
-- 死亡个体：先归档 `AgentRecord`（`died_at` / `cause` / 库存 / 掌握知识 / 技能 /
-  记忆 / 亲子关系），再从存活列表移除，脑对象销毁 → **不能再行动**。
-- 8 个名额用完后，世界不会再生新个体；**即使存活为 0 也不会复活人口**。
-- "当前存活人口"（`registry.alive_count()`）与"历史累计创建人口"
-  （`registry.total_created`）是两个独立指标，调试层与 telemetry 分别展示。
-
-## 3. 决策层：规划 → 教师 → 神经网络（旧世界 · --classic）
-
-每个个体每帧按顺序尝试：
-
-1. **基础设施反射**：能量低时前往活跃的粮仓/篝火/小屋休息（技术真实改变生存）；
-2. **目标规划层** `goals.GoalManager`：由需求/库存/知识候选/设施损耗/种群名额
-   生成目标 → 计划（gather→craft/build/experiment）→ 结构化步骤执行；
-   无进展 45 世界秒/240 步 → 重规划；连续 3 次失败 → 放弃 + 冷却；
-3. **社会技能教师** `social.SocialLife`：采集/制作/建造/求偶；
-   **生存优先**——能量/水分过低时返回 `None`，把控制权交回下层；
-4. **神经网络** `neural.NeuralPolicy`：40 维观测 → 64 → 32 → 58（行为克隆）。
-
-> 原始实现的缺陷修复：教师不再在社区建成后永久接管（原实现导致全员饿死，
-> 实测 t=537s 全族灭绝）；浆果被采空后能再生；小世界不再缺少浆果丛。
-
-## 4. 文明层：知识、技术、设施、传承（旧世界 · --classic）
-
-- **技术目录（世界规则，非剧情）**：石斧、纤维绳、背篓、篝火、水井、小屋、粮仓。
-  每条都有前置技术与真实数值效果（采集×2、负重+4、夜间/休息恢复、取水半径、
-  食物储存）。发现顺序由个体行为与随机实验决定，允许永远不发明。
-- **知识状态机**：`hypothesis → verified → invalidated`；
-  只有 `verified` 可进入 `craft/build` 计划；每次验证都走
-  `Technology.simulate_recipe`（真实扣材料、产产物、按难度可能失败）。
-- **依赖图**：`KnowledgeStore.edges()/depth()`；只有已验证子图计入技术深度。
-- **知识传播**：邻近教学（距离 + 概率规则）、出生继承（已验证知识 + 程序记忆）、
-  死亡后档案永久保留（可追踪"谁发现/谁掌握/何时遗失"）。
-- **公共设施**：建造后按半径提供真实效果（能量/水/休息），随时间损耗；
-  维护消耗材料。设施失效会影响 `collapse_state`。
-- **社会合作**：饱食个体把能量分享给附近濒危个体（真实资源转移，计入
-  `cooperation_benefit` 与 `cooperation_index`）。
-
-## 5. 观测与记忆（神经网络扩维 · 旧世界 --classic）
-
-- 输入 24 → **40**：原 24 维感知/生理 + 8 维记忆摘要 + 4 维目标/计划 + 4 维文明上下文。
-- 旧 24 维 checkpoint 自动迁移：新增输入列权重为 0，输出**逐比特一致**；
-  `expanded_observation=False`（A/B 组）时上下文恒为 0。
-- 个体情景记忆 / 程序记忆保存在 `MemoryStore`，死亡后仍保留（`archive`）。
-
-## 6. 环境、昼夜、物理（旧世界 --classic）
-
-- 昼夜（600 s/天）、太阳高度、气温、阴影；原子级破坏/生长、土壤水循环。
-- 力学（重力 9.80665、弹道跳跃）、声学（343.2 m/s、语言气泡）、热学、电磁学/黑体太阳、视觉（瞳孔/视网膜/扫视）、听觉。
-- **环境扰动（P4，seed 驱动）**：干旱（土壤湿度骤降、停止降雨）、风暴（摧毁浆果丛）、
-  资源枯竭（移除整棵树/整块岩石）。事件写入 JSONL，可影响发展路线。
-
-## 7. 代码结构
+## 4. 仓库结构
 
 ```text
-newworld/
-├── 【V3 新世界：俯视地图 · 世界盒子】
-│   ├── map_engine.py     ← 地形真相：terrain/food/burning 网格（值噪声确定性生成）
-│   ├── swarm.py          ← 千人群伙：SoA 结构化数组，全向量化（承载力涌现）
-│   ├── catastrophes.py   ← 上帝之手：陨石/闪电/洪水/治愈（作用真实网格）
-│   ├── map_render.py     ← 俯视渲染：底图 PIL + 饱足度渐变散点
-│   └── app_map.py        ← 新 GUI：工具栏 + 整图画布 + 右侧统计面板
-├── 【旧世界：侧视像素小人文明（--classic 进入）】
-│   ├── population.py    ← 集成层：决策顺序、创建/死亡/继承/教学/设施/指标
-│   ├── goals.py         ← P1 目标/计划/规划器（反卡死、重规划）
-│   ├── knowledge.py     ← P2 技术目录、验证状态机、依赖图
-│   ├── memory.py        ← P3 情景/程序记忆、传承、死亡归档
-│   ├── civilization.py  ← P3 历史注册表、设施、契约、collapse/灭绝
-│   ├── telemetry.py     ← P0/P4 指标采集（19 指标）+ 事件 JSONL
-│   ├── simulation.py    ← headless 文明运行器 + 环境扰动 + CLI
-│   ├── world.py         ← 世界 + 注册表/知识/记忆/文明服务 + 存档
-│   ├── technology.py    ← 数据驱动配方执行、验证、设施效果
-│   ├── society.py       ← 关系图网络、生育/衰老/死亡（死亡回调归档）
-│   ├── neural.py        ← 56 维输入 MLP（24 生理 + 16 文明 + 16 视觉）+ 旧迁移
-│   ├── training.py      ← 行为克隆训练（保留原流程）
-│   ├── social.py        ← 技能教师（生存优先）
-│   ├── visual_features.py← V2：真实视网膜 16 维特征（光学/眼睛/视网膜路径）
-│   ├── rewards.py       ← V2：低层 RL 的真实世界奖励（含反刷分）
-│   ├── lowlevel_rl.py   ← V2：低层动作 REINFORCE（minibatch/优势标准化/裁剪）
-│   ├── infinite_scene.py← V2：无限世界确定性分块 + 窗口平移
-│   └── pixelworld.py / ecology.py / physiology.py / physics.py / daynight.py …
-├── app_tk.py / render.py  ← 旧世界交互与渲染
-└── cli.py                 ← 入口分流：默认新世界，--classic 旧世界
-experiments/
-├── probe_baseline.py / probe_long.py / probe_cap_path.py  ← P0 诊断
-├── run_ablation.py                                        ← A/B/C/D × 多 seed
-└── results/                                               ← 实验产物（JSON/CSV/报告）
-docs/
-├── UPGRADE_V3_REPORT.md     ← V3 重构报告（决策/实测数据/已知边界）
-├── USER_GUIDE_V3.md          ← 新世界操作指南（工具栏/灾害/面板）
-├── architecture.md           ← 双世界架构与数据流（V3 §0/§9 + 旧世界 §1-8）
-├── IMPLEMENTATION_REPORT.md  ← V1/V2 实施记录：鼠标交互 / 决策链路 / 组合式创新
-├── EXPERIMENT_REPORT.md      ← V1/V2 10 seed × 6 配置实验与诚实结论
-├── USER_GUIDE.md             ← 旧世界鼠标操作与面板说明（--classic）
-└── UPGRADE_V2_REPORT.md      ← V2 感知/RL/上限/无限世界报告（含真实实验）
-（V1 接口契约与 P0 审计报告已删除，历史见 git log）
+newworldpro/
+├── newworld/                 # 平台代码（唯一世界线：俯视地图 + 群伙）
+│   ├── map_engine.py         # 地形 + 食物网格（世界规则唯一权威）
+│   ├── swarm.py              # 群伙 SoA、人口动态、观测组装、转移/奖励
+│   ├── swarm_policy.py       # 策略协议 + rule/random/neural + REINFORCE 训练器
+│   ├── social_mech.py        # P3 交换 / 教学 / 继承（技能在世界规则层生效）
+│   ├── communication.py      # P6-A 信号通道 + 指称博弈（实验层接入）
+│   ├── agent_memory.py       # P6-B 记忆流 / 检索 / 反思（无 LLM）
+│   ├── experiment.py         # 唯一实验运行器：配置 -> 仿真 -> 指标 -> 产物
+│   ├── settings.py           # YAML 配置 schema / 继承 / 覆盖 / 指纹
+│   ├── registry.py           # POLICIES / PROTOCOLS / MECHANISMS 注册表
+│   ├── zoo.py                # 模型 zoo 读写与校验
+│   ├── protocols/            # P1/P3/P4/P5/P6 实验协议
+│   ├── lab_server.py         # 浏览器实验平台后端（FastAPI + WebSocket）
+│   ├── app_map.py            # 桌面 GUI
+│   ├── map_render.py         # 地图底图与群伙散点渲染
+│   ├── viewport.py           # 世界↔屏幕变换、缩放/平移（纯逻辑）
+│   └── cli.py                # 统一命令行入口
+├── configs/                  # 实验 YAML（base.yaml 为公共基线）
+├── experiments/run.py        # 配置化实验统一入口
+├── tests/                    # 单元测试（unittest）
+├── assets/zoo/               # 模型 zoo（实验产出，按需生成）
+├── lab_static/               # lab 前端页面
+├── docs/                     # 架构 / 用户指南 / 路线图 / 调研
+├── tools/                    # 图标生成与快捷方式工具
+├── requirements.txt
+└── start_world.bat           # Windows 启动器：打开浏览器 + 启动 lab 服务
 ```
 
-## 8. 测试
+---
 
-```powershell
-cd newworldpro
-$env:TEMP = (Resolve-Path .tmp).Path   # 沙箱/受限环境下需要（见 §9）
-python -m unittest discover -s tests
-```
+## 5. 当前限制（如实）
 
-当前 **544 个测试 / OK（skipped=1）**：
-V3 新世界 19 个（地形/群伙/灾害，含千人性能门槛）+ RL 小批量训练 9 个 +
-原有世界/物理/生态/神经/训练/视觉/社会测试 + 目标规划、知识库、记忆、
-文明注册表/设施、指标、硬约束/死亡、存档、观测迁移（24→40→56 双链）、
-决策链、感知特征、低层 RL、奖励、无限世界、V2 集成等（旧世界线全保留）。
+* **策略规模小**：numpy 手写 MLP（默认 hidden=32）、REINFORCE；没有
+  PyTorch、没有 CTDE/QMIX、没有 LLM。适合验证机制，不适合大规模表示学习。
+* **单进程**：GUI / lab / 实验各自只跑一个世界，没有分布式 rollout；
+  千级个体时渲染是主要瓶颈（仿真本身远快于渲染）。
+* **环境与指标是"可观测性压缩"**：时间尺度、寿命、食物再生都是平台
+  参数，不是人口学标定；实验结论只对当前参数族有效。
+* **短程评估的效应量**：P4 的经验是"弱表型 + 短程评估"容易读出无效应，
+  实验报告必须给点估计与配对胜负，不给显著性宣称（无统计检验）。
+* **本轮复核改写了三条旧结论**（详见 `docs/EXPERIMENTS.md`）：
+  P1.7 的"稀缺环境学习优势"**撤回**（`eat_rate` 是进食事件计数伪影，
+  trained 的饱足/寿命反而更差）；P4 的 learning"显著正效应"降级为
+  **事件计数增加、适应度三项更差**（旧结果还存在同 seed 训练泄漏）；
+  P6-A 受控指称博弈正结果成立，但**世界内通道 null**；P6-B 记忆
+  机制中 **recency-only 有净摄入正结果**，full/反思改变行为频率但
+  **不改善福利**。不做"智能涌现"式表述。
+* 模型 zoo 里的 checkpoint 只在对应实验跑过之后才存在；未跑过的协议
+  不会凭空出现模型，`assets/zoo/` 不完整是正常状态。
 
-## 9. 沙箱 / Windows 临时目录说明
+---
 
-在受限沙箱中 `tempfile.mkdtemp()` 创建的目录可能不可写（Windows ACL），
-会让 6 个与临时目录有关的测试出现假错误。项目提供 `tests/_env_compat.py`
-垫片（把 `mkdtemp` 替换为普通创建，语义不变），相关测试模块已引入；
-运行时建议把 `TEMP` 指到工作区内（如上）。
+## 6. 文档索引
 
-## 10. 查看实验结果（旧世界文明实验）
+| 文档 | 内容 |
+|---|---|
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | 模块职责、每步数据流、观测/压实契约、配置、注册表、zoo、lab API |
+| [docs/USER_GUIDE.md](docs/USER_GUIDE.md) | GUI / lab / 配置化实验操作与排错 |
+| [docs/EXPERIMENTS.md](docs/EXPERIMENTS.md) | 实验协议、运行方式与最新结果（由实验负责人维护） |
+| [docs/RESEARCH_ROADMAP.md](docs/RESEARCH_ROADMAP.md) | P0–P6 研究路线、假设、验收门槛与诚实记录 |
+| [docs/RESEARCH_REFERENCES.md](docs/RESEARCH_REFERENCES.md) | 人工生命 / 人工社会 / MARL / 实验平台调研 |
+| [assets/MODELS.md](assets/MODELS.md) | 模型 zoo 规范与当前全部 checkpoint 清单 |
 
-```powershell
-# 单次运行：完整指标 + 事件 + 知识/设施状态
-python -m newworld.simulation --group D --seed 0 --steps 24000 --dt 0.05 --json run_D0.json
-
-# 消融：4 组 × 3 seed，输出 runs.csv / aggregate.json / report.md
-python experiments/run_ablation.py --seeds 0 1 2 --steps 24000 --dt 0.05
-Get-Content experiments\results\ablation_final\report.md
-```
-
-指标定义、实验数据与局限见 `docs/EXPERIMENT_REPORT.md`；实施与已知问题见
-`docs/IMPLEMENTATION_REPORT.md`；V2（感知/RL/无限世界）见 `docs/UPGRADE_V2_REPORT.md`。
-
-```powershell
-# V2 矩阵：感知开/关、BC/RL/随机、cap 8/32、有限/无限世界
-python experiments/run_v2_experiments.py --seed-start 200 --num-seeds 6 --tag final
-Get-Content experiments\results\v2_final\report.md
-```
-
-## 11. 已知限制（如实）
-
-**V3 新世界**：全管线 41FPS@8000 人（瓶颈在散点绘制，仿真本身 1.9ms/帧）；
-整图可视暂无缩放平移；部落/战争/瘟疫未实现（二期）；详见
-`docs/UPGRADE_V3_REPORT.md` §6。以下是旧世界的限制：
-
-- 低层 RL 只训练 mode/move/jump/speak 四个决策头（语言头保持 argmax；
-  规划/知识层仍用规则 + 代价搜索）。奖励只覆盖四类真实变化，仍有被"资源囤积"
-  利用的空间（库存满后不再增益，已测）；大规模训练前应做奖励敏感性实验。
-- 8 人累计创建上限是**默认值**，现在可用 `--cap` 放开做对照；但放开只有创建预算，
-  不是人口学模型（没有生育压力/年龄结构/资源承载的标定）。
-- 视觉特征是**低分辨率学习档**（不是 GUI 高保真档），且每 `perception_stride`
-  帧刷新一次（默认 4，实验 8）；短预算训练**不足以**证明视觉显著改变行为。
-- 无限世界是"横向无界 + 窗口跟随"的最小实现：纵向固定，不跨窗口保存远距离
-  设施历史；长跑/大人口的墙钟成本未充分验证。
-- `deliver` 目前是 contribute 别名；维护仅在设施失效后触发；环境扰动只有三种。
-- 时间尺度为可观测性压缩（寿命 900 世界秒），不是人口学标定。
-
-## 12. 参考
-
-- Bonabeau, *Agent-based modeling*, PNAS 2002: <https://www.pnas.org/doi/full/10.1073/pnas.082080899>
-- Epstein & Axtell, *Growing Artificial Societies*: <https://books.google.com.sg/books?id=8sXENe8QrmYC>
-- *Multi-Agent, Human-Agent and Beyond: A Survey on Cooperation in Social Dilemmas*:
-  <http://export.arxiv.org/pdf/2402.17270v2>
-- 既有人眼/物理/声学与角色蓝图参考见 `ref/`。
+外部参考（选读）：Epstein & Axtell《Growing Artificial Societies》；
+Bonabeau, *Agent-based modeling*, PNAS 2002；
+Lazaridou et al. 涌现通信综述。完整链接与勘误见
+[docs/RESEARCH_REFERENCES.md](docs/RESEARCH_REFERENCES.md)。

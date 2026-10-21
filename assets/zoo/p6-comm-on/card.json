@@ -1,0 +1,29 @@
+{
+  "name": "p6-comm-on",
+  "kind": "neural",
+  "obs_dim": 13,
+  "n_actions": 5,
+  "hidden": 32,
+  "seed": 7,
+  "format_version": 1,
+  "created_at": "2026-10-21T06:44:55+00:00",
+  "git_commit": "fc502ff",
+  "config_hash": "27fe3de8fa1c0278e93478b78ec841c6aaa976cbc241592cb859f7a69a087d01",
+  "weights_sha256": "bbdc0820b2a8d14eab401712af592e39158b1ecfc110d4c6074badb23939558f",
+  "description": "P6-A on-arm movement policy (9+4 obs, comm channel enabled)",
+  "tags": [
+    "p6-comm",
+    "emergent-communication",
+    "on-arm"
+  ],
+  "metrics": {
+    "eat_events_mean": 59405.0,
+    "eat_rate_mean": 8.250694444444445,
+    "satiation_mean": 0.9009199999999999,
+    "channel_mi_bits": 0.0036793423672403895,
+    "channel_entropy_bits": 0.5109649210125099,
+    "channel_alignment": 0.2288818359375,
+    "eat_events_paired_delta": -9944.8
+  },
+  "extra": {}
+}

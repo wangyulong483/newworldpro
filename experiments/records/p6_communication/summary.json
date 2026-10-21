@@ -1,0 +1,736 @@
+{
+  "protocol": "communication",
+  "config_name": "p6_communication",
+  "part_a_referential": {
+    "cue_dim": 4,
+    "n_symbols": 4,
+    "game_seeds": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    "game_episodes": 400,
+    "game_batch": 64,
+    "game_lr": 0.5,
+    "hidden": 32,
+    "chance_accuracy": 0.25,
+    "mi_upper_bound_bits": 2.0,
+    "untrained_accuracy": {
+      "mean": 0.2472,
+      "std": 0.0256,
+      "min": 0.2,
+      "max": 0.268,
+      "n": 5.0
+    },
+    "accuracy": {
+      "mean": 0.9964000000000001,
+      "std": 0.0007348469228349572,
+      "min": 0.995,
+      "max": 0.997,
+      "n": 5.0
+    },
+    "accuracy_margin_over_chance": 0.7464000000000001,
+    "mutual_information_bits": {
+      "mean": 1.9809826642887536,
+      "std": 0.0032941960102975437,
+      "min": 1.9787974081648354,
+      "max": 1.9875248661211347,
+      "n": 5.0
+    },
+    "symbol_entropy_bits": {
+      "mean": 1.998275171530017,
+      "std": 0.0015824324865783522,
+      "min": 1.9953781848244787,
+      "max": 1.9996457137321337,
+      "n": 5.0
+    },
+    "mapping_injective_fraction": 1.0,
+    "mapping_relabeled_agreement": 1.0,
+    "mapping_raw_identical_fraction": 0.1,
+    "protocol_formed": true,
+    "criterion": "mean accuracy > chance + 0.10 and > 0.5",
+    "per_seed": [
+      {
+        "seed": 0,
+        "untrained_accuracy": 0.2,
+        "accuracy": 0.995,
+        "chance": 0.25,
+        "mutual_information_bits": 1.9790438072401024,
+        "symbol_entropy_bits": 1.998904825502441,
+        "mapping": {
+          "0": 2,
+          "1": 1,
+          "2": 3,
+          "3": 0
+        },
+        "n_eval": 2000,
+        "updates": 400,
+        "train_accuracy_last": 1.0
+      },
+      {
+        "seed": 1,
+        "untrained_accuracy": 0.268,
+        "accuracy": 0.997,
+        "chance": 0.25,
+        "mutual_information_bits": 1.9787974081648354,
+        "symbol_entropy_bits": 1.9996457137321337,
+        "mapping": {
+          "0": 1,
+          "1": 3,
+          "2": 2,
+          "3": 0
+        },
+        "n_eval": 2000,
+        "updates": 400,
+        "train_accuracy_last": 1.0
+      },
+      {
+        "seed": 2,
+        "untrained_accuracy": 0.264,
+        "accuracy": 0.9965,
+        "chance": 0.25,
+        "mutual_information_bits": 1.9875248661211347,
+        "symbol_entropy_bits": 1.997871814419585,
+        "mapping": {
+          "0": 1,
+          "1": 0,
+          "2": 3,
+          "3": 2
+        },
+        "n_eval": 2000,
+        "updates": 400,
+        "train_accuracy_last": 1.0
+      },
+      {
+        "seed": 3,
+        "untrained_accuracy": 0.24,
+        "accuracy": 0.9965,
+        "chance": 0.25,
+        "mutual_information_bits": 1.979765117308913,
+        "symbol_entropy_bits": 1.999575319171448,
+        "mapping": {
+          "0": 2,
+          "1": 1,
+          "2": 3,
+          "3": 0
+        },
+        "n_eval": 2000,
+        "updates": 400,
+        "train_accuracy_last": 0.984375
+      },
+      {
+        "seed": 4,
+        "untrained_accuracy": 0.264,
+        "accuracy": 0.997,
+        "chance": 0.25,
+        "mutual_information_bits": 1.9797821226087833,
+        "symbol_entropy_bits": 1.9953781848244787,
+        "mapping": {
+          "0": 1,
+          "1": 2,
+          "2": 0,
+          "3": 3
+        },
+        "n_eval": 2000,
+        "updates": 400,
+        "train_accuracy_last": 1.0
+      }
+    ],
+    "wall_s": 7.864
+  },
+  "part_b_swarm_ablation": {
+    "train_seeds": [
+      1000,
+      1001,
+      1002
+    ],
+    "train_episodes": 6,
+    "train_episode_seconds": 30.0,
+    "train_policy_seed": 7,
+    "sender_seed": 12345,
+    "eval_seeds": [
+      2000,
+      2001,
+      2002,
+      2003,
+      2004
+    ],
+    "eval_seconds": 60.0,
+    "n_symbols": 4,
+    "hidden": 32,
+    "arms": {
+      "off": {
+        "train": {
+          "episodes": 6.0,
+          "transitions": 578826.0,
+          "mean_episode_return_mean": 0.42684674894301544,
+          "mean_episode_return_last": 0.4113706260189029,
+          "weight_delta_max": 0.014652959699626013
+        },
+        "train_wall_s": 37.95,
+        "eval": {
+          "eat_events": {
+            "mean": 69349.8,
+            "std": 3941.3998223981284,
+            "n": 5.0
+          },
+          "eat_rate": {
+            "mean": 9.631916666666665,
+            "std": 0.5474166419997403,
+            "n": 5.0
+          },
+          "satiation_mean": {
+            "mean": 0.9497200000000001,
+            "std": 0.009853405502667603,
+            "n": 5.0
+          },
+          "population": {
+            "mean": 643.0,
+            "std": 12.77497553813705,
+            "n": 5.0
+          },
+          "mean_life": {
+            "mean": 30.33066749572754,
+            "std": 7.361283021989269,
+            "n": 5.0
+          }
+        }
+      },
+      "on": {
+        "train": {
+          "episodes": 6.0,
+          "transitions": 578733.0,
+          "mean_episode_return_mean": 0.3977617090918118,
+          "mean_episode_return_last": 0.417551005695336,
+          "weight_delta_max": 0.024307330616727744
+        },
+        "train_wall_s": 62.215,
+        "sender_weight_delta": 0.2632728109429339,
+        "eval": {
+          "eat_events": {
+            "mean": 59405.0,
+            "std": 5658.473080257606,
+            "n": 5.0
+          },
+          "eat_rate": {
+            "mean": 8.250694444444445,
+            "std": 0.7858990389246677,
+            "n": 5.0
+          },
+          "satiation_mean": {
+            "mean": 0.9009199999999999,
+            "std": 0.026216361303582934,
+            "n": 5.0
+          },
+          "population": {
+            "mean": 624.0,
+            "std": 11.189280584559492,
+            "n": 5.0
+          },
+          "mean_life": {
+            "mean": 27.199325942993163,
+            "std": 0.06510289526805609,
+            "n": 5.0
+          }
+        }
+      }
+    },
+    "paired_treatment_minus_control": {
+      "eat_events": {
+        "metric": "eat_events",
+        "n": 5.0,
+        "mean_delta": -9944.8,
+        "std_delta": 3350.820997904842,
+        "wins": 0.0,
+        "losses": 5.0,
+        "ties": 0.0,
+        "relative": -0.14340055775214924
+      },
+      "eat_rate": {
+        "metric": "eat_rate",
+        "n": 5.0,
+        "mean_delta": -1.3812222222222217,
+        "std_delta": 0.4653918052645615,
+        "wins": 0.0,
+        "losses": 5.0,
+        "ties": 0.0,
+        "relative": -0.1434005577521343
+      },
+      "satiation_mean": {
+        "metric": "satiation_mean",
+        "n": 5.0,
+        "mean_delta": -0.048800000000000024,
+        "std_delta": 0.025529669014697404,
+        "wins": 0.0,
+        "losses": 5.0,
+        "ties": 0.0,
+        "relative": -0.05138356568246287
+      },
+      "population": {
+        "metric": "population",
+        "n": 5.0,
+        "mean_delta": -19.0,
+        "std_delta": 13.19090595827292,
+        "wins": 0.0,
+        "losses": 5.0,
+        "ties": 0.0,
+        "relative": -0.02954898911353028
+      },
+      "mean_life": {
+        "metric": "mean_life",
+        "n": 5.0,
+        "mean_delta": -3.131341552734375,
+        "std_delta": 7.334032872094428,
+        "wins": 4.0,
+        "losses": 1.0,
+        "ties": 0.0,
+        "relative": -0.1032401134322336
+      }
+    },
+    "eval_runs": {
+      "off": [
+        {
+          "t": 60.0,
+          "steps": 1200,
+          "population": 642,
+          "births": 522,
+          "deaths": 0,
+          "starvation_deaths": 0,
+          "old_age_deaths": 0,
+          "drowned": 0,
+          "eat_events": 72969,
+          "satiation_mean": 0.9647,
+          "satiation_std": 0.1156,
+          "gini_hunger": 0.0332,
+          "total_reward": 5279.283,
+          "food_total": 15571.5,
+          "seed": 2000,
+          "wall_s": 2.1613,
+          "steps_per_s": 555.2,
+          "mean_life": 26.87668228149414,
+          "eat_rate": 10.134583333333333,
+          "extinct_seconds": -1.0,
+          "survived_90s": 0.0
+        },
+        {
+          "t": 60.0,
+          "steps": 1200,
+          "population": 658,
+          "births": 538,
+          "deaths": 0,
+          "starvation_deaths": 0,
+          "old_age_deaths": 0,
+          "drowned": 0,
+          "eat_events": 68290,
+          "satiation_mean": 0.9503,
+          "satiation_std": 0.1337,
+          "gini_hunger": 0.0461,
+          "total_reward": 4585.083,
+          "food_total": 10449.7,
+          "seed": 2001,
+          "wall_s": 2.227,
+          "steps_per_s": 538.9,
+          "mean_life": 26.499589920043945,
+          "eat_rate": 9.484722222222222,
+          "extinct_seconds": -1.0,
+          "survived_90s": 0.0
+        },
+        {
+          "t": 60.0,
+          "steps": 1200,
+          "population": 630,
+          "births": 510,
+          "deaths": 0,
+          "starvation_deaths": 0,
+          "old_age_deaths": 0,
+          "drowned": 0,
+          "eat_events": 63975,
+          "satiation_mean": 0.9409,
+          "satiation_std": 0.1463,
+          "gini_hunger": 0.0543,
+          "total_reward": 4245.919,
+          "food_total": 7238.3,
+          "seed": 2002,
+          "wall_s": 2.1286,
+          "steps_per_s": 563.8,
+          "mean_life": 26.782751083374023,
+          "eat_rate": 8.885416666666666,
+          "extinct_seconds": -1.0,
+          "survived_90s": 0.0
+        },
+        {
+          "t": 60.0,
+          "steps": 1200,
+          "population": 628,
+          "births": 509,
+          "deaths": 1,
+          "starvation_deaths": 1,
+          "old_age_deaths": 0,
+          "drowned": 0,
+          "eat_events": 74669,
+          "satiation_mean": 0.9553,
+          "satiation_std": 0.1311,
+          "gini_hunger": 0.042,
+          "total_reward": 5427.169,
+          "food_total": 12557.7,
+          "seed": 2003,
+          "wall_s": 2.2068,
+          "steps_per_s": 543.8,
+          "mean_life": 45.049598693847656,
+          "eat_rate": 10.370694444444444,
+          "extinct_seconds": -1.0,
+          "survived_90s": 0.0
+        },
+        {
+          "t": 60.0,
+          "steps": 1200,
+          "population": 657,
+          "births": 537,
+          "deaths": 0,
+          "starvation_deaths": 0,
+          "old_age_deaths": 0,
+          "drowned": 0,
+          "eat_events": 66846,
+          "satiation_mean": 0.9374,
+          "satiation_std": 0.16,
+          "gini_hunger": 0.0583,
+          "total_reward": 4791.745,
+          "food_total": 11680.2,
+          "seed": 2004,
+          "wall_s": 2.3064,
+          "steps_per_s": 520.3,
+          "mean_life": 26.44471549987793,
+          "eat_rate": 9.284166666666666,
+          "extinct_seconds": -1.0,
+          "survived_90s": 0.0
+        }
+      ],
+      "on": [
+        {
+          "t": 60.0,
+          "steps": 1200,
+          "population": 635,
+          "births": 515,
+          "deaths": 0,
+          "starvation_deaths": 0,
+          "old_age_deaths": 0,
+          "drowned": 0,
+          "eat_events": 64493,
+          "satiation_mean": 0.9245,
+          "satiation_std": 0.1683,
+          "gini_hunger": 0.069,
+          "total_reward": 4651.374,
+          "food_total": 15987.9,
+          "seed": 2000,
+          "comm": {
+            "messages": 344482,
+            "symbol_entropy": 0.5134155115877241,
+            "mutual_information": 0.0044392842554986395,
+            "food_alignment": 0.2906494140625,
+            "train_updates": 0,
+            "group_reward_mean": 0.19480050752816808,
+            "symbol_counts": [
+              223,
+              246,
+              7559,
+              164
+            ]
+          },
+          "wall_s": 6.3928,
+          "steps_per_s": 187.7,
+          "mean_life": 27.07437515258789,
+          "eat_rate": 8.957361111111112,
+          "extinct_seconds": -1.0,
+          "survived_90s": 0.0
+        },
+        {
+          "t": 60.0,
+          "steps": 1200,
+          "population": 618,
+          "births": 498,
+          "deaths": 0,
+          "starvation_deaths": 0,
+          "old_age_deaths": 0,
+          "drowned": 0,
+          "eat_events": 53074,
+          "satiation_mean": 0.8611,
+          "satiation_std": 0.2193,
+          "gini_hunger": 0.1192,
+          "total_reward": 3657.855,
+          "food_total": 11043.3,
+          "seed": 2001,
+          "comm": {
+            "messages": 337024,
+            "symbol_entropy": 0.6113748917414292,
+            "mutual_information": 0.006135004324746487,
+            "food_alignment": 0.1527099609375,
+            "train_updates": 0,
+            "group_reward_mean": 0.1684748540083811,
+            "symbol_counts": [
+              280,
+              318,
+              7396,
+              198
+            ]
+          },
+          "wall_s": 5.6739,
+          "steps_per_s": 211.5,
+          "mean_life": 27.21712303161621,
+          "eat_rate": 7.371388888888889,
+          "extinct_seconds": -1.0,
+          "survived_90s": 0.0
+        },
+        {
+          "t": 60.0,
+          "steps": 1200,
+          "population": 606,
+          "births": 486,
+          "deaths": 0,
+          "starvation_deaths": 0,
+          "old_age_deaths": 0,
+          "drowned": 0,
+          "eat_events": 52256,
+          "satiation_mean": 0.8783,
+          "satiation_std": 0.2109,
+          "gini_hunger": 0.1069,
+          "total_reward": 3465.298,
+          "food_total": 7715.8,
+          "seed": 2002,
+          "comm": {
+            "messages": 330333,
+            "symbol_entropy": 0.549374898871876,
+            "mutual_information": 0.0021754586708313756,
+            "food_alignment": 0.1917724609375,
+            "train_updates": 0,
+            "group_reward_mean": 0.16758511109596244,
+            "symbol_counts": [
+              222,
+              256,
+              7503,
+              211
+            ]
+          },
+          "wall_s": 6.5362,
+          "steps_per_s": 183.6,
+          "mean_life": 27.20500373840332,
+          "eat_rate": 7.257777777777778,
+          "extinct_seconds": -1.0,
+          "survived_90s": 0.0
+        },
+        {
+          "t": 60.0,
+          "steps": 1200,
+          "population": 625,
+          "births": 505,
+          "deaths": 0,
+          "starvation_deaths": 0,
+          "old_age_deaths": 0,
+          "drowned": 0,
+          "eat_events": 65576,
+          "satiation_mean": 0.9166,
+          "satiation_std": 0.1739,
+          "gini_hunger": 0.0754,
+          "total_reward": 4472.851,
+          "food_total": 13188.9,
+          "seed": 2003,
+          "comm": {
+            "messages": 341333,
+            "symbol_entropy": 0.4191902180073015,
+            "mutual_information": 0.002570023813657584,
+            "food_alignment": 0.2315673828125,
+            "train_updates": 0,
+            "group_reward_mean": 0.19986093580260847,
+            "symbol_counts": [
+              187,
+              171,
+              7704,
+              130
+            ]
+          },
+          "wall_s": 6.4325,
+          "steps_per_s": 186.6,
+          "mean_life": 27.256450653076172,
+          "eat_rate": 9.107777777777779,
+          "extinct_seconds": -1.0,
+          "survived_90s": 0.0
+        },
+        {
+          "t": 60.0,
+          "steps": 1200,
+          "population": 636,
+          "births": 516,
+          "deaths": 0,
+          "starvation_deaths": 0,
+          "old_age_deaths": 0,
+          "drowned": 0,
+          "eat_events": 61626,
+          "satiation_mean": 0.9241,
+          "satiation_std": 0.165,
+          "gini_hunger": 0.0688,
+          "total_reward": 4366.134,
+          "food_total": 11974.0,
+          "seed": 2004,
+          "comm": {
+            "messages": 347178,
+            "symbol_entropy": 0.4614690848542182,
+            "mutual_information": 0.0030769407714678616,
+            "food_alignment": 0.2777099609375,
+            "train_updates": 0,
+            "group_reward_mean": 0.18523715024976448,
+            "symbol_counts": [
+              194,
+              182,
+              7642,
+              174
+            ]
+          },
+          "wall_s": 6.4577,
+          "steps_per_s": 185.8,
+          "mean_life": 27.243677139282227,
+          "eat_rate": 8.559166666666666,
+          "extinct_seconds": -1.0,
+          "survived_90s": 0.0
+        }
+      ]
+    },
+    "channel_stats_eval": {
+      "train_updates": {
+        "mean": 0.0,
+        "std": 0.0,
+        "min": 0.0,
+        "max": 0.0,
+        "n": 5.0
+      },
+      "messages": {
+        "mean": 340070.0,
+        "std": 5927.425444491057,
+        "min": 330333.0,
+        "max": 347178.0,
+        "n": 5.0
+      },
+      "mi_bits": {
+        "mean": 0.0036793423672403895,
+        "std": 0.0014465772590020465,
+        "min": 0.0021754586708313756,
+        "max": 0.006135004324746487,
+        "n": 5.0
+      },
+      "entropy_bits": {
+        "mean": 0.5109649210125099,
+        "std": 0.06698645821926909,
+        "min": 0.4191902180073015,
+        "max": 0.6113748917414292,
+        "n": 5.0
+      },
+      "alignment": {
+        "mean": 0.2288818359375,
+        "std": 0.05174145710040968,
+        "min": 0.1527099609375,
+        "max": 0.2906494140625,
+        "n": 5.0
+      },
+      "rolling_samples": 8192.0,
+      "mi_expected_bias_bits": 0.0007924960551758222,
+      "alignment_chance": 0.25,
+      "sender_frozen": true
+    },
+    "saved_models": {
+      "p6-comm-on": {
+        "name": "p6-comm-on",
+        "kind": "neural",
+        "obs_dim": 13,
+        "n_actions": 5,
+        "hidden": 32,
+        "seed": 7,
+        "format_version": 1,
+        "created_at": "2026-10-21T06:44:55+00:00",
+        "git_commit": "fc502ff",
+        "config_hash": "27fe3de8fa1c0278e93478b78ec841c6aaa976cbc241592cb859f7a69a087d01",
+        "weights_sha256": "bbdc0820b2a8d14eab401712af592e39158b1ecfc110d4c6074badb23939558f",
+        "description": "P6-A on-arm movement policy (9+4 obs, comm channel enabled)",
+        "tags": [
+          "p6-comm",
+          "emergent-communication",
+          "on-arm"
+        ],
+        "metrics": {
+          "eat_events_mean": 59405.0,
+          "eat_rate_mean": 8.250694444444445,
+          "satiation_mean": 0.9009199999999999,
+          "channel_mi_bits": 0.0036793423672403895,
+          "channel_entropy_bits": 0.5109649210125099,
+          "channel_alignment": 0.2288818359375,
+          "eat_events_paired_delta": -9944.8
+        },
+        "extra": {}
+      },
+      "p6-comm-sender": {
+        "name": "p6-comm-sender",
+        "kind": "neural",
+        "obs_dim": 9,
+        "n_actions": 4,
+        "hidden": 32,
+        "seed": 12345,
+        "format_version": 1,
+        "created_at": "2026-10-21T06:44:55+00:00",
+        "git_commit": "fc502ff",
+        "config_hash": "27fe3de8fa1c0278e93478b78ec841c6aaa976cbc241592cb859f7a69a087d01",
+        "weights_sha256": "ab84d78081ca6179bd2df88c745756afcca773a316d276e44220bea6698da28d",
+        "description": "P6-A trained symbol sender (obs=9, n_symbols=K)",
+        "tags": [
+          "p6-comm",
+          "sender"
+        ],
+        "metrics": {
+          "sender_weight_delta": 0.2632728109429339
+        },
+        "extra": {}
+      }
+    },
+    "wall_s": 143.366
+  },
+  "verdict": "(i) 控制指称博弈：accuracy=0.996±0.001 vs chance 0.250（+0.746），MI=1.981/2.00 bits，符号熵=1.998 bits，映射可辨识比例=1.00 -> 指称协议确实形成。 (ii) 世界信号通道：通道 MI=0.0037 bits 与有限样本偏置 0.0008 bits 同量级，符号熵 0.511 bits、食物对齐 0.229（随机 0.250）=> 未学到可辨指称语义（null，不宣称群体通信收益）。 行为配对差（on-off, n=5）：Δeat_events=-9944.80±3350.82（wins=0/losses=5/ties=0），Δsatiation=-0.0488±0.0255；n 很小、未做显著性检验，若接近 0 应视为中性（可能小幅负向），不能据此宣称通信提升群体适应度。",
+  "conclusion": "controlled referential game demonstrates protocol formation; world channel null (no measurable learned semantics)",
+  "notes": [
+    "Part A 是可控对照：随机机会准确率 = 1/cue_dim；MI 上限 = log2(n_symbols) bits。",
+    "Part A 映射跨 seed 比较允许符号重命名（mapping_similarity 最优置换），因为符号标签任意。",
+    "Part B 奖励是个体级（实际进食量），sender 只从群体标量奖励学习，缺少 per-sender 信用分配；在个体奖励+参数共享策略下世界通道未必可学，null 是合理科学结论。",
+    "消息无个体成本（comm.message_cost=0），符号只通过邻居观测直方图进入世界，语义未硬编码。",
+    "on 臂评估时 comm.train=False 冻结 sender（复制训练后权重）；off/on 训练预算与 seed 序列相同。",
+    "on/off 观测维度不同（9 vs 9+K），初始化权重无法逐位相同；配对仅在评估 seed 上成立。",
+    "有限样本 MI 插值估计有正偏置，约 (K-1)^2/(2N ln2) bits（N=8192, K=4 时约 8e-4）。"
+  ],
+  "limitations": [
+    "Part B 每个臂只训练 1 个策略、评估 5 个 seed，样本量不足以做显著性检验。",
+    "训练回合短（30s/回合、6 回合），策略尚未收敛到最优觅食策略；对照差异可能被训练不足淹没。",
+    "指称博弈只证明 4 个 cue / 4 个符号的指称可辨识性，不等同于组合性/系统性语言。",
+    "世界通道的 sender 训练信号（群体奖励 1 步延迟）本身就是弱信号，负结果不能证明任何通信在群体中都不可能，只证明本设定下该通道未产生可测语义收益。"
+  ],
+  "seeds": {
+    "part_a_game_seeds": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    "part_b_train_seeds": [
+      1000,
+      1001,
+      1002
+    ],
+    "part_b_eval_seeds": [
+      2000,
+      2001,
+      2002,
+      2003,
+      2004
+    ]
+  },
+  "wall_s": 151.231,
+  "_artifact_dir": "C:\\Users\\27826\\Desktop\\vscode_win_ws\\ds_ws\\newworld\\newworldpro\\experiments\\results\\p6_communication",
+  "name": "p6_communication",
+  "config_hash": "27fe3de8fa1c0278e93478b78ec841c6aaa976cbc241592cb859f7a69a087d01"
+}

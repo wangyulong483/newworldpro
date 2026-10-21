@@ -1,7 +1,7 @@
 """P1 群伙策略层单元测试（≥15 用例）。
 
 验证**机制正确性**（接口合法/确定性/观测语义/梯度数学/训练闭环/
-规则等价性），不声称"学出更聪明行为"——那由 experiments/run_p1_baseline.py
+规则等价性），不声称"学出更聪明行为"——那由实验协议（P5/P6 重建后）
 的配对对照实验回答。
 
 运行::
@@ -18,13 +18,6 @@ import unittest
 from pathlib import Path
 
 import numpy as np
-
-try:
-    from tests._env_compat import patch_tempdir
-except ImportError:
-    from _env_compat import patch_tempdir
-
-patch_tempdir()
 
 from newworld.map_engine import MapConfig, MapEngine  # noqa: E402
 from newworld.swarm import Swarm, SwarmConfig  # noqa: E402

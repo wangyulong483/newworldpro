@@ -1,0 +1,1122 @@
+{
+  "name": "p3_social",
+  "protocol": "social_ablation",
+  "experiment": {
+    "seeds": [
+      700,
+      701,
+      702,
+      703,
+      704,
+      705
+    ],
+    "eval_seconds": 90.0,
+    "food_regrow_per_s": 0.0005,
+    "initial_population": 120,
+    "policy": "rule",
+    "initial_skill_rate": 0.08
+  },
+  "configs": {
+    "off_all": {
+      "enable_barter": false,
+      "enable_teaching": false,
+      "enable_inheritance": false
+    },
+    "barter_only": {
+      "enable_barter": true,
+      "enable_teaching": false,
+      "enable_inheritance": false
+    },
+    "teach_only": {
+      "enable_barter": false,
+      "enable_teaching": true,
+      "enable_inheritance": false
+    },
+    "inherit_only": {
+      "enable_barter": false,
+      "enable_teaching": false,
+      "enable_inheritance": true
+    },
+    "all_on": {
+      "enable_barter": true,
+      "enable_teaching": true,
+      "enable_inheritance": true
+    }
+  },
+  "per_config": {
+    "off_all": {
+      "population": {
+        "mean": 202.66666666666666,
+        "std": 40.23956041288501,
+        "n": 6.0
+      },
+      "births": {
+        "mean": 82.83333333333333,
+        "std": 40.28819788584355,
+        "n": 6.0
+      },
+      "deaths": {
+        "mean": 0.16666666666666666,
+        "std": 0.372677996249965,
+        "n": 6.0
+      },
+      "starvation_deaths": {
+        "mean": 0.0,
+        "std": 0.0,
+        "n": 6.0
+      },
+      "old_age_deaths": {
+        "mean": 0.16666666666666666,
+        "std": 0.372677996249965,
+        "n": 6.0
+      },
+      "eat_events": {
+        "mean": 10727.833333333334,
+        "std": 1888.8357451674358,
+        "n": 6.0
+      },
+      "eat_rate": {
+        "mean": 0.9933179012345678,
+        "std": 0.17489219862661443,
+        "n": 6.0
+      },
+      "mean_life": {
+        "mean": 82.88623174031575,
+        "std": 5.092482190708158,
+        "n": 6.0
+      },
+      "satiation_mean": {
+        "mean": 0.97505,
+        "std": 0.0014150971698084825,
+        "n": 6.0
+      },
+      "satiation_std": {
+        "mean": 0.021233333333333337,
+        "std": 0.0069822791567096636,
+        "n": 6.0
+      },
+      "gini_hunger": {
+        "mean": 0.009866666666666668,
+        "std": 0.0010159833769418777,
+        "n": 6.0
+      },
+      "total_reward": {
+        "mean": 1067.9856666666667,
+        "std": 198.19428113147518,
+        "n": 6.0
+      },
+      "survived_90s": {
+        "mean": 1.0,
+        "std": 0.0,
+        "n": 6.0
+      },
+      "carrying_capacity_estimate": {
+        "mean": 199.66666666666666,
+        "std": 46.52836649710463,
+        "n": 6.0
+      },
+      "barter_events": {
+        "mean": 0.0,
+        "std": 0.0,
+        "n": 6.0
+      },
+      "barter_transfer_total": {
+        "mean": 0.0,
+        "std": 0.0,
+        "n": 6.0
+      },
+      "teach_events": {
+        "mean": 0.0,
+        "std": 0.0,
+        "n": 6.0
+      },
+      "inherit_events": {
+        "mean": 0.0,
+        "std": 0.0,
+        "n": 6.0
+      },
+      "knowledge_lost": {
+        "mean": 0.0,
+        "std": 0.0,
+        "n": 6.0
+      },
+      "skilled_population": {
+        "mean": 9.666666666666666,
+        "std": 3.636237371545238,
+        "n": 6.0
+      }
+    },
+    "barter_only": {
+      "population": {
+        "mean": 202.5,
+        "std": 40.24818836502665,
+        "n": 6.0
+      },
+      "births": {
+        "mean": 82.66666666666667,
+        "std": 40.297504747675,
+        "n": 6.0
+      },
+      "deaths": {
+        "mean": 0.16666666666666666,
+        "std": 0.372677996249965,
+        "n": 6.0
+      },
+      "starvation_deaths": {
+        "mean": 0.0,
+        "std": 0.0,
+        "n": 6.0
+      },
+      "old_age_deaths": {
+        "mean": 0.16666666666666666,
+        "std": 0.372677996249965,
+        "n": 6.0
+      },
+      "eat_events": {
+        "mean": 10717.5,
+        "std": 1891.453475505015,
+        "n": 6.0
+      },
+      "eat_rate": {
+        "mean": 0.9923611111111109,
+        "std": 0.17513458106527915,
+        "n": 6.0
+      },
+      "mean_life": {
+        "mean": 82.97483189900716,
+        "std": 5.043815226836543,
+        "n": 6.0
+      },
+      "satiation_mean": {
+        "mean": 0.9747333333333333,
+        "std": 0.001699673171197608,
+        "n": 6.0
+      },
+      "satiation_std": {
+        "mean": 0.022683333333333333,
+        "std": 0.009164499743878852,
+        "n": 6.0
+      },
+      "gini_hunger": {
+        "mean": 0.010133333333333333,
+        "std": 0.0013707256796634724,
+        "n": 6.0
+      },
+      "total_reward": {
+        "mean": 1069.2965,
+        "std": 197.96882756867726,
+        "n": 6.0
+      },
+      "survived_90s": {
+        "mean": 1.0,
+        "std": 0.0,
+        "n": 6.0
+      },
+      "carrying_capacity_estimate": {
+        "mean": 199.66666666666666,
+        "std": 46.52836649710463,
+        "n": 6.0
+      },
+      "barter_events": {
+        "mean": 1.1666666666666667,
+        "std": 1.2133516482134197,
+        "n": 6.0
+      },
+      "barter_transfer_total": {
+        "mean": 0.17499999999999996,
+        "std": 0.18200274723201293,
+        "n": 6.0
+      },
+      "teach_events": {
+        "mean": 0.0,
+        "std": 0.0,
+        "n": 6.0
+      },
+      "inherit_events": {
+        "mean": 0.0,
+        "std": 0.0,
+        "n": 6.0
+      },
+      "knowledge_lost": {
+        "mean": 0.0,
+        "std": 0.0,
+        "n": 6.0
+      },
+      "skilled_population": {
+        "mean": 9.666666666666666,
+        "std": 3.636237371545238,
+        "n": 6.0
+      }
+    },
+    "teach_only": {
+      "population": {
+        "mean": 203.0,
+        "std": 40.75945698035406,
+        "n": 6.0
+      },
+      "births": {
+        "mean": 83.33333333333333,
+        "std": 40.7989651284877,
+        "n": 6.0
+      },
+      "deaths": {
+        "mean": 0.3333333333333333,
+        "std": 0.4714045207910317,
+        "n": 6.0
+      },
+      "starvation_deaths": {
+        "mean": 0.0,
+        "std": 0.0,
+        "n": 6.0
+      },
+      "old_age_deaths": {
+        "mean": 0.3333333333333333,
+        "std": 0.4714045207910317,
+        "n": 6.0
+      },
+      "eat_events": {
+        "mean": 10695.666666666666,
+        "std": 1867.6934675928192,
+        "n": 6.0
+      },
+      "eat_rate": {
+        "mean": 0.9903395061728394,
+        "std": 0.17293458033266842,
+        "n": 6.0
+      },
+      "mean_life": {
+        "mean": 84.45055135091145,
+        "std": 5.626486495642851,
+        "n": 6.0
+      },
+      "satiation_mean": {
+        "mean": 0.9730500000000001,
+        "std": 0.0018136059844041997,
+        "n": 6.0
+      },
+      "satiation_std": {
+        "mean": 0.031133333333333336,
+        "std": 0.017832710269489484,
+        "n": 6.0
+      },
+      "gini_hunger": {
+        "mean": 0.011316666666666668,
+        "std": 0.0026479027340310093,
+        "n": 6.0
+      },
+      "total_reward": {
+        "mean": 1062.7315,
+        "std": 195.4578869925267,
+        "n": 6.0
+      },
+      "survived_90s": {
+        "mean": 1.0,
+        "std": 0.0,
+        "n": 6.0
+      },
+      "carrying_capacity_estimate": {
+        "mean": 199.5,
+        "std": 46.43902812649435,
+        "n": 6.0
+      },
+      "barter_events": {
+        "mean": 0.0,
+        "std": 0.0,
+        "n": 6.0
+      },
+      "barter_transfer_total": {
+        "mean": 0.0,
+        "std": 0.0,
+        "n": 6.0
+      },
+      "teach_events": {
+        "mean": 9.833333333333334,
+        "std": 8.896004096721677,
+        "n": 6.0
+      },
+      "inherit_events": {
+        "mean": 0.0,
+        "std": 0.0,
+        "n": 6.0
+      },
+      "knowledge_lost": {
+        "mean": 0.0,
+        "std": 0.0,
+        "n": 6.0
+      },
+      "skilled_population": {
+        "mean": 19.5,
+        "std": 11.98262631201246,
+        "n": 6.0
+      }
+    },
+    "inherit_only": {
+      "population": {
+        "mean": 202.66666666666666,
+        "std": 40.23956041288501,
+        "n": 6.0
+      },
+      "births": {
+        "mean": 82.83333333333333,
+        "std": 40.28819788584355,
+        "n": 6.0
+      },
+      "deaths": {
+        "mean": 0.16666666666666666,
+        "std": 0.372677996249965,
+        "n": 6.0
+      },
+      "starvation_deaths": {
+        "mean": 0.0,
+        "std": 0.0,
+        "n": 6.0
+      },
+      "old_age_deaths": {
+        "mean": 0.16666666666666666,
+        "std": 0.372677996249965,
+        "n": 6.0
+      },
+      "eat_events": {
+        "mean": 10727.833333333334,
+        "std": 1888.8357451674358,
+        "n": 6.0
+      },
+      "eat_rate": {
+        "mean": 0.9933179012345678,
+        "std": 0.17489219862661443,
+        "n": 6.0
+      },
+      "mean_life": {
+        "mean": 82.88623174031575,
+        "std": 5.092482190708158,
+        "n": 6.0
+      },
+      "satiation_mean": {
+        "mean": 0.97505,
+        "std": 0.0014150971698084825,
+        "n": 6.0
+      },
+      "satiation_std": {
+        "mean": 0.021233333333333337,
+        "std": 0.0069822791567096636,
+        "n": 6.0
+      },
+      "gini_hunger": {
+        "mean": 0.009866666666666668,
+        "std": 0.0010159833769418777,
+        "n": 6.0
+      },
+      "total_reward": {
+        "mean": 1067.9856666666667,
+        "std": 198.19428113147518,
+        "n": 6.0
+      },
+      "survived_90s": {
+        "mean": 1.0,
+        "std": 0.0,
+        "n": 6.0
+      },
+      "carrying_capacity_estimate": {
+        "mean": 199.66666666666666,
+        "std": 46.52836649710463,
+        "n": 6.0
+      },
+      "barter_events": {
+        "mean": 0.0,
+        "std": 0.0,
+        "n": 6.0
+      },
+      "barter_transfer_total": {
+        "mean": 0.0,
+        "std": 0.0,
+        "n": 6.0
+      },
+      "teach_events": {
+        "mean": 0.0,
+        "std": 0.0,
+        "n": 6.0
+      },
+      "inherit_events": {
+        "mean": 0.16666666666666666,
+        "std": 0.372677996249965,
+        "n": 6.0
+      },
+      "knowledge_lost": {
+        "mean": 0.0,
+        "std": 0.0,
+        "n": 6.0
+      },
+      "skilled_population": {
+        "mean": 9.5,
+        "std": 3.593976442141304,
+        "n": 6.0
+      }
+    },
+    "all_on": {
+      "population": {
+        "mean": 203.33333333333334,
+        "std": 40.72536746986521,
+        "n": 6.0
+      },
+      "births": {
+        "mean": 83.33333333333333,
+        "std": 40.72536746986521,
+        "n": 6.0
+      },
+      "deaths": {
+        "mean": 0.0,
+        "std": 0.0,
+        "n": 6.0
+      },
+      "starvation_deaths": {
+        "mean": 0.0,
+        "std": 0.0,
+        "n": 6.0
+      },
+      "old_age_deaths": {
+        "mean": 0.0,
+        "std": 0.0,
+        "n": 6.0
+      },
+      "eat_events": {
+        "mean": 10712.666666666666,
+        "std": 1881.0438296033637,
+        "n": 6.0
+      },
+      "eat_rate": {
+        "mean": 0.9919135802469138,
+        "std": 0.17417072496327443,
+        "n": 6.0
+      },
+      "mean_life": {
+        "mean": 81.06057739257812,
+        "std": 4.1310268491822155,
+        "n": 6.0
+      },
+      "satiation_mean": {
+        "mean": 0.9738666666666665,
+        "std": 0.0029724662412810394,
+        "n": 6.0
+      },
+      "satiation_std": {
+        "mean": 0.0241,
+        "std": 0.017273486426698386,
+        "n": 6.0
+      },
+      "gini_hunger": {
+        "mean": 0.010616666666666668,
+        "std": 0.0030002314725515577,
+        "n": 6.0
+      },
+      "total_reward": {
+        "mean": 1063.4586666666667,
+        "std": 197.15687359449473,
+        "n": 6.0
+      },
+      "survived_90s": {
+        "mean": 1.0,
+        "std": 0.0,
+        "n": 6.0
+      },
+      "carrying_capacity_estimate": {
+        "mean": 199.66666666666666,
+        "std": 46.59279868057819,
+        "n": 6.0
+      },
+      "barter_events": {
+        "mean": 0.3333333333333333,
+        "std": 0.74535599249993,
+        "n": 6.0
+      },
+      "barter_transfer_total": {
+        "mean": 0.049999999999999996,
+        "std": 0.11180339887498948,
+        "n": 6.0
+      },
+      "teach_events": {
+        "mean": 10.0,
+        "std": 6.3508529610858835,
+        "n": 6.0
+      },
+      "inherit_events": {
+        "mean": 0.0,
+        "std": 0.0,
+        "n": 6.0
+      },
+      "knowledge_lost": {
+        "mean": 0.0,
+        "std": 0.0,
+        "n": 6.0
+      },
+      "skilled_population": {
+        "mean": 19.666666666666668,
+        "std": 9.637888196533973,
+        "n": 6.0
+      }
+    }
+  },
+  "paired_vs_control": {
+    "barter_only": {
+      "population": {
+        "metric": "population",
+        "n": 6.0,
+        "mean_delta": -0.16666666666666666,
+        "std_delta": 0.372677996249965,
+        "wins": 0.0,
+        "losses": 1.0,
+        "ties": 5.0,
+        "relative": -0.0008223684210526275
+      },
+      "eat_events": {
+        "metric": "eat_events",
+        "n": 6.0,
+        "mean_delta": -10.333333333333334,
+        "std_delta": 25.882211823738885,
+        "wins": 1.0,
+        "losses": 1.0,
+        "ties": 4.0,
+        "relative": -0.0009632264980502429
+      },
+      "eat_rate": {
+        "metric": "eat_rate",
+        "n": 6.0,
+        "mean_delta": -0.0009567901234568225,
+        "std_delta": 0.002396501094790645,
+        "wins": 1.0,
+        "losses": 1.0,
+        "ties": 4.0,
+        "relative": -0.0009632264980493062
+      },
+      "mean_life": {
+        "metric": "mean_life",
+        "n": 6.0,
+        "mean_delta": 0.08860015869140625,
+        "std_delta": 0.14215326109293672,
+        "wins": 2.0,
+        "losses": 0.0,
+        "ties": 4.0,
+        "relative": 0.0010689369854451978
+      },
+      "satiation_mean": {
+        "metric": "satiation_mean",
+        "n": 6.0,
+        "mean_delta": -0.0003166666666666688,
+        "std_delta": 0.0005367080729368361,
+        "wins": 1.0,
+        "losses": 2.0,
+        "ties": 3.0,
+        "relative": -0.00032476966993112564
+      },
+      "satiation_std": {
+        "metric": "satiation_std",
+        "n": 6.0,
+        "mean_delta": 0.00145,
+        "std_delta": 0.012552788534823646,
+        "wins": 1.0,
+        "losses": 1.0,
+        "ties": 4.0,
+        "relative": 0.06828885399992358
+      },
+      "gini_hunger": {
+        "metric": "gini_hunger",
+        "n": 6.0,
+        "mean_delta": 0.0002666666666666668,
+        "std_delta": 0.0013249737942901197,
+        "wins": 1.0,
+        "losses": 1.0,
+        "ties": 4.0,
+        "relative": 0.02702702702428781
+      },
+      "skilled_population": {
+        "metric": "skilled_population",
+        "n": 6.0,
+        "mean_delta": 0.0,
+        "std_delta": 0.0,
+        "wins": 0.0,
+        "losses": 0.0,
+        "ties": 6.0,
+        "relative": 0.0
+      },
+      "barter_events": {
+        "metric": "barter_events",
+        "n": 6.0,
+        "mean_delta": 1.1666666666666667,
+        "std_delta": 1.2133516482134197,
+        "wins": 3.0,
+        "losses": 0.0,
+        "ties": 3.0,
+        "relative": 1166666666666.6667
+      },
+      "teach_events": {
+        "metric": "teach_events",
+        "n": 6.0,
+        "mean_delta": 0.0,
+        "std_delta": 0.0,
+        "wins": 0.0,
+        "losses": 0.0,
+        "ties": 6.0,
+        "relative": 0.0
+      },
+      "inherit_events": {
+        "metric": "inherit_events",
+        "n": 6.0,
+        "mean_delta": 0.0,
+        "std_delta": 0.0,
+        "wins": 0.0,
+        "losses": 0.0,
+        "ties": 6.0,
+        "relative": 0.0
+      },
+      "knowledge_lost": {
+        "metric": "knowledge_lost",
+        "n": 6.0,
+        "mean_delta": 0.0,
+        "std_delta": 0.0,
+        "wins": 0.0,
+        "losses": 0.0,
+        "ties": 6.0,
+        "relative": 0.0
+      }
+    },
+    "teach_only": {
+      "population": {
+        "metric": "population",
+        "n": 6.0,
+        "mean_delta": 0.3333333333333333,
+        "std_delta": 1.3743685418725535,
+        "wins": 2.0,
+        "losses": 1.0,
+        "ties": 3.0,
+        "relative": 0.001644736842105255
+      },
+      "eat_events": {
+        "metric": "eat_events",
+        "n": 6.0,
+        "mean_delta": -32.166666666666664,
+        "std_delta": 51.105827021539874,
+        "wins": 2.0,
+        "losses": 3.0,
+        "ties": 1.0,
+        "relative": -0.002998430872962853
+      },
+      "eat_rate": {
+        "metric": "eat_rate",
+        "n": 6.0,
+        "mean_delta": -0.0029783950617284414,
+        "std_delta": 0.0047320210205129025,
+        "wins": 2.0,
+        "losses": 3.0,
+        "ties": 1.0,
+        "relative": -0.002998430872959882
+      },
+      "mean_life": {
+        "metric": "mean_life",
+        "n": 6.0,
+        "mean_delta": 1.5643196105957031,
+        "std_delta": 3.771565500025122,
+        "wins": 2.0,
+        "losses": 1.0,
+        "ties": 3.0,
+        "relative": 0.018873093609765364
+      },
+      "satiation_mean": {
+        "metric": "satiation_mean",
+        "n": 6.0,
+        "mean_delta": -0.0020000000000000018,
+        "std_delta": 0.002015771151032137,
+        "wins": 1.0,
+        "losses": 4.0,
+        "ties": 1.0,
+        "relative": -0.0020511768627228867
+      },
+      "satiation_std": {
+        "metric": "satiation_std",
+        "n": 6.0,
+        "mean_delta": 0.009899999999999999,
+        "std_delta": 0.019511193368594002,
+        "wins": 4.0,
+        "losses": 1.0,
+        "ties": 1.0,
+        "relative": 0.4662480376546507
+      },
+      "gini_hunger": {
+        "metric": "gini_hunger",
+        "n": 6.0,
+        "mean_delta": 0.0014500000000000001,
+        "std_delta": 0.0027633011658763033,
+        "wins": 4.0,
+        "losses": 1.0,
+        "ties": 1.0,
+        "relative": 0.1469594594445649
+      },
+      "skilled_population": {
+        "metric": "skilled_population",
+        "n": 6.0,
+        "mean_delta": 9.833333333333334,
+        "std_delta": 8.896004096721677,
+        "wins": 6.0,
+        "losses": 0.0,
+        "ties": 0.0,
+        "relative": 1.0172413793102397
+      },
+      "barter_events": {
+        "metric": "barter_events",
+        "n": 6.0,
+        "mean_delta": 0.0,
+        "std_delta": 0.0,
+        "wins": 0.0,
+        "losses": 0.0,
+        "ties": 6.0,
+        "relative": 0.0
+      },
+      "teach_events": {
+        "metric": "teach_events",
+        "n": 6.0,
+        "mean_delta": 9.833333333333334,
+        "std_delta": 8.896004096721677,
+        "wins": 6.0,
+        "losses": 0.0,
+        "ties": 0.0,
+        "relative": 9833333333333.334
+      },
+      "inherit_events": {
+        "metric": "inherit_events",
+        "n": 6.0,
+        "mean_delta": 0.0,
+        "std_delta": 0.0,
+        "wins": 0.0,
+        "losses": 0.0,
+        "ties": 6.0,
+        "relative": 0.0
+      },
+      "knowledge_lost": {
+        "metric": "knowledge_lost",
+        "n": 6.0,
+        "mean_delta": 0.0,
+        "std_delta": 0.0,
+        "wins": 0.0,
+        "losses": 0.0,
+        "ties": 6.0,
+        "relative": 0.0
+      }
+    },
+    "inherit_only": {
+      "population": {
+        "metric": "population",
+        "n": 6.0,
+        "mean_delta": 0.0,
+        "std_delta": 0.0,
+        "wins": 0.0,
+        "losses": 0.0,
+        "ties": 6.0,
+        "relative": 0.0
+      },
+      "eat_events": {
+        "metric": "eat_events",
+        "n": 6.0,
+        "mean_delta": 0.0,
+        "std_delta": 0.0,
+        "wins": 0.0,
+        "losses": 0.0,
+        "ties": 6.0,
+        "relative": 0.0
+      },
+      "eat_rate": {
+        "metric": "eat_rate",
+        "n": 6.0,
+        "mean_delta": 0.0,
+        "std_delta": 0.0,
+        "wins": 0.0,
+        "losses": 0.0,
+        "ties": 6.0,
+        "relative": 0.0
+      },
+      "mean_life": {
+        "metric": "mean_life",
+        "n": 6.0,
+        "mean_delta": 0.0,
+        "std_delta": 0.0,
+        "wins": 0.0,
+        "losses": 0.0,
+        "ties": 6.0,
+        "relative": 0.0
+      },
+      "satiation_mean": {
+        "metric": "satiation_mean",
+        "n": 6.0,
+        "mean_delta": 0.0,
+        "std_delta": 0.0,
+        "wins": 0.0,
+        "losses": 0.0,
+        "ties": 6.0,
+        "relative": 0.0
+      },
+      "satiation_std": {
+        "metric": "satiation_std",
+        "n": 6.0,
+        "mean_delta": 0.0,
+        "std_delta": 0.0,
+        "wins": 0.0,
+        "losses": 0.0,
+        "ties": 6.0,
+        "relative": 0.0
+      },
+      "gini_hunger": {
+        "metric": "gini_hunger",
+        "n": 6.0,
+        "mean_delta": 0.0,
+        "std_delta": 0.0,
+        "wins": 0.0,
+        "losses": 0.0,
+        "ties": 6.0,
+        "relative": 0.0
+      },
+      "skilled_population": {
+        "metric": "skilled_population",
+        "n": 6.0,
+        "mean_delta": -0.16666666666666666,
+        "std_delta": 0.372677996249965,
+        "wins": 0.0,
+        "losses": 1.0,
+        "ties": 5.0,
+        "relative": -0.017241379310343044
+      },
+      "barter_events": {
+        "metric": "barter_events",
+        "n": 6.0,
+        "mean_delta": 0.0,
+        "std_delta": 0.0,
+        "wins": 0.0,
+        "losses": 0.0,
+        "ties": 6.0,
+        "relative": 0.0
+      },
+      "teach_events": {
+        "metric": "teach_events",
+        "n": 6.0,
+        "mean_delta": 0.0,
+        "std_delta": 0.0,
+        "wins": 0.0,
+        "losses": 0.0,
+        "ties": 6.0,
+        "relative": 0.0
+      },
+      "inherit_events": {
+        "metric": "inherit_events",
+        "n": 6.0,
+        "mean_delta": 0.16666666666666666,
+        "std_delta": 0.372677996249965,
+        "wins": 1.0,
+        "losses": 0.0,
+        "ties": 5.0,
+        "relative": 166666666666.66666
+      },
+      "knowledge_lost": {
+        "metric": "knowledge_lost",
+        "n": 6.0,
+        "mean_delta": 0.0,
+        "std_delta": 0.0,
+        "wins": 0.0,
+        "losses": 0.0,
+        "ties": 6.0,
+        "relative": 0.0
+      }
+    },
+    "all_on": {
+      "population": {
+        "metric": "population",
+        "n": 6.0,
+        "mean_delta": 0.6666666666666666,
+        "std_delta": 1.1055415967851334,
+        "wins": 3.0,
+        "losses": 1.0,
+        "ties": 2.0,
+        "relative": 0.00328947368421051
+      },
+      "eat_events": {
+        "metric": "eat_events",
+        "n": 6.0,
+        "mean_delta": -15.166666666666666,
+        "std_delta": 87.90793795531525,
+        "wins": 3.0,
+        "losses": 3.0,
+        "ties": 0.0,
+        "relative": -0.0014137679245576145
+      },
+      "eat_rate": {
+        "metric": "eat_rate",
+        "n": 6.0,
+        "mean_delta": -0.0014043209876543246,
+        "std_delta": 0.008139623884751352,
+        "wins": 3.0,
+        "losses": 3.0,
+        "ties": 0.0,
+        "relative": -0.0014137679245561955
+      },
+      "mean_life": {
+        "metric": "mean_life",
+        "n": 6.0,
+        "mean_delta": -1.8256543477376301,
+        "std_delta": 3.761477189493793,
+        "wins": 1.0,
+        "losses": 4.0,
+        "ties": 1.0,
+        "relative": -0.022026026631991432
+      },
+      "satiation_mean": {
+        "metric": "satiation_mean",
+        "n": 6.0,
+        "mean_delta": -0.0011833333333333511,
+        "std_delta": 0.0026497903481009413,
+        "wins": 3.0,
+        "losses": 3.0,
+        "ties": 0.0,
+        "relative": -0.0012136129771110585
+      },
+      "satiation_std": {
+        "metric": "satiation_std",
+        "n": 6.0,
+        "mean_delta": 0.0028666666666666667,
+        "std_delta": 0.02086062212772082,
+        "wins": 2.0,
+        "losses": 3.0,
+        "ties": 1.0,
+        "relative": 0.13500784928720527
+      },
+      "gini_hunger": {
+        "metric": "gini_hunger",
+        "n": 6.0,
+        "mean_delta": 0.0007500000000000001,
+        "std_delta": 0.003433535592747899,
+        "wins": 2.0,
+        "losses": 3.0,
+        "ties": 1.0,
+        "relative": 0.07601351350580944
+      },
+      "skilled_population": {
+        "metric": "skilled_population",
+        "n": 6.0,
+        "mean_delta": 10.0,
+        "std_delta": 6.3508529610858835,
+        "wins": 6.0,
+        "losses": 0.0,
+        "ties": 0.0,
+        "relative": 1.0344827586205827
+      },
+      "barter_events": {
+        "metric": "barter_events",
+        "n": 6.0,
+        "mean_delta": 0.3333333333333333,
+        "std_delta": 0.74535599249993,
+        "wins": 1.0,
+        "losses": 0.0,
+        "ties": 5.0,
+        "relative": 333333333333.3333
+      },
+      "teach_events": {
+        "metric": "teach_events",
+        "n": 6.0,
+        "mean_delta": 10.0,
+        "std_delta": 6.3508529610858835,
+        "wins": 6.0,
+        "losses": 0.0,
+        "ties": 0.0,
+        "relative": 10000000000000.0
+      },
+      "inherit_events": {
+        "metric": "inherit_events",
+        "n": 6.0,
+        "mean_delta": 0.0,
+        "std_delta": 0.0,
+        "wins": 0.0,
+        "losses": 0.0,
+        "ties": 6.0,
+        "relative": 0.0
+      },
+      "knowledge_lost": {
+        "metric": "knowledge_lost",
+        "n": 6.0,
+        "mean_delta": 0.0,
+        "std_delta": 0.0,
+        "wins": 0.0,
+        "losses": 0.0,
+        "ties": 6.0,
+        "relative": 0.0
+      }
+    }
+  },
+  "validity": {
+    "barter": {
+      "counter": "barter_events",
+      "on_config": "barter_only",
+      "on_total": 7.0,
+      "off_all_total": 0.0,
+      "active": true,
+      "evidence": "sufficient",
+      "enough_events": true
+    },
+    "teaching": {
+      "counter": "teach_events",
+      "on_config": "teach_only",
+      "on_total": 59.0,
+      "off_all_total": 0.0,
+      "active": true,
+      "evidence": "sufficient",
+      "enough_events": true
+    },
+    "inheritance": {
+      "counter": "inherit_events",
+      "on_config": "inherit_only",
+      "on_total": 1.0,
+      "off_all_total": 0.0,
+      "active": true,
+      "evidence": "insufficient",
+      "enough_events": false
+    }
+  },
+  "hypotheses": {
+    "H-barter（交换降低饱足分化）": {
+      "metric": "satiation_std",
+      "delta_barter_only_vs_off_all": 0.00145,
+      "expected_sign": "<0",
+      "direction_consistent": false,
+      "note": "仅方向性证据；n 小，不宣称已确立效应"
+    },
+    "H-teach（教学提升技能人口 → 觅食效率）": {
+      "skilled_population_delta": 9.833333333333334,
+      "eat_rate_delta": -0.0029783950617284414,
+      "expected_sign": ">0",
+      "direction_consistent": false,
+      "note": "仅方向性证据；n 小，不宣称已确立效应"
+    },
+    "H-inherit（继承降低知识失传）": {
+      "metric": "knowledge_lost",
+      "delta_inherit_only_vs_off_all": 0.0,
+      "expected_sign": "<0",
+      "direction_consistent": false,
+      "note": "继承实现是行索引统计近似（见 caveats），只作机制活性证据"
+    }
+  },
+  "honest_reading": {
+    "insufficient_evidence": [
+      "inheritance"
+    ],
+    "max_abs_paired_deltas": {
+      "population": 0.6666666666666666,
+      "satiation_mean": 0.0020000000000000018,
+      "gini_hunger": 0.0014500000000000001
+    },
+    "statement": "机制活性（必要条件）：barter=激活(barter_events: on=7, off=0) teaching=激活(teach_events: on=59, off=0) inheritance=激活(inherit_events: on=1, off=0)。配对效果量：barter_only: pop Δ=-0.2, eat Δ=-10, satiation Δ=-0.0003, gini Δ=+0.0003；teach_only: pop Δ=+0.3, eat Δ=-32, satiation Δ=-0.0020, gini Δ=+0.0015；inherit_only: pop Δ=+0.0, eat Δ=+0, satiation Δ=+0.0000, gini Δ=+0.0000；all_on: pop Δ=+0.7, eat Δ=-15, satiation Δ=-0.0012, gini Δ=+0.0008。 最大配对差量级：population=0.67、satiation=0.0020、gini=0.0015。 判读：三条机制在开启组都产生了事件且 off_all 恒为 0，机制接线成立；但宏观指标配对差都在噪声量级，本 n 下不能声称任一机制产生了可测的宏观效应。 继承 的事件总数 < 5，证据强度不足，只能算接通过、不能算已验证。 off_all 仍注入初始技能，故教学/继承检验的是传播通道。"
+  },
+  "verdict": "机制活性（预注册必要条件）：barter=激活(barter_events: on=7, off=0) teaching=激活(teach_events: on=59, off=0) inheritance=激活(inherit_events: on=1, off=0)。 效果量（配对 vs off_all，n=6，只报方向/均值，不做显著性检验）：barter_only: pop Δ=-0.2, eat Δ=-10, satiation Δ=-0.0003, gini Δ=+0.0003；teach_only: pop Δ=+0.3, eat Δ=-32, satiation Δ=-0.0020, gini Δ=+0.0015；inherit_only: pop Δ=+0.0, eat Δ=+0, satiation Δ=+0.0000, gini Δ=+0.0000；all_on: pop Δ=+0.7, eat Δ=-15, satiation Δ=-0.0012, gini Δ=+0.0008。 诚实判读：接线成立；宏观效应均在噪声量级（population Δ<=0.67、satiation Δ<=0.0020）；继承事件过少证据不足。",
+  "caveats": [
+    "机制活性判据是必要条件而非充分条件：计数器 >0 只证明机制在运行，宏观指标差异仍需配对比较；n 个配对 seed 很小，不宣称显著性。",
+    "off_all 对照仍按 initial_skill_rate=0.08 注入初始技能（技能效果真实存在），关闭的只是交换/教学/继承三条传播通道——与旧 P3 设计一致；因此 H-teach/H-inherit 不能解释为'技能从无到有'的效应。",
+    "SocialLayer 的继承是行索引统计近似（base 模块注释已声明：swarm.update 内部先 _compact 再回调社会层）。本协议在每帧压实后按 compact_keep 重排技能行，让技能效果跟随正确个体；但'死者→继承人'配对本身仍是近似，inherit_events/knowledge_lost 只作机制活性证据。",
+    "satiation_mean/std、gini_hunger、population 是评估窗口末快照，受人口规模与时间影响；只在同 seed 配对的五配置间比较。",
+    "评估时长 90s，世界再生速率 0.0005（P1.7 稀缺环境）；规则策略每 seed 以 seed 重建（同 seed 可复现）。"
+  ],
+  "wall_s": 87.7,
+  "_artifact_dir": "C:\\Users\\27826\\Desktop\\vscode_win_ws\\ds_ws\\newworld\\newworldpro\\experiments\\results\\p3_social",
+  "config_hash": "a831f48e3041b11106be4413b17679b066cf1570d20419d7861fe027a5b0fbdc"
+}

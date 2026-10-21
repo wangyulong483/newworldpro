@@ -1,11 +1,13 @@
-"""俯视地图世界（V3）单元测试：map_engine / swarm / catastrophes。
+"""俯视地图世界（V3）单元测试：map_engine / swarm / 清理契约。
 
 测试哲学与本仓库一致：只断言**世界规则的机制正确性**（确定性、
-守恒、灾害真实作用），不断言"文明兴盛"之类的结果。
+守恒、地形变化来源）与**清理契约**（旧世界/上帝之手接口确实不存在），
+不断言"文明兴盛"之类的结果。
 """
 
 from __future__ import annotations
 
+import importlib.util
 import unittest
 
 import numpy as np
@@ -16,11 +18,9 @@ from newworld.map_engine import (
     GRASS,
     MapConfig,
     MapEngine,
-    SHALLOW_WATER,
     TERRAIN_INFO,
 )
 from newworld.swarm import Swarm, SwarmConfig
-from newworld.catastrophes import Catastrophes
 
 
 def make_engine(seed: int = 0, width: int = 128, height: int = 80) -> MapEngine:
@@ -30,7 +30,7 @@ def make_engine(seed: int = 0, width: int = 128, height: int = 80) -> MapEngine:
 
 # ---------------------------------------------------------------------------
 class MapEngineTest(unittest.TestCase):
-    """地形生成 / 查询 / 再生 / 燃烧。"""
+    """地形生成 / 查询 / 再生。"""
 
     def test_generation_is_deterministic(self) -> None:
         """同 seed 两张地图逐 cell 一致。"""
@@ -65,32 +65,6 @@ class MapEngineTest(unittest.TestCase):
             engine.update(0.05, 1.0)
         self.assertGreater(engine.food_capacity(), before)
 
-    def test_fire_ignites_spreads_and_burns_out(self) -> None:
-        """点燃森林 → 燃烧数 > 0 → 充分长时间后自然熄灭。"""
-        engine = make_engine(seed=4)
-        ys, xs = np.nonzero(engine.terrain == FOREST)
-        if not ys.size:  # pragma: no cover - 小图无森林时跳过
-            self.skipTest("no forest on this small map")
-        y, x = int(ys[0]), int(xs[0])
-        self.assertTrue(engine.ignite(x, y))
-        self.assertTrue(engine.burning[y, x])
-        burned_before = engine.cells_burned
-        saw_burning = int(engine.burning.sum()) > 0
-        for _ in range(4000):  # 200 秒（火灾可能大面积蔓延，给足时间）
-            engine.update(0.05, 1.0)
-            saw_burning = saw_burning or int(engine.burning.sum()) > 0
-        self.assertTrue(saw_burning)
-        self.assertGreater(engine.cells_burned, burned_before)
-        self.assertEqual(int(engine.burning.sum()), 0)
-
-    def test_set_terrain_marks_dirty(self) -> None:
-        """set_terrain 登记脏区且更新地形。"""
-        engine = make_engine(seed=5)
-        engine.set_terrain(10, 10, SHALLOW_WATER)
-        self.assertEqual(engine.terrain[10, 10], SHALLOW_WATER)
-        self.assertIn((10, 10), engine.dirty_terrain)
-        self.assertGreater(engine.terraformed, 0)
-
     def test_water_is_not_walkable(self) -> None:
         """水域不可行走。"""
         engine = make_engine(seed=6)
@@ -99,6 +73,41 @@ class MapEngineTest(unittest.TestCase):
         self.assertFalse(engine.is_walkable(int(xs[0]), int(ys[0])))
         walkable = engine.walkable_mask()
         self.assertEqual(int(walkable.sum()), engine.land_cells())
+
+
+# ---------------------------------------------------------------------------
+class WorldIsReadOnlyTest(unittest.TestCase):
+    """清理契约：地图没有上帝之手入口，地形只由森林蔓延自发变化。"""
+
+    def test_no_god_hand_api(self) -> None:
+        """旧版灾害/上帝之手接口必须不存在。"""
+        engine = make_engine(seed=30)
+        for name in ("ignite", "set_terrain", "burning", "burn_left",
+                     "cells_burned", "terraformed"):
+            self.assertFalse(hasattr(engine, name),
+                             f"MapEngine 仍有上帝之手接口: {name}")
+
+    def test_terrain_changes_only_via_forest_spread(self) -> None:
+        """长时间推进后，地形变化只可能是 草地→森林（森林蔓延）。"""
+        engine = MapEngine(MapConfig(seed=31, width=96, height=64,
+                                     noise_scale=24, forest_spread_per_s=1.0))
+        before = engine.terrain.copy()
+        for _ in range(96):
+            engine.update(0.05, 1.0)
+        changed = np.nonzero(before != engine.terrain)
+        self.assertGreater(changed[0].size, 0,
+                           "森林蔓延没有发生，无法验证地形变化来源")
+        for y, x in zip(changed[0].tolist(), changed[1].tolist()):
+            self.assertEqual(int(before[y, x]), GRASS, f"({x},{y}) 非草地的地形被改写")
+            self.assertEqual(int(engine.terrain[y, x]), FOREST, f"({x},{y}) 变化目标不是森林")
+            self.assertIn((y, x), engine.dirty_terrain, f"({x},{y}) 未登记脏区")
+
+    def test_legacy_modules_removed(self) -> None:
+        """旧侧视世界模块不得再存在（包内不再有可导入入口）。"""
+        for name in ("catastrophes", "ui_state", "world", "population",
+                     "pixelworld", "society", "config"):
+            self.assertIsNone(importlib.util.find_spec(f"newworld.{name}"),
+                              f"newworld.{name} 仍然存在（旧世界残留）")
 
 
 # ---------------------------------------------------------------------------
@@ -189,74 +198,6 @@ class SwarmTest(unittest.TestCase):
             swarm.update(0.05)
         per_frame_ms = (time.perf_counter() - start) / 60 * 1000.0
         self.assertLess(per_frame_ms, 8.0, f"帧成本 {per_frame_ms:.1f}ms 超标")
-
-
-# ---------------------------------------------------------------------------
-class CatastrophesTest(unittest.TestCase):
-    """上帝之手。"""
-
-    def setUp(self) -> None:
-        self.engine = make_engine(seed=20)
-        self.swarm = Swarm(self.engine, SwarmConfig(initial_population=100), seed=20)
-        self.cats = Catastrophes(self.engine, self.swarm)
-        for _ in range(100):
-            self.engine.update(0.05, 1.0)
-            self.swarm.update(0.05)
-
-    def _populated_point(self) -> tuple[int, int]:
-        xs, ys = self.swarm.positions_xy()
-        return int(np.median(xs)), int(np.median(ys))
-
-    def test_meteor_kills_and_scars(self) -> None:
-        """陨石：击杀个体 + 中心食物清零。"""
-        x, y = self._populated_point()
-        before = self.swarm.population
-        event = self.cats.meteor(x, y, radius=10)
-        self.assertGreater(event.killed, 0)
-        self.assertLess(self.swarm.population, before)
-        self.assertEqual(self.engine.food[y, x], 0.0)
-
-    def test_lightning_ignites_forest(self) -> None:
-        """闪电：点燃可燃地形。"""
-        ys, xs = np.nonzero(
-            (self.engine.terrain == FOREST) | (self.engine.terrain == GRASS)
-        )
-        if not ys.size:  # pragma: no cover
-            self.skipTest("no burnable terrain")
-        event = self.cats.lightning(int(xs[0]), int(ys[0]))
-        self.assertEqual(event.ignited, 1)
-
-    def test_flood_converts_land_to_water(self) -> None:
-        """洪水：圆内部分陆地变浅水。"""
-        x, y = self._populated_point()
-        before_water = int((self.engine.terrain == SHALLOW_WATER).sum())
-        event = self.cats.flood(x, y, radius=12)
-        self.assertGreater(event.flooded, 0)
-        after_water = int((self.engine.terrain == SHALLOW_WATER).sum())
-        self.assertGreater(after_water, before_water)
-
-    def test_heal_extinguishes_and_feeds(self) -> None:
-        """治愈：灭火 + 食物回填 + 圆内个体饥饿回满。"""
-        # 先点一把火
-        ys, xs = np.nonzero(self.engine.terrain == FOREST)
-        if ys.size:
-            self.engine.ignite(int(xs[0]), int(ys[0]))
-        x, y = self._populated_point()
-        self.cats.heal(x, y, radius=15)
-        disk_y = np.arange(max(0, y - 15), min(self.engine.height, y + 16))
-        disk_x = np.arange(max(0, x - 15), min(self.engine.width, x + 16))
-        self.assertFalse(self.engine.burning[np.ix_(disk_y, disk_x)].any())
-
-    def test_history_recorded(self) -> None:
-        """灾害史被记录且可 JSON 化。"""
-        x, y = self._populated_point()
-        self.cats.meteor(x, y, 5)
-        self.cats.lightning(x + 3, y + 3)
-        self.assertEqual(len(self.cats.history), 2)
-        for event in self.cats.history:
-            as_dict = event.to_dict()
-            self.assertIsInstance(as_dict["kind"], str)
-            self.assertIsInstance(as_dict["killed"], int)
 
 
 if __name__ == "__main__":

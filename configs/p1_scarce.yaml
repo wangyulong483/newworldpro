@@ -1,0 +1,58 @@
+# P1 学习对照（P1.7 稀缺环境）：random / rule / untrained / trained 四臂配对
+# 运行：python -m newworld --config configs/p1_scarce.yaml
+_base: base.yaml
+
+name: p1_scarce
+protocol: learning_compare
+description: >-
+  P1.7 稀缺环境学习对照：先在训练 seed 上 REINFORCE 训练 NeuralSwarmPolicy，
+  再在训练外 seed 上做 random/rule/untrained/trained 四臂配对评估，并按
+  densities 做密度梯度（低密度 vs 竞争密度）。
+
+# P1.6 诊断：默认 0.012 的再生速率约为代谢消耗 10 倍（承载过剩，无选择
+# 压力）。P1.7 用 0.0005 的稀缺环境恢复觅食选择压力。
+world:
+  food_regrow_per_s: 0.0005
+
+swarm:
+  initial_population: 120
+  capacity_hard: 3000
+
+policy:
+  kind: neural
+  hidden: 32
+  lr: 0.02
+  gamma: 0.96
+  batch_size: 512
+  epochs_per_episode: 2
+  normalize_advantage: true
+  grad_clip: 0.5
+
+# P1 只验证"去哪找食物"，不叠加社会/通信/记忆机制
+social:
+  enabled: false
+comm:
+  enabled: false
+memory:
+  enabled: false
+
+run:
+  seconds: 90.0
+  eval_seconds: 90.0
+  seeds: [900, 901, 902, 903, 904, 905]
+  output_dir: experiments/results
+  save_models: true
+
+protocol_params:
+  # 训练：10 回合 × 60 世界秒，训练 seed 500+（与评估 seed 不重叠）
+  train_episodes: 10
+  train_seeds: 4
+  episode_seconds: 60.0
+  hidden: 32
+  # 评估：6 个训练外 seed，90 世界秒
+  eval_seeds: 6
+  eval_seconds: 90.0
+  # P1.6 密度梯度：normal（环境事实）+ dense3x（竞争压力检验）
+  densities:
+    - {name: normal, population: 120}
+    - {name: dense3x, population: 360}

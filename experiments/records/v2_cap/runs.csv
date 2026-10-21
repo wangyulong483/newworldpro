@@ -1,7 +1,0 @@
-seed,cap,steps_requested,steps_run,world_time_s,wall_s,created,deaths,alive_end,extinct,extinction_cause,tech,facilities,alive_min,alive_max,recoveries
-300,8,18000,18100,900.0,27.3,8,2,6,False,,4,2,2,8,6
-301,8,18000,18100,900.0,30.2,8,2,6,False,,4,4,2,8,5
-302,8,18000,18100,900.0,23.7,8,2,6,False,,4,2,2,8,6
-300,64,18000,18100,900.0,136.8,64,2,62,False,,4,2,2,64,25
-301,64,18000,18100,900.0,146.8,64,2,62,False,,4,4,2,64,29
-302,64,18000,18100,900.0,110.0,64,2,62,False,,4,2,2,64,35

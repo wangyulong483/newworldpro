@@ -1,0 +1,59 @@
+# P5 标度律扫描（单维度、其余冻结）
+# Sweep A：初始人口 60..960 -> 仿真吞吐（规则策略）
+# Sweep B：训练 episodes 1..16 -> 觅食性能（神经策略，固定训练/评估 seed）
+# 产物：experiments/results/p5_scaling/{summary.json, config.yaml, report.md}
+# 运行：python -m newworld --config configs/p5_scaling.yaml
+_base: base.yaml
+name: p5_scaling
+protocol: scaling_sweep
+description: P5 标度律扫描：人口-吞吐幂律 + 学习算力-性能幂律（单维扫描，不宣称普适标度律）
+
+world:
+  width: 256
+  height: 160
+  seed: 0
+  food_regrow_per_s: 0.0005
+
+swarm:
+  initial_population: 120
+  capacity_hard: 3000
+
+policy:
+  kind: neural
+  seed: 0
+  hidden: 32
+
+social:
+  enabled: false
+
+comm:
+  enabled: false
+
+memory:
+  enabled: false
+
+run:
+  seconds: 30.0
+  dt: 0.05
+  daylight: 0.8
+  seeds: [0]
+  eval_seconds: 30.0
+  output_dir: experiments/results
+  save_models: true
+
+protocol_params:
+  # --- Sweep A：人口 -> 仿真吞吐（规则策略，固定地图/seed，20s 世界时间/点）---
+  population_values: [60, 120, 240, 480, 960]
+  population_seconds: 20.0
+  population_seed: 0
+  # --- Sweep B：学习算力 -> 觅食性能（神经策略，固定训练/评估 seed）---
+  # 算力 C = episodes * episode_seconds * initial_population（agent·秒）
+  episode_values: [1, 2, 4, 8, 16]
+  episode_seconds: 30.0
+  train_seeds: [1000, 1001]
+  eval_seeds: [0, 1, 2]
+  eval_seconds: 30.0
+  # 最大算力档写入 model zoo（tag p5）
+  model_name: p5_scaling_c16
+  zoo_tags: [p5, scaling_sweep]
+  save_model: true

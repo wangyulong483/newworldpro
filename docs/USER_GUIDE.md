@@ -1,282 +1,294 @@
-# newworld 旧世界用户指南（侧视像素小人 · 需加 --classic）
+# newworld 用户指南
 
-> **V3 起 `python -m newworld` 默认进入新世界（俯视地图世界盒子）**，
-> 本文描述的旧世界请加 `--classic` 进入。新世界指南：`docs/USER_GUIDE_V3.md`。
->
-> 对应代码：`newworld/app_tk.py`（界面与交互）+ `newworld/ui_state.py`（纯逻辑）。
-> 接口契约见模块 docstring。本文只描述**已经实现并验证过**的行为；
-> 未验证或受限的项目在 §8「已知限制」中明确标出。
+本指南覆盖三条入口：**桌面 GUI**、**浏览器实验平台（lab）**、
+**配置化实验**。架构细节见 [ARCHITECTURE.md](ARCHITECTURE.md)，
+实验协议与结果见 [EXPERIMENTS.md](EXPERIMENTS.md)。
 
-## 1. 启动
+---
 
-```powershell
-cd newworldpro
+## 1. 环境与安装
 
-# 全屏（世界尺寸=屏幕物理分辨率；V3 起须加 --classic）
-python -m newworld --classic
-
-# 窗口化（推荐开发/观察）
-python -m newworld --classic --windowed --size 1280x800
-
-# 指定随机种子（个体行为/地形不同）
-python -m newworld --classic --windowed --size 1280x800 --seed 7
-
-# 启动约 0.9 秒后截图并退出（用于验证渲染）
-python -m newworld --classic --windowed --size 1280x800 --screenshot .tmp\ui_shot.png
-
-# 自动关闭（开发用）
-python -m newworld --classic --windowed --size 1280x800 --autoclose-ms 2500
-```
-
-桌面快捷方式「newworld 像素世界」的图标由 `ref/blueprint.pdf` 生成
-（`python tools/make_icon.py`），可用 `tools/update_shortcut.ps1` 重新绑定；
-目标仍是 `start_world.bat --debug`。
-窗口以**物理像素**布局（`enable_dpi_awareness()`），高 DPI 屏上像素画不会模糊。
-窗口大小变化时通过 `<Configure>` 重建布局（`ui_state.Layout`），不会出现控件错位。
-
-## 2. 界面分区
-
-```
-┌──────────────────────────────────────────────────────────────┐
-│ 顶部状态栏：第 N 天 时:分 · 世界时间 · 运行状态 · 速度 ·     │
-│             存活 · 累计创建/上限 · 死亡 · 剩余可创建 · 缩放/fps│
-├───────────────────────────────────────────┬──────────────────┤
-│                                           │ 个体列表（可点击）│
-│        中央世界画布（可缩放/平移）         │ 选中个体详情      │
-│                                           │ 世界统计（可折叠）│
-├───────────────────────────────────────────┴──────────────────┤
-│ 底部控制栏：开始 暂停 继续 单步 重置 速度- 速度+ 统计 面板 训练│
-│ 事件日志（真实世界事件 + 操作记录）                            │
-└──────────────────────────────────────────────────────────────┘
-```
-
-- 顶部状态栏的计数全部读 `world.registry`（`alive_count()` / `total_created` /
-  `total_deaths` / `remaining()`）。达到 8 个累计创建名额后显示
-  `⚠ 已达累计创建上限，无法继续创建`。
-- 右侧「世界统计」面板可折叠（底部「统计」按钮或 `F1`）。
-- 右侧整个面板可折叠（底部「面板」按钮）；折叠后画布变宽。
-
-## 3. 鼠标操作（核心入口）
-
-| 操作 | 效果 | 实现要点 |
-| --- | --- | --- |
-| 左键点击个体 | 选中该个体，画布出现黄色高亮环 | 命中测试 `ui_state.HitTester`：先精灵包围盒、再 60 屏幕像素内最近邻 |
-| 左键点击另一个体 | 切换选中 | 选择模型 `SelectionModel.toggle` |
-| 再次左键点击同一个个体的精灵 | 取消选中 | 同上（切换语义） |
-| 左键点击空白处 | 取消选中 | 无命中 → `clear()` |
-| 点击右侧「个体列表」某一行 | 选中该个体（与场景选择双向同步） | `<<ListboxSelect>>` → `SelectionModel` |
-| 滚轮 | 以光标位置为锚点缩放（0.25×–4.0×） | `Viewport.zoom_at`：光标下的世界点保持不动 |
-| 右键按住拖动 / 中键按住拖动 | 平移视图 | `Viewport.pan` + `clamp`（世界不会被拖出视图） |
-| 底部按钮 | 开始 / 暂停 / 继续 / 单步 / 重置 / 减速 / 加速 / 统计 / 面板 / 训练 | 每个按钮都有对应处理函数 |
-
-要点：
-
-- **选中只改显示，不改仿真**：不暂停、不改变个体行为；仿真继续按实时步进。
-- **单步只在暂停时生效**，并且严格推进当前世界配置的
-  `world.config.fixed_dt`（默认 1/60 s）**恰好一步**；运行中按单步会被拒绝并写日志。
-- **暂停仍可查看**：暂停后世界时间冻结，但详情/统计/日志/缩放/平移/选择都可用。
-- **重置有确认对话框**（`tkinter.messagebox.askyesno`）：确认后构造一个全新的
-  世界与人口（新种子），清空选择、清空列表并按新存活个体重建、恢复运行。
-  取消则什么都不做。
-- **UI 点击与世界点击隔离**：布局由 `ui_state.Layout.region_at` 划分为
-  `top / world / panel / bottom`。画布控件只覆盖 `world` 区域；画布点击处理函数
-  还会把坐标换算成窗口坐标再用 `region_at` 复核，落在 UI 区域的事件直接忽略。
-  因此点击顶部状态栏、右侧面板、底部按钮/日志不会误选个体。
-
-## 4. 键盘辅助（可选，不是唯一入口）
-
-| 按键 | 行为 |
-| --- | --- |
-| `空格` | 暂停 / 继续（等价于点「暂停/继续」按钮，走同一个 `ControlState.toggle`） |
-| `F1` | 显示 / 折叠「世界统计」面板 |
-| `F2` | 从零训练所有个体的神经网络（后台线程，完成后写入日志） |
-| `Q` / `Esc` | 关闭窗口 |
-
-键盘与鼠标**共用处理函数**，不存在两条逻辑：例如空格和「暂停」按钮都会调用
-`ControlState.pause()/toggle()`，不会重复推进仿真。
-
-## 5. 面板数据来源（全部真实，缺失显示「暂无数据」）
-
-`ui_state.build_agent_detail(world, population, agent_id)` 逐项读取：
-
-| 面板字段 | 数据来源 |
-| --- | --- |
-| ID / 存活 / 年龄 / 代数 / 父母 | `world.registry.record(id)`（`AgentRecord`）+ `Character` 字段 |
-| 能量 / 水分 / 睡眠压力 / 心率 / 呼吸 | `agent.physiology` |
-| 健康 | 当前世界模型**没有** health 字段 → 固定显示「暂无数据」（不编造） |
-| 库存 / 工具 / 容量 | `agent.inventory`（wood/stone/fiber/cord/tool/basket/capacity） |
-| 当前目标 / 当前计划 / 目标进度 / 最近目标结果 | `population.goals.goals_of(id)`、`active_plan(id)`、`agent.current_goal_id`、`Goal.status/params` |
-| 已掌握知识 / 技术状态 | `agent.known_knowledge_ids` + `world.knowledge.get(id)` 的 `name_zh/status` |
-| 技能 | `agent.skills` |
-| 记忆摘要 | `world.memory.entries(id, limit=5)` |
-| 社会关系（前 3） | `population.society.affinity_between(id, other)` |
-
-「世界统计」来自 `world.registry`、`world.knowledge.verified_ids()`、
-`world.civilization.facilities/cooperation_index/collapse_state/metrics()`、
-`population.goals.stats()`、`world.memory`。「事件日志」来自
-`population.society.events`、每个存活个体的记忆条目、死亡档案、已验证技术、
-公共设施建造记录；世界刚启动没有事件时，退回由 `registry` 计数组成的
-「世界运行中」一行——**不会编造事件**。
-
-刷新策略：详情/统计/日志/状态栏每 **0.25 s** 刷新一次（且内容不变时不重写
-Text）；画布物体坐标每帧更新；状态未变时整帧跳过，不会每帧重建 widget。
-
-## 6. 程序化自检 `--ui-test`
-
-需要真实显示环境（tkinter 能创建窗口）。无需人工点击：
+要求 Python 3.10+（开发环境为 3.14）。
 
 ```powershell
-cd newworldpro
-$env:TEMP=(Resolve-Path .tmp).Path
-
-python -m newworld --classic --ui-test .tmp\ui_test.json --windowed --size 1280x800
-# 打印 13 项 PASS/FAIL，写 JSON，全部通过 exit code = 0，否则 = 1
+cd C:\Users\27826\Desktop\vscode_win_ws\ds_ws\newworld\newworldpro
+python -m pip install -r requirements.txt
 ```
 
-JSON 结构（`ensure_ascii=False, indent=2`）：
+检查依赖与组件注册表：
+
+```powershell
+python -m newworld --info
+python -m newworld --version
+```
+
+`--info` 会打印版本、numpy / pillow / pyyaml / fastapi 版本，以及
+当前已注册的策略（`rule` / `random` / `neural`）和实验协议
+（`PROTOCOLS`，由 `newworld/protocols/` 导入时注册）。
+`python -m newworld --list-components` 只列注册表。
+
+---
+
+## 2. 桌面 GUI
+
+### 2.1 启动
+
+```powershell
+python -m newworld
+python -m newworld --seed 7 --size 256x160
+python -m newworld --seed 1 --size 96x64 --cell-px 2
+```
+
+| 参数 | 含义 | 默认 |
+|---|---|---|
+| `--seed` | 世界随机种子（同 seed 同地图/同轨迹） | 0 |
+| `--size WxH` | 地图尺寸（cell 数，最小 32×32） | 512x320 |
+| `--cell-px` | 每个 cell 的屏幕像素 | 3 |
+
+窗口固定 1280×800 启动；地图大于视口时可拖动/缩放。
+
+### 2.2 界面与操作
+
+* **顶部**：社会机制实时统计（交换次数与转移能量、教学、继承、
+  失传、技能人口）。
+* **中部**：地图底图（七种地形色块 + 食物明暗）+ 群伙散点
+  （颜色由饱足度决定：暗红=饥饿 → 亮青=吃饱）。
+* **右侧面板**：当前人口与承载力估计、累计出生/死亡、死因
+  （饿/老/溺）、地形分布、食物总量、社会机制明细。
+* **底部**：开始/暂停、单步、速度（×1/×2/×4/×8/×16）、重置；
+  状态栏显示人口、出生、死亡、食物、速度、FPS。
+
+鼠标：左键拖动平移；滚轮以光标为锚点缩放。
+键盘：空格 开始/暂停，`+` / `-` 调速，Esc 退出。
+
+界面**只观察与控制**：没有改写地图或直接修改个体的工具。
+"开始/暂停/单步/重置"只影响仿真推进，不改变世界规则。
+
+### 2.3 无显示/自动化验证
+
+GUI 提供两个钩子（不弹窗交互时也可验证渲染链路）：
+
+```powershell
+python -m newworld --screenshot .tmp\gui.png --autoclose-ms 1200
+```
+
+它会先推进约 200 步让种群动起来，再对画布截图并自动关闭；
+`--screenshot` 需要桌面会话（PIL `ImageGrab`）。无 tkinter 时
+GUI 会打印"无法启动窗口：缺少 tkinter"并以退出码 2 结束。
+
+---
+
+## 3. 浏览器实验平台（lab）
+
+### 3.1 启动
+
+```powershell
+python -m newworld --lab                      # http://127.0.0.1:8600
+python -m newworld --lab --port 8601 --seed 3
+python -m newworld.lab_server --port 8600 --seed 0        # 只启动后端
+python -m newworld.lab_server --config configs/base.yaml  # 用配置启动
+```
+
+Windows 下也可双击 `start_world.bat`：打开浏览器并启动 8600 端口服务。
+lab 与无窗口实验共用 `newworld.experiment.build_simulation` 同一条
+代码路径；**默认世界是 P1.7 的稀缺环境**（`food_regrow_per_s=0.0005`，
+256×160，rule 策略，P3 社会机制开启）。
+
+### 3.2 界面
+
+* 主画布：PixiJS 渲染地形纹理 + 群伙散点；拖动平移、滚轮缩放；
+  点击个体显示详情（纯观察，不干扰世界）。
+* 顶栏：社会机制实时统计（交换/教学/继承/技能人口）。
+* 右侧：人口/食物/饱足曲线、世界状态（seed、人口、出生/死亡、
+  食物总量、平均饱足）、个体详情（位置/饱足/年龄/技能/观测）、
+  干预记录（实验审计）。
+* 底部：开始/暂停、单步（一次 50 个物理步）、速度 −/+（×1/×2/×4/×8/×16）、
+  重置（seed+1 重建世界）。
+
+所有命令都走 `/api/command`，并写入 `interventions`（时间/类型/参数），
+保证"人工干预不计入学习成果"。
+
+### 3.3 HTTP / WebSocket API
+
+| 方法 | 路径 | 作用 |
+|---|---|---|
+| GET | `/api/snapshot` | 只读快照：t、running、speed_index、seed、map、terrain（hex）、population、births、deaths、satiation、food_total、interventions、series、config_hash、social |
+| GET | `/api/agent/{index}` | 个体详情：当前位置/饱足/年龄/观测；越界返回 `ok=false` 而不是 500 |
+| POST | `/api/command` | 实验控制，body `{"kind": "pause"}` 等 |
+| WS | `/api/stream` | 约 15Hz 的帧流：`t, running, x, y, h, pop, food, sat`（启用 P6 时附 comm/memory 统计） |
+| GET | `/` | lab 前端页面（`lab_static/index.html`） |
+
+`/api/command` 支持的命令：
+
+| kind | 参数 | 说明 |
+|---|---|---|
+| `pause` | — | 暂停推进 |
+| `resume` | — | 继续推进 |
+| `speed` | `index` (0–4) | 每 tick 物理步数 = ×1/×2/×4/×8/×16 |
+| `step` | `steps`（默认 1） | 手动推进 N 个物理步（暂停态可用） |
+| `reset` | `seed`（可选） | 重建世界；缺省 seed+1 |
+
+PowerShell 调用示例（已实际运行验证）：
+
+```powershell
+# 快照
+Invoke-RestMethod http://127.0.0.1:8600/api/snapshot
+
+# 暂停 / 单步 / 调速 / 重置（PowerShell 一行一条）
+Invoke-RestMethod -Method Post -Uri http://127.0.0.1:8600/api/command -ContentType 'application/json' -Body '{"kind":"pause"}'
+Invoke-RestMethod -Method Post -Uri http://127.0.0.1:8600/api/command -ContentType 'application/json' -Body '{"kind":"step","steps":10}'
+Invoke-RestMethod -Method Post -Uri http://127.0.0.1:8600/api/command -ContentType 'application/json' -Body '{"kind":"speed","index":3}'
+Invoke-RestMethod -Method Post -Uri http://127.0.0.1:8600/api/command -ContentType 'application/json' -Body '{"kind":"reset","seed":42}'
+
+# 个体详情（index = 帧流 x 数组下标）
+Invoke-RestMethod http://127.0.0.1:8600/api/agent/0
+```
+
+WebSocket 帧示例（`/api/stream` 每帧）：
 
 ```json
-{
-  "ok": true, "total": 13, "passed": 13, "failed": 0,
-  "checks": [{"name": "world_click_selects_agent", "ok": true, "detail": "点击 0 号精灵中心 → 选中，高亮环 显示"}],
-  "world": {"size": "1280x800", "alive": 2, "total_created": 2, "total_deaths": 0,
-            "t": 0.0, "selection": null, "playing": true, "speed": 1.0},
-  "elapsed_s": 2.8, "python": "3.14.0", "tk": "8.6", "ui_test_path": ".tmp/ui_test.json"
-}
+{"t": 1.25, "running": true, "x": [12.3], "y": [40.1], "h": [0.82],
+ "pop": 120, "food": 9582.0, "sat": 0.70}
 ```
 
-13 项断言（给事件注入的真实路径，见 `NewWorldApp.run_ui_test`）：
+注意：`GET /api/snapshot` 的 `series` 只有在仿真运行时（resume 之后）
+才会按秒采样增长；暂停态的新会话一开始可能为空。
 
-1. `layout_regions_and_click_isolation` — 四区域判定正确；UI 区域坐标喂给世界点击处理必须被忽略；
-2. `viewport_transform_and_zoom_anchor` — 世界↔屏幕往返误差 < 1e-6；缩放时光标锚点不动；
-3. `world_click_selects_agent` — 用 `event_generate("<Button-1>")` 点精灵中心 → 选中；
-4. `world_click_switches_selection` — 点另一个体 → 选择切换；
-5. `world_click_toggles_off` — 再点同一个体 → 取消选中；
-6. `world_click_empty_clears_selection` — 点远离个体的空白处 → 取消选中；
-7. `wheel_zoom_and_drag_pan_hit_consistency` — 注入 `<MouseWheel>` 放大、右键 `<ButtonPress-3>`+`<Motion>`+`<ButtonRelease-3>` 拖动平移，之后按新屏幕位置点击仍命中同一世界个体；
-8. `pause_freezes_time_but_panel_visible` — 点「暂停」后持续 `update()` 0.24 s，`world.t` 不变；暂停时详情/统计仍有数据；
-9. `single_step_advances_exactly_one_frame` — 暂停下单步两次各恰好 `fixed_dt`；运行中单步被拒绝；
-10. `list_click_syncs_selection` — 点击个体列表第 2 项 → 场景选择同步；
-11. `dead_agent_clears_selection` — 走主循环同一条 `_apply_alive_ids` 路径：存活集合为空时选中者被自动清理、列表同步，恢复后列表正确；
-12. `detail_and_stats_use_real_data` — 详情读真实能量、健康显示「暂无数据」、统计与 `registry` 一致、事件日志非空；
-13. `reset_clears_selection_and_list` — 程序化重置（跳过对话框）后新世界 `t=0`、选择清空、列表项数=存活数、恢复运行。
+---
 
-`tests/test_ui_app.py` 在无显示环境会自动 `skipTest`；有显示时它会重复执行上面的
-自检并断言 exit code 与 JSON。
+## 4. 配置化实验
 
-## 7. 测试
+### 4.1 一份 YAML = 一次实验
+
+入口有两个（等价，后者面向脚本）：
 
 ```powershell
-cd newworldpro
-$env:TEMP=(Resolve-Path .tmp).Path
-python -m unittest tests.test_ui_state tests.test_ui_app -v   # 34 + 7 用例
-python -m unittest tests.test_world -v                        # 既有回归
+python -m newworld --config configs/p1_scarce.yaml
+python experiments/run.py --config configs/p1_scarce.yaml
 ```
 
-`tests/test_ui_state.py` 34 个纯逻辑用例（无 tkinter）：视口往返/缩放锚点/平移
-clamp/resize、命中（bbox/最近/重叠/无命中/死人不选/缩放一致性）、选择切换/取消/
-死亡清理、控制状态机、布局区域、详情真实字段与「暂无数据」、统计/事件日志非空、
-异常输入不抛错、`ui_state` 不引用 tkinter。
+`configs/base.yaml` 是公共基线：世界 256×160、初始人口 120、
+容量上限 3000、run 120 秒 / dt 0.05 / seeds [0..4]、社会机制开启、
+通信与记忆关闭。各实验配置用 `_base: base.yaml` 继承它，只写差异：
 
-## 8. 已知限制（如实说明）
+| 配置 | 协议 | 内容 |
+|---|---|---|
+| `configs/p1_scarce.yaml` | `learning_compare` | 四臂学习对照（稀缺世界 + 密度梯度） |
+| `configs/p3_social.yaml` | `social_ablation` | 交换/教学/继承五配置消融 |
+| `configs/p4_evolution.yaml` | `evolution_compare` | 演化 vs 学习三臂对照 |
+| `configs/p5_scaling.yaml` | `scaling_sweep` | 人口/算力两个单维扫描 + 幂律拟合 |
+| `configs/p6_communication.yaml` | `communication` | 指称博弈 + 信号通道 off/on 消融 |
+| `configs/p6_memory.yaml` | `memory_ablation` | 记忆/反思五臂消融（含同维空对照） |
 
-1. **帧率约 18–21 fps**（1280×800、2 个个体）。瓶颈在仿真本身（每个体每帧都做
-   感知/神经网络/目标规划，项目文档称感知约占 95% 成本），不是渲染（实测
-   `render_world` ≈ 4 ms/帧，角色图层 ≈ 0.16 ms/个）。观察窗口以 16 ms 定时器
-   驱动，实际帧率受 `population.step(dt)` 限制。
-2. **重置 = 新世界**：旧世界的人口/知识/设施不会保留（`messagebox` 会说明）。
-   这与 `World.reset()`（只复位时间与位置、保留档案）不同，是刻意的 UI 语义。
-3. **F2「训练」在后台线程**调用 `population.train_round(reset=True)`，会写
-   `assets/agents/*.npz`；训练期间仿真仍在推进（沿用旧版行为），极端情况下存在
-   数据竞争风险。日常观察不建议在仿真运行中训练。
-4. **截图依赖桌面捕获权限**：`ImageGrab.grab` 失败时只打印「截图失败：…」，
-   不会让程序崩溃；无桌面的服务器环境请用 `--headless`。
-5. **无显示环境无法验证 GUI**：`tests/test_ui_app.py` 会 skip；`--ui-test`
-   在没有可见桌面时返回 `2`（无法创建窗口）。本机（Windows 10/11 + tkinter 8.6）
-   已真实跑通，见 §6 输出。
-6. 面板的「健康」列来自世界模型没有的字段，恒为「暂无数据」——这是契约要求的
-   「缺失显示暂无数据」，不是 bug；如需健康值应先在世界/生理模型里增加该字段。
-7. 详情面板中的「最近目标结果」只在 `Goal` 携带 `reason`/`rationale`/`params`
-   时显示原因；当前 `GoalManager` 未在 `Goal` 上写失败原因时显示计划层的
-   `failure_reason`，再缺就显示「暂无数据」。
+用 `python -m newworld --list-components` 查看当前实际注册的协议。
+完整实验通常要跑数分钟；调试时可用 `--set protocol_params.<...>` 缩短
+训练/评估回合（产物只用于链路验证，不是正式结果）。
 
-## 9. 代码结构（二次开发）
+完整配置结构（严格 schema，未知字段直接报错）：
 
-- `newworld/ui_state.py`（纯逻辑，**禁止 import tkinter**）：
-  `Viewport / AgentBox / AgentHit / HitTester / SelectionModel / ControlState /
-  Layout / DetailRow / AgentDetail / build_agent_detail / build_stats /
-  build_event_log`。新增交互逻辑优先放这里，并补 `tests/test_ui_state.py`。
-- `newworld/app_tk.py`：`NewWorldApp` 组装 tkinter 控件、画布渲染与事件绑定；
-  `run_app(config, *, fullscreen, debug, screenshot, autoclose_ms, seed, policy,
-  policy_path, ui_test_path)` 是唯一入口（旧关键字参数全部保留）。
-  新增鼠标交互时：在 `_bind_events` 绑定 → 方法内只更新 `ui_state` 状态与画布 →
-  在 `run_ui_test` 增加一条断言，保证可程序化验证。
-- 选中高亮直接用 Canvas 的 `create_oval`（`_ring_item`），**不需要**修改
-  `render.py`。
+| 段 | 关键字段 |
+|---|---|
+| 顶层 | `name`、`protocol`（注册表名）、`description`、`_base` |
+| `world` | `width/height/seed/ocean_margin/noise_scale/sea_level/mountain_level/snow_level/food_regrow_per_s/forest_spread_per_s` |
+| `swarm` | `initial_population/capacity_hard/metabolism_per_s/bite_size/mature_age_s/breed_*/old_age_*/move_speed/wander/forage_hunger` |
+| `policy` | `kind`（`rule`/`random`/`neural`）、`seed/hidden/checkpoint/lr/gamma/batch_size/epochs_per_episode/normalize_advantage/grad_clip` |
+| `social` | `enabled/enable_barter/barter_*/enable_teaching/teach_*/enable_inheritance/inherit_radius/initial_skill_rate` |
+| `comm` | `enabled/n_symbols/radius/message_cost/seed/train/lr/batch_size/epochs` |
+| `memory` | `enabled/capacity/recency_halflife_s/weight_*/top_k/reflection_*/seed` |
+| `run` | `seconds/dt/daylight/seeds/eval_seconds/output_dir/save_models` |
+| `protocol_params` | 协议私有参数（各协议自己解析，如 `train_episodes/eval_seeds/densities`） |
+
+### 4.2 覆盖字段（--set）
+
+`--set` 可重复，值按 YAML 解析（数字、布尔、列表、行内映射都能写），
+键必须存在于 schema 中（防拼写错误静默生效）。下面是一条**缩短版冒烟
+运行**示例（完整实验去掉 `protocol_params.*` 与 `--out` 即可）：
+
+```powershell
+python -m newworld --config configs/p6_memory.yaml --set world.width=96 --set world.height=60 --set run.seeds=[0,1,2] --set protocol_params.train_episodes=1 --set protocol_params.train_seeds=[1] --set protocol_params.eval_seeds=[0] --set protocol_params.train_seconds=2 --set protocol_params.eval_seconds=2 --set run.save_models=false --out experiments/results/override_demo
+```
+
+含空格/花括号的值用单引号包住，例如
+`--set 'protocol_params.densities=[{name: normal, population: 20}]'`。
+
+拼错键会直接报错并列出可用字段，例如
+`--set world.widht=128` →
+`错误：world: 未知字段 ['widht']；可用: [...]`。
+
+### 4.3 新建一份实验配置
+
+1. 复制 `configs/base.yaml` 为 `configs/<你的实验>.yaml`；
+2. 把 `protocol` 改成已注册协议名（`python -m newworld --list-components`
+   查看），只写与基线不同的字段（也可用 `_base: base.yaml` 继承）；
+3. 运行：
+
+```powershell
+python -m newworld --config configs/<你的实验>.yaml
+python -m newworld --config configs/<你的实验>.yaml --out experiments/results/my_run
+```
+
+### 4.4 产物
+
+默认输出目录 = `run.output_dir`（`experiments/results`）/`name`；
+`--out DIR` 会改为 `DIR/name`。每次实验写：
+
+* `config.yaml` —— 生效配置的完整快照（含 `--set` 覆盖后的结果）；
+* `summary.json` —— 协议返回的指标、结论、caveats、`config_hash`；
+* 协议可另写 `report.md`；训练类协议会把模型写进 `assets/zoo/`。
+
+`python experiments/run.py --config ... --json` 会把完整 summary JSON
+打印到 stdout（便于管道处理）。
+
+### 4.5 模型 zoo
+
+训练类协议（P1/P4/P5/P6）在 `save_models: true` 时把策略保存到
+`assets/zoo/<name>/`（`policy.npz` + `card.json` + `metrics.json` +
+`config.yaml`）。查看/校验方式与当前模型清单见
+[../assets/MODELS.md](../assets/MODELS.md)。
+
+---
+
+## 5. 测试
+
+```powershell
+python -m unittest discover -s tests
+```
+
+指定模块：
+
+```powershell
+python -m unittest tests.test_map_world tests.test_swarm_policy
+python -m unittest tests.test_experiment tests.test_registry tests.test_zoo
+python -m unittest tests.test_lab_server tests.test_social_mech
+```
+
+测试覆盖地图/食物/确定性、群伙人口动态、策略与训练器、社会机制、
+配置层、注册表、实验运行器与协议、lab API 契约、模型 zoo。
+测试不依赖网络（lab 用 FastAPI TestClient）。
+
+在受限/沙箱环境里，临时目录可能不可写（Windows ACL），可把
+`TEMP` 指到工作区内再跑：
+
+```powershell
+if (-not (Test-Path .tmp)) { New-Item -ItemType Directory .tmp | Out-Null }
+$env:TEMP = (Resolve-Path .tmp).Path
+python -m unittest discover -s tests
 ```
 
 ---
 
-## 9. 本轮升级补充（v0.9.1）
+## 6. 排错
 
-- **任务标记**：正在执行计划（有活跃 `Plan`）的个体，头顶会显示一个橙色小圆点；
-  圆点随缩放缩放、随个体移动。没有活跃计划的个体不显示。
-- **决策来源**：选中个体后，详情面板的「当前目标 / 当前任务及进度」来自真实
-  `GoalManager`（`goals_of` / `active_plan`）；面板不会显示"暂无数据"以外的占位数字。
-- **学习型高层策略（可选）**：默认界面使用规则目标（heuristic）。若想观察训练后的
-  高层策略，请用无窗口实验入口（GUI 不加载 goal policy，避免切换策略影响观察）：
+| 现象 | 处理 |
+|---|---|
+| `ModuleNotFoundError: fastapi / uvicorn` | 只影响 lab；`python -m pip install -r requirements.txt` |
+| GUI 提示"缺少 tkinter" | 当前 Python 未带 Tk；改用 lab（`--lab`），或安装带 Tk 的 Python |
+| 窗口打开后不推进 | 点"开始"或按空格；默认是暂停态 |
+| 端口被占用 | `--port` 换一个端口（如 8601） |
+| `错误：配置文件不存在` | 检查路径相对项目根目录；`--config` 会先试项目根目录 |
+| `错误：... 未知字段 [...]` | 配置字段拼写错误；按错误里的"可用字段"修正（严格模式） |
+| `错误：... 需要整数/数值` | `--set` 的值类型不对；按 YAML 语法写（`true`/`[0,1]`/数字） |
+| 实验产物找不到 | 看 `summary.json` 的 `_artifact_dir`，或 `--out` 指定的目录 |
+| lab 快照 `series` 为空 | 先 `resume`（开始）推进一段时间，再取快照 |
 
-  ```powershell
-  python -m newworld.simulation --group C --steps 16000 --dt 0.05 `
-      --width 640 --height 400 --policy-mode neural --policy-path assets/goal_policy.npz
-  ```
-
-- **组合式创新（可选）**：加 `--innovation` 观察有限组合式创新（自然触发、上限 3 项）：
-
-  ```powershell
-  python -m newworld.simulation --group C --steps 14000 --dt 0.05 `
-      --width 640 --height 400 --innovation --json .tmp\innov.json
-  ```
-
-- **训练按钮 / F2**：手动触发一次「所有个体从零训练行为克隆网络」，
-  会写 `assets/agents/*.npz`；不建议在长观察期间反复训练。
-
-- **截图语义**：`--screenshot` 抓整个窗口（包含面板与状态栏），便于验收布局。
-
----
-
-## 10. 无限世界（v0.9.2 `--infinite`）
-
-```powershell
-python -m newworld --classic --infinite --windowed --size 960x600
-```
-
-- 屏幕只是**当前窗口**；人口迁移到窗口边缘时世界自动滚动（每次平移 1/4 窗口），
-  因此可以一直往一个方向走，没有世界边界。
-- 地形/石头/树/池塘由 `seed + 全局坐标` 确定性生成：同一个 seed 下，
-  同一地点两次经过内容一致；`clear_atom`/采果等修改按全局坐标持久化。
-- 窗口化界面行为不变：点选个体、详情、暂停/单步/重置、速度、面板折叠都可用；
-  缩放/平移仍在当前窗口内（窗口本身会自动搬移）。若想回看走过的区域，
-  目前只能通过 `--seed` 重建（不保存远距离历史，见 UPGRADE_V2_REPORT §6）。
-- 顶部状态栏的计数仍是累计创建/存活/死亡/剩余；窗口的全局偏移记录在
-  状态的 `window_origin_px` 字段（无窗口实验/存档里可审计）。
-
-## 11. V2 的其他开关（无窗口实验）
-
-```powershell
-# 感知开/关（16 维真实视网膜特征进入 56 维观测）
-python -m newworld.simulation --group C --steps 12000 --dt 0.05 --width 640 --height 400
-python -m newworld.simulation --group C --steps 12000 --dt 0.05 --width 640 --height 400 --no-visual
-
-# 低层动作：BC / RL / 随机
-python -m newworld.simulation --group C --steps 12000 --dt 0.05 --width 640 --height 400 `
-    --low-level-mode rl --lowlevel-policy assets/lowlevel_rl.npz
-
-# 放开累计创建上限（对照实验）
-python -m newworld.simulation --group C --steps 12000 --dt 0.05 --width 640 --height 400 `
-    --infinite --cap 32
-```
-
-> 说明：GUI 默认仍使用 BC 低层 + 有限世界，保证交互与既有行为稳定；
-> 感知特征在 GUI 中由 `perception_stride`（默认 4）刷新，详情面板不显示原始 16 维，
-> 实验报告里通过 `visual_active_dims` 审计。
+更多环境/机制细节见 [ARCHITECTURE.md](ARCHITECTURE.md)。

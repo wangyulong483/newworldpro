@@ -1,4 +1,4 @@
-"""俯视地图渲染（V3）：地形底图 + 群伙散点 + 火焰叠加。
+"""俯视地图渲染（V3）：地形底图 + 群伙散点。
 
 渲染策略（tkinter Canvas 的性能现实）
 ------------------------------------
@@ -6,11 +6,9 @@
   Canvas 当 PhotoImage。地图是 512×320 cell、每 cell 3px → 1536×960
   的底图，一次生成 ~10ms；地形变化时只重画脏 cell。
 * **群伙**：几千个点不能每帧重画 Image —— 用 Canvas 的批量
-  ``create_rectangle``（每个个体一个 2×2 的小方块，按 tribe/饥饿
-  着色），每帧 diff（只移动的个体更新坐标）。实测 5000 个矩形
-  的 diff 更新在 tkinter 上可行（<8ms/帧）。
-* **火焰**：燃烧 cell 叠一层橙红半透明色块（也在 Canvas 上画，
-  数量少时很快）。
+  ``create_rectangle``（每个个体一个 2×2 的小方块，按饱足度着色），
+  每帧 diff（只移动的个体更新坐标）。实测 5000 个矩形的 diff 更新在
+  tkinter 上可行（<8ms/帧）。
 
 色板
 ----
@@ -38,10 +36,6 @@ AGENT_COLOURS: tuple[tuple[int, int, int], ...] = (
     (80, 220, 180),
     (60, 230, 220),
 )
-
-#: 火焰色（叠加在燃烧 cell 上）
-FIRE_COLOUR = (255, 120, 30)
-FIRE_CORE_COLOUR = (255, 220, 90)
 
 
 def _agent_colour(hunger: float) -> tuple[int, int, int]:
@@ -78,8 +72,6 @@ class MapRenderer:
         # 食物明暗：陆地上食物越多越亮
         land = self.engine.terrain >= 3
         arr[land] += (np.clip(self.engine.food, 0.0, 1.0) * 46.0)[:, :, None][land]
-        # 燃烧 cell 染上火色
-        arr[self.engine.burning] = FIRE_COLOUR
         # cell → cell_px 块放大
         big = np.repeat(np.repeat(arr, px, axis=0), px, axis=1)
         self.base = Image.fromarray(np.clip(big, 0, 255).astype(np.uint8), mode="RGB")

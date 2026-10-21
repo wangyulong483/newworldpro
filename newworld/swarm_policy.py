@@ -43,8 +43,11 @@ from __future__ import annotations
 
 import math
 from pathlib import Path
+from typing import Any
 
 import numpy as np
+
+from .registry import POLICIES, register_policy
 
 #: 动作数（右/左/下/上/原地）
 N_ACTIONS = 5
@@ -84,21 +87,28 @@ class SwarmPolicy:
 # ---------------------------------------------------------------------------
 # 规则基线：V3 原行为，原样搬家
 # ---------------------------------------------------------------------------
+@register_policy("rule", note="V3 原始觅食规则（梯度探测 + wander），无学习")
 class RuleSwarmPolicy(SwarmPolicy):
     """V3 原有觅食规则：4 方向食物探测 × 随机权重 + wander 抖动。
 
-    行为与改造前的 ``Swarm.update`` 逐条对应（梯度探测：观察 4 方向
+    行为与改造前的 Swarm.update 逐条对应（梯度探测：观察 4 方向
     3 格食物 × 随机系数，取最高分；不可走 -1；吃饱(hunger≥0.95)
-    倾向原地）。作为 P1 对照实验的规则基线。
+    倾向原地）。作为 P1 对照实验的规则基线；扩展观测列被忽略。
     """
 
-    def __init__(self, seed: int = 0) -> None:
+    kind = "rule"
+
+    def __init__(self, seed: int = 0, obs_dim: int = OBS_DIM, **_: Any) -> None:
         self.rng = np.random.default_rng(seed)
+        self.obs_dim = int(obs_dim)
+        self.n_actions = N_ACTIONS
+        self.is_learned = False
 
     def act(self, obs_batch: np.ndarray) -> np.ndarray:
         batch = np.asarray(obs_batch, dtype=np.float64)
-        if batch.ndim != 2 or batch.shape[1] != OBS_DIM:
-            raise ValueError(f"obs_batch 形状 {batch.shape} != (N, {OBS_DIM})")
+        if batch.ndim != 2 or batch.shape[1] != self.obs_dim:
+            raise ValueError(f"obs_batch 形状 {batch.shape} != (N, {self.obs_dim})")
+        batch = batch[:, :OBS_DIM]
         hunger = batch[:, 0]
         food_here = batch[:, 2]
         east = batch[:, 3]
@@ -130,8 +140,31 @@ class RuleSwarmPolicy(SwarmPolicy):
 
 
 # ---------------------------------------------------------------------------
+# 随机基线
+# ---------------------------------------------------------------------------
+@register_policy("random", note="均匀随机 5 动作（无状态下界基线）")
+class RandomSwarmPolicy(SwarmPolicy):
+    """均匀随机动作基线（P1 的下界对照）。"""
+
+    kind = "random"
+
+    def __init__(self, seed: int = 0, obs_dim: int = OBS_DIM, **_: Any) -> None:
+        self.rng = np.random.default_rng(int(seed))
+        self.obs_dim = int(obs_dim)
+        self.n_actions = N_ACTIONS
+        self.is_learned = False
+
+    def act(self, obs_batch: np.ndarray) -> np.ndarray:
+        batch = np.asarray(obs_batch)
+        if batch.ndim != 2 or batch.shape[1] != self.obs_dim:
+            raise ValueError(f"obs_batch 形状 {batch.shape} != (N, {self.obs_dim})")
+        return self.rng.integers(0, N_ACTIONS, size=batch.shape[0]).astype(np.int64)
+
+
+# ---------------------------------------------------------------------------
 # 神经策略：参数共享 IQL
 # ---------------------------------------------------------------------------
+@register_policy("neural", note="numpy MLP 9(+扩展)→hidden→5，softmax 采样，REINFORCE")
 class NeuralSwarmPolicy(SwarmPolicy):
     """numpy MLP（9→32→5，softmax 采样），全体个体共享参数。
 
@@ -144,18 +177,33 @@ class NeuralSwarmPolicy(SwarmPolicy):
     """
 
     HIDDEN = 32
+    kind = "neural"
 
-    def __init__(self, seed: int = 0, weights: dict[str, np.ndarray] | None = None) -> None:
+    def __init__(
+        self,
+        seed: int = 0,
+        weights: dict[str, np.ndarray] | None = None,
+        *,
+        obs_dim: int = OBS_DIM,
+        n_actions: int = N_ACTIONS,
+        hidden: int = HIDDEN,
+    ) -> None:
         self.seed = int(seed)
+        self.obs_dim = int(obs_dim)
+        self.n_actions = int(n_actions)
+        self.hidden = int(hidden)
+        self.is_learned = True
+        if self.obs_dim < 1 or self.n_actions < 2 or self.hidden < 1:
+            raise ValueError("obs_dim/hidden >= 1 且 n_actions >= 2")
         self._rng = np.random.default_rng(seed)
         rng = np.random.default_rng(seed)
         if weights is None:
-            scale1 = 1.0 / math.sqrt(float(OBS_DIM))
-            scale2 = 1.0 / math.sqrt(float(self.HIDDEN))
-            self.W1 = rng.normal(0.0, scale1, (OBS_DIM, self.HIDDEN))
-            self.b1 = np.zeros(self.HIDDEN)
-            self.W2 = rng.normal(0.0, scale2, (self.HIDDEN, N_ACTIONS))
-            self.b2 = np.zeros(N_ACTIONS)
+            scale1 = 1.0 / math.sqrt(float(self.obs_dim))
+            scale2 = 1.0 / math.sqrt(float(self.hidden))
+            self.W1 = rng.normal(0.0, scale1, (self.obs_dim, self.hidden))
+            self.b1 = np.zeros(self.hidden)
+            self.W2 = rng.normal(0.0, scale2, (self.hidden, self.n_actions))
+            self.b2 = np.zeros(self.n_actions)
         else:
             for name in ("W1", "b1", "W2", "b2"):
                 if name not in weights:
@@ -167,21 +215,21 @@ class NeuralSwarmPolicy(SwarmPolicy):
             self._validate_shapes()
 
     def _validate_shapes(self) -> None:
-        if self.W1.shape != (OBS_DIM, self.HIDDEN):
-            raise ValueError(f"W1 {self.W1.shape} != {(OBS_DIM, self.HIDDEN)}")
-        if self.b1.shape != (self.HIDDEN,):
-            raise ValueError(f"b1 {self.b1.shape} != {(self.HIDDEN,)}")
-        if self.W2.shape != (self.HIDDEN, N_ACTIONS):
-            raise ValueError(f"W2 {self.W2.shape} != {(self.HIDDEN, N_ACTIONS)}")
-        if self.b2.shape != (N_ACTIONS,):
-            raise ValueError(f"b2 {self.b2.shape} != {(N_ACTIONS,)}")
+        if self.W1.shape != (self.obs_dim, self.hidden):
+            raise ValueError(f"W1 {self.W1.shape} != {(self.obs_dim, self.hidden)}")
+        if self.b1.shape != (self.hidden,):
+            raise ValueError(f"b1 {self.b1.shape} != {(self.hidden,)}")
+        if self.W2.shape != (self.hidden, self.n_actions):
+            raise ValueError(f"W2 {self.W2.shape} != {(self.hidden, self.n_actions)}")
+        if self.b2.shape != (self.n_actions,):
+            raise ValueError(f"b2 {self.b2.shape} != {(self.n_actions,)}")
 
     # -- 前向 ----------------------------------------------------------
     def _forward(self, obs: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         """单个体前向：返回 (hidden, logits)。"""
         vector = np.asarray(obs, dtype=np.float64)
-        if vector.shape != (OBS_DIM,):
-            raise ValueError(f"obs 形状 {vector.shape} != ({OBS_DIM},)")
+        if vector.shape != (self.obs_dim,):
+            raise ValueError(f"obs 形状 {vector.shape} != ({self.obs_dim},)")
         if not np.all(np.isfinite(vector)):
             raise ValueError("obs 含非有限值")
         hidden = np.tanh(vector @ self.W1 + self.b1)
@@ -200,8 +248,8 @@ class NeuralSwarmPolicy(SwarmPolicy):
     # -- SwarmPolicy 协议 ------------------------------------------------
     def act(self, obs_batch: np.ndarray) -> np.ndarray:
         batch = np.asarray(obs_batch, dtype=np.float64)
-        if batch.ndim != 2 or batch.shape[1] != OBS_DIM:
-            raise ValueError(f"obs_batch 形状 {batch.shape} != (N, {OBS_DIM})")
+        if batch.ndim != 2 or batch.shape[1] != self.obs_dim:
+            raise ValueError(f"obs_batch 形状 {batch.shape} != (N, {self.obs_dim})")
         # 批量前向
         hidden = np.tanh(batch @ self.W1 + self.b1)      # (N, H)
         logits = hidden @ self.W2 + self.b2              # (N, A)
@@ -224,7 +272,7 @@ class NeuralSwarmPolicy(SwarmPolicy):
         """
         vector = np.asarray(obs, dtype=np.float64)
         action = int(action)
-        if not 0 <= action < N_ACTIONS:
+        if not 0 <= action < self.n_actions:
             raise ValueError(f"action {action} 越界")
         advantage = float(advantage)
         if not math.isfinite(advantage):
@@ -271,11 +319,11 @@ class NeuralSwarmPolicy(SwarmPolicy):
         np.savez(
             target,
             W1=self.W1, b1=self.b1, W2=self.W2, b2=self.b2,
-            obs_dim=np.int64(OBS_DIM),
-            n_actions=np.int64(N_ACTIONS),
-            hidden=np.int64(self.HIDDEN),
+            obs_dim=np.int64(self.obs_dim),
+            n_actions=np.int64(self.n_actions),
+            hidden=np.int64(self.hidden),
             seed=np.int64(self.seed),
-            version=np.asarray(1),
+            version=np.asarray(2),
         )
         return target
 
@@ -287,8 +335,12 @@ class NeuralSwarmPolicy(SwarmPolicy):
         if not source.exists():
             raise FileNotFoundError(f"checkpoint 不存在: {path}")
         with np.load(source, allow_pickle=False) as data:
+            files = set(data.files)
             policy = cls(
                 seed=seed,
+                obs_dim=int(np.asarray(data["obs_dim"]).item()) if "obs_dim" in files else OBS_DIM,
+                n_actions=int(np.asarray(data["n_actions"]).item()) if "n_actions" in files else N_ACTIONS,
+                hidden=int(np.asarray(data["hidden"]).item()) if "hidden" in files else cls.HIDDEN,
                 weights={
                     "W1": np.asarray(data["W1"], dtype=np.float64),
                     "b1": np.asarray(data["b1"], dtype=np.float64),
@@ -426,3 +478,53 @@ class SwarmTrainer:
         }
         self.history.append(stats)
         return stats
+
+
+# ---------------------------------------------------------------------------
+# 工厂：配置名 -> 策略实例（P5 registry 的唯一入口）
+# ---------------------------------------------------------------------------
+def make_swarm_policy(
+    *,
+    kind: str = "rule",
+    obs_dim: int = OBS_DIM,
+    seed: int = 0,
+    hidden: int = NeuralSwarmPolicy.HIDDEN,
+    checkpoint: str | None = None,
+    **kwargs: Any,
+) -> SwarmPolicy:
+    """按注册名构造策略；checkpoint 优先于 kind。
+
+    * kind 必须在 :data:`newworld.registry.POLICIES` 注册；
+    * checkpoint 的 obs_dim 必须与当前 swarm.obs_dim 一致（否则报错，
+      防止把 9 维模型挂到 15 维通信观测上）。
+    """
+    if checkpoint:
+        policy = NeuralSwarmPolicy.load(checkpoint, seed=int(seed))
+        if int(policy.obs_dim) != int(obs_dim):
+            raise ValueError(
+                f"checkpoint obs_dim={policy.obs_dim} 与当前 obs_dim={obs_dim} 不一致"
+            )
+        return policy
+    return POLICIES.create(
+        str(kind),
+        obs_dim=int(obs_dim),
+        seed=int(seed),
+        hidden=int(hidden),
+        **kwargs,
+    )
+
+
+__all__ = [
+    "N_ACTIONS",
+    "OBS_DIM",
+    "ACTION_DELTAS",
+    "REWARD_EAT",
+    "REWARD_DEATH",
+    "REWARD_TIME_PER_S",
+    "SwarmPolicy",
+    "RuleSwarmPolicy",
+    "RandomSwarmPolicy",
+    "NeuralSwarmPolicy",
+    "SwarmTrainer",
+    "make_swarm_policy",
+]

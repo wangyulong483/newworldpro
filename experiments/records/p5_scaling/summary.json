@@ -1,0 +1,1145 @@
+{
+  "protocol": "scaling_sweep",
+  "name": "p5_scaling",
+  "sweeps": [
+    {
+      "name": "population_throughput",
+      "x": "initial_population",
+      "y": "throughput_steps_per_s",
+      "description": "固定地图/seed/规则策略，只扫初始人口；吞吐 = engine steps / wall_s",
+      "fixed": {
+        "world": {
+          "width": 256,
+          "height": 160,
+          "seed": 0,
+          "ocean_margin": 6,
+          "noise_scale": 64,
+          "sea_level": 0.42,
+          "mountain_level": 0.74,
+          "snow_level": 0.86,
+          "food_regrow_per_s": 0.0005,
+          "forest_spread_per_s": 0.0004
+        },
+        "run": {
+          "dt": 0.05,
+          "daylight": 0.8
+        },
+        "policy": "rule",
+        "seed": 0,
+        "capacity_hard": 3000,
+        "food_regrow_per_s": 0.0005
+      },
+      "population_values": [
+        60,
+        120,
+        240,
+        480,
+        960
+      ],
+      "population_seconds": 20.0,
+      "points": [
+        {
+          "initial_population": 60,
+          "mean_population": 68.252,
+          "final_population": 97,
+          "world_seconds": 20.0,
+          "steps": 400,
+          "wall_s": 0.39976,
+          "throughput_steps_per_s": 1000.596,
+          "step_ms": 0.9994,
+          "us_per_agent_step": 14.6427,
+          "build_wall_s": 0.05977,
+          "eat_events": 1140,
+          "births": 37,
+          "deaths": 0,
+          "mean_hunger": 0.9359,
+          "wall_s_total": 0.45954
+        },
+        {
+          "initial_population": 120,
+          "mean_population": 130.673,
+          "final_population": 158,
+          "world_seconds": 20.0,
+          "steps": 400,
+          "wall_s": 0.44562,
+          "throughput_steps_per_s": 897.623,
+          "step_ms": 1.11405,
+          "us_per_agent_step": 8.5255,
+          "build_wall_s": 0.04902,
+          "eat_events": 2148,
+          "births": 38,
+          "deaths": 0,
+          "mean_hunger": 0.9696,
+          "wall_s_total": 0.49464
+        },
+        {
+          "initial_population": 240,
+          "mean_population": 240.0,
+          "final_population": 240,
+          "world_seconds": 20.0,
+          "steps": 400,
+          "wall_s": 0.49837,
+          "throughput_steps_per_s": 802.611,
+          "step_ms": 1.24593,
+          "us_per_agent_step": 5.1914,
+          "build_wall_s": 0.04212,
+          "eat_events": 3742,
+          "births": 0,
+          "deaths": 0,
+          "mean_hunger": 0.9767,
+          "wall_s_total": 0.5405
+        },
+        {
+          "initial_population": 480,
+          "mean_population": 480.0,
+          "final_population": 480,
+          "world_seconds": 20.0,
+          "steps": 400,
+          "wall_s": 0.64908,
+          "throughput_steps_per_s": 616.256,
+          "step_ms": 1.6227,
+          "us_per_agent_step": 3.3806,
+          "build_wall_s": 0.04977,
+          "eat_events": 7356,
+          "births": 0,
+          "deaths": 0,
+          "mean_hunger": 0.9752,
+          "wall_s_total": 0.69885
+        },
+        {
+          "initial_population": 960,
+          "mean_population": 960.0,
+          "final_population": 960,
+          "world_seconds": 20.0,
+          "steps": 400,
+          "wall_s": 0.94315,
+          "throughput_steps_per_s": 424.112,
+          "step_ms": 2.35787,
+          "us_per_agent_step": 2.4561,
+          "build_wall_s": 0.05745,
+          "eat_events": 14359,
+          "births": 0,
+          "deaths": 0,
+          "mean_hunger": 0.9739,
+          "wall_s_total": 1.0006
+        }
+      ],
+      "fit": {
+        "n": 5,
+        "valid": true,
+        "reason": "",
+        "a": 3746.8703959708505,
+        "b": -0.3019264617537224,
+        "r2": 0.9261554160928662,
+        "r2_log": 0.9261554160928662,
+        "r2_linear": 0.9107532205503288,
+        "b_stderr": 0.04922185068870807,
+        "residual_rms_log": 0.0835716592666066,
+        "points": [
+          {
+            "x": 60.0,
+            "y": 1000.596,
+            "predicted": 1088.423113147162,
+            "log_residual": -0.08413414113305873,
+            "relative_error": -0.0877747993667394
+          },
+          {
+            "x": 120.0,
+            "y": 897.623,
+            "predicted": 882.8945463163194,
+            "log_residual": 0.016544391449362372,
+            "relative_error": 0.016408284640300707
+          },
+          {
+            "x": 240.0,
+            "y": 802.611,
+            "predicted": 716.1762466263481,
+            "log_residual": 0.11394387202049305,
+            "relative_error": 0.10769196207583988
+          },
+          {
+            "x": 480.0,
+            "y": 616.256,
+            "predicted": 580.939613198201,
+            "log_residual": 0.059015646143183,
+            "relative_error": 0.05730798045260251
+          },
+          {
+            "x": 960.0,
+            "y": 424.112,
+            "predicted": 471.2399158345098,
+            "log_residual": -0.10536976847996726,
+            "relative_error": -0.1111213920721644
+          }
+        ]
+      },
+      "wall_s": 3.195
+    },
+    {
+      "name": "learning_compute",
+      "x": "compute_agent_seconds",
+      "y": "mean_eat_events",
+      "description": "固定训练/评估 seed 与网络结构，只扫训练 episodes；算力 C = episodes * episode_seconds * initial_population（agent·秒）",
+      "fixed": {
+        "policy": {
+          "kind": "neural",
+          "hidden": 32,
+          "seed": 0,
+          "n_actions": 5
+        },
+        "population": 120,
+        "lr": 0.02,
+        "gamma": 0.96,
+        "batch_size": 512,
+        "epochs_per_episode": 2,
+        "train_seeds": [
+          1000,
+          1001
+        ],
+        "episode_seconds": 30.0,
+        "eval_seeds": [
+          0,
+          1,
+          2
+        ],
+        "eval_seconds": 30.0,
+        "obs_dim": 9
+      },
+      "episode_values": [
+        1,
+        2,
+        4,
+        8,
+        16
+      ],
+      "points": [
+        {
+          "episodes": 1,
+          "compute_agent_seconds": 3600.0,
+          "train_transitions": 96417.0,
+          "train_wall_s": 6.368,
+          "eval_wall_s": 2.4,
+          "mean_eat_events": 5948.667,
+          "std_eat_events": 395.063,
+          "mean_eat_rate": 1.652407,
+          "paired": {
+            "metric": "eat_events",
+            "n": 3.0,
+            "mean_delta": 2582.3333333333335,
+            "std_delta": 260.901428810874,
+            "wins": 3.0,
+            "losses": 0.0,
+            "ties": 0.0,
+            "relative": 0.7671056540251509
+          },
+          "eval_runs": [
+            {
+              "t": 30.0,
+              "steps": 600,
+              "population": 146,
+              "births": 26,
+              "deaths": 0,
+              "starvation_deaths": 0,
+              "old_age_deaths": 0,
+              "drowned": 0,
+              "eat_events": 5405,
+              "satiation_mean": 0.9663,
+              "satiation_std": 0.079,
+              "gini_hunger": 0.0254,
+              "total_reward": 1109.01,
+              "food_total": 4803.5,
+              "seed": 0,
+              "wall_s": 0.6998,
+              "steps_per_s": 857.4,
+              "mean_life": 27.572811126708984,
+              "eat_rate": 1.5013888888888889,
+              "extinct_seconds": -1.0,
+              "survived_90s": 0.0
+            },
+            {
+              "t": 30.0,
+              "steps": 600,
+              "population": 231,
+              "births": 111,
+              "deaths": 0,
+              "starvation_deaths": 0,
+              "old_age_deaths": 0,
+              "drowned": 0,
+              "eat_events": 6332,
+              "satiation_mean": 0.9273,
+              "satiation_std": 0.1611,
+              "gini_hunger": 0.0622,
+              "total_reward": 1296.09,
+              "food_total": 9310.8,
+              "seed": 1,
+              "wall_s": 0.7511,
+              "steps_per_s": 798.8,
+              "mean_life": 20.337364196777344,
+              "eat_rate": 1.758888888888889,
+              "extinct_seconds": -1.0,
+              "survived_90s": 0.0
+            },
+            {
+              "t": 30.0,
+              "steps": 600,
+              "population": 239,
+              "births": 119,
+              "deaths": 0,
+              "starvation_deaths": 0,
+              "old_age_deaths": 0,
+              "drowned": 0,
+              "eat_events": 6109,
+              "satiation_mean": 0.8902,
+              "satiation_std": 0.1955,
+              "gini_hunger": 0.0939,
+              "total_reward": 1259.21,
+              "food_total": 8149.4,
+              "seed": 2,
+              "wall_s": 0.7927,
+              "steps_per_s": 756.9,
+              "mean_life": 19.57628059387207,
+              "eat_rate": 1.6969444444444444,
+              "extinct_seconds": -1.0,
+              "survived_90s": 0.0
+            }
+          ],
+          "train_history": [
+            {
+              "episode": 1.0,
+              "train_seed": 1000.0,
+              "updates": 378.0,
+              "transitions": 96417.0,
+              "mean_return": 0.34070214924145403,
+              "weight_delta": 0.006702721973973133
+            }
+          ],
+          "final_mean_return": 0.3407,
+          "final_weight_delta": 0.006703
+        },
+        {
+          "episodes": 2,
+          "compute_agent_seconds": 7200.0,
+          "train_transitions": 185754.0,
+          "train_wall_s": 12.707,
+          "eval_wall_s": 2.135,
+          "mean_eat_events": 6012.333,
+          "std_eat_events": 437.467,
+          "mean_eat_rate": 1.670093,
+          "paired": {
+            "metric": "eat_events",
+            "n": 3.0,
+            "mean_delta": 2646.0,
+            "std_delta": 306.4386833718398,
+            "wins": 3.0,
+            "losses": 0.0,
+            "ties": 0.0,
+            "relative": 0.7860184176651152
+          },
+          "eval_runs": [
+            {
+              "t": 30.0,
+              "steps": 600,
+              "population": 146,
+              "births": 26,
+              "deaths": 0,
+              "starvation_deaths": 0,
+              "old_age_deaths": 0,
+              "drowned": 0,
+              "eat_events": 5400,
+              "satiation_mean": 0.9562,
+              "satiation_std": 0.1062,
+              "gini_hunger": 0.0355,
+              "total_reward": 1116.068,
+              "food_total": 4799.5,
+              "seed": 0,
+              "wall_s": 0.6342,
+              "steps_per_s": 946.0,
+              "mean_life": 27.572811126708984,
+              "eat_rate": 1.5,
+              "extinct_seconds": -1.0,
+              "survived_90s": 0.0
+            },
+            {
+              "t": 30.0,
+              "steps": 600,
+              "population": 231,
+              "births": 111,
+              "deaths": 0,
+              "starvation_deaths": 0,
+              "old_age_deaths": 0,
+              "drowned": 0,
+              "eat_events": 6395,
+              "satiation_mean": 0.928,
+              "satiation_std": 0.1568,
+              "gini_hunger": 0.0621,
+              "total_reward": 1318.652,
+              "food_total": 9289.5,
+              "seed": 1,
+              "wall_s": 0.6863,
+              "steps_per_s": 874.3,
+              "mean_life": 20.337364196777344,
+              "eat_rate": 1.7763888888888888,
+              "extinct_seconds": -1.0,
+              "survived_90s": 0.0
+            },
+            {
+              "t": 30.0,
+              "steps": 600,
+              "population": 230,
+              "births": 110,
+              "deaths": 0,
+              "starvation_deaths": 0,
+              "old_age_deaths": 0,
+              "drowned": 0,
+              "eat_events": 6242,
+              "satiation_mean": 0.9181,
+              "satiation_std": 0.1714,
+              "gini_hunger": 0.0711,
+              "total_reward": 1292.129,
+              "food_total": 8118.7,
+              "seed": 2,
+              "wall_s": 0.6888,
+              "steps_per_s": 871.1,
+              "mean_life": 20.28144073486328,
+              "eat_rate": 1.7338888888888888,
+              "extinct_seconds": -1.0,
+              "survived_90s": 0.0
+            }
+          ],
+          "train_history": [
+            {
+              "episode": 1.0,
+              "train_seed": 1000.0,
+              "updates": 378.0,
+              "transitions": 96417.0,
+              "mean_return": 0.34070214924145403,
+              "weight_delta": 0.006702721973973133
+            },
+            {
+              "episode": 2.0,
+              "train_seed": 1001.0,
+              "updates": 350.0,
+              "transitions": 89337.0,
+              "mean_return": 0.29037700843252,
+              "weight_delta": 0.00556227523028593
+            }
+          ],
+          "final_mean_return": 0.2904,
+          "final_weight_delta": 0.005562
+        },
+        {
+          "episodes": 4,
+          "compute_agent_seconds": 14400.0,
+          "train_transitions": 371564.0,
+          "train_wall_s": 23.398,
+          "eval_wall_s": 2.221,
+          "mean_eat_events": 6132.667,
+          "std_eat_events": 547.876,
+          "mean_eat_rate": 1.703519,
+          "paired": {
+            "metric": "eat_events",
+            "n": 3.0,
+            "mean_delta": 2766.3333333333335,
+            "std_delta": 427.73070448069956,
+            "wins": 3.0,
+            "losses": 0.0,
+            "ties": 0.0,
+            "relative": 0.821764531141697
+          },
+          "eval_runs": [
+            {
+              "t": 30.0,
+              "steps": 600,
+              "population": 146,
+              "births": 26,
+              "deaths": 0,
+              "starvation_deaths": 0,
+              "old_age_deaths": 0,
+              "drowned": 0,
+              "eat_events": 5359,
+              "satiation_mean": 0.9483,
+              "satiation_std": 0.1254,
+              "gini_hunger": 0.0419,
+              "total_reward": 1125.396,
+              "food_total": 4792.9,
+              "seed": 0,
+              "wall_s": 0.7191,
+              "steps_per_s": 834.3,
+              "mean_life": 27.572811126708984,
+              "eat_rate": 1.488611111111111,
+              "extinct_seconds": -1.0,
+              "survived_90s": 0.0
+            },
+            {
+              "t": 30.0,
+              "steps": 600,
+              "population": 231,
+              "births": 111,
+              "deaths": 0,
+              "starvation_deaths": 0,
+              "old_age_deaths": 0,
+              "drowned": 0,
+              "eat_events": 6483,
+              "satiation_mean": 0.9429,
+              "satiation_std": 0.1423,
+              "gini_hunger": 0.0487,
+              "total_reward": 1370.884,
+              "food_total": 9238.5,
+              "seed": 1,
+              "wall_s": 0.6845,
+              "steps_per_s": 876.5,
+              "mean_life": 20.337364196777344,
+              "eat_rate": 1.8008333333333333,
+              "extinct_seconds": -1.0,
+              "survived_90s": 0.0
+            },
+            {
+              "t": 30.0,
+              "steps": 600,
+              "population": 236,
+              "births": 116,
+              "deaths": 0,
+              "starvation_deaths": 0,
+              "old_age_deaths": 0,
+              "drowned": 0,
+              "eat_events": 6556,
+              "satiation_mean": 0.9112,
+              "satiation_std": 0.1802,
+              "gini_hunger": 0.0776,
+              "total_reward": 1390.053,
+              "food_total": 8023.2,
+              "seed": 2,
+              "wall_s": 0.7015,
+              "steps_per_s": 855.3,
+              "mean_life": 19.822799682617188,
+              "eat_rate": 1.8211111111111111,
+              "extinct_seconds": -1.0,
+              "survived_90s": 0.0
+            }
+          ],
+          "train_history": [
+            {
+              "episode": 1.0,
+              "train_seed": 1000.0,
+              "updates": 378.0,
+              "transitions": 96417.0,
+              "mean_return": 0.34070214924145403,
+              "weight_delta": 0.006702721973973133
+            },
+            {
+              "episode": 2.0,
+              "train_seed": 1001.0,
+              "updates": 350.0,
+              "transitions": 89337.0,
+              "mean_return": 0.29037700843252,
+              "weight_delta": 0.00556227523028593
+            },
+            {
+              "episode": 3.0,
+              "train_seed": 1000.0,
+              "updates": 378.0,
+              "transitions": 96473.0,
+              "mean_return": 0.32979799766530976,
+              "weight_delta": 0.020556373547285952
+            },
+            {
+              "episode": 4.0,
+              "train_seed": 1001.0,
+              "updates": 350.0,
+              "transitions": 89337.0,
+              "mean_return": 0.28587212828507325,
+              "weight_delta": 0.014478746177549212
+            }
+          ],
+          "final_mean_return": 0.2859,
+          "final_weight_delta": 0.014479
+        },
+        {
+          "episodes": 8,
+          "compute_agent_seconds": 28800.0,
+          "train_transitions": 742474.0,
+          "train_wall_s": 49.035,
+          "eval_wall_s": 1.671,
+          "mean_eat_events": 6219.667,
+          "std_eat_events": 521.628,
+          "mean_eat_rate": 1.727685,
+          "paired": {
+            "metric": "eat_events",
+            "n": 3.0,
+            "mean_delta": 2853.3333333333335,
+            "std_delta": 397.3934518277265,
+            "wins": 3.0,
+            "losses": 0.0,
+            "ties": 0.0,
+            "relative": 0.8476086741261509
+          },
+          "eval_runs": [
+            {
+              "t": 30.0,
+              "steps": 600,
+              "population": 144,
+              "births": 24,
+              "deaths": 0,
+              "starvation_deaths": 0,
+              "old_age_deaths": 0,
+              "drowned": 0,
+              "eat_events": 5482,
+              "satiation_mean": 0.9501,
+              "satiation_std": 0.1245,
+              "gini_hunger": 0.0404,
+              "total_reward": 1170.175,
+              "food_total": 4747.7,
+              "seed": 0,
+              "wall_s": 0.4961,
+              "steps_per_s": 1209.3,
+              "mean_life": 27.755765914916992,
+              "eat_rate": 1.5227777777777778,
+              "extinct_seconds": -1.0,
+              "survived_90s": 0.0
+            },
+            {
+              "t": 30.0,
+              "steps": 600,
+              "population": 231,
+              "births": 111,
+              "deaths": 0,
+              "starvation_deaths": 0,
+              "old_age_deaths": 0,
+              "drowned": 0,
+              "eat_events": 6594,
+              "satiation_mean": 0.9381,
+              "satiation_std": 0.1483,
+              "gini_hunger": 0.0535,
+              "total_reward": 1404.428,
+              "food_total": 9205.4,
+              "seed": 1,
+              "wall_s": 0.5334,
+              "steps_per_s": 1124.9,
+              "mean_life": 20.337364196777344,
+              "eat_rate": 1.8316666666666668,
+              "extinct_seconds": -1.0,
+              "survived_90s": 0.0
+            },
+            {
+              "t": 30.0,
+              "steps": 600,
+              "population": 236,
+              "births": 116,
+              "deaths": 0,
+              "starvation_deaths": 0,
+              "old_age_deaths": 0,
+              "drowned": 0,
+              "eat_events": 6583,
+              "satiation_mean": 0.9183,
+              "satiation_std": 0.1757,
+              "gini_hunger": 0.0714,
+              "total_reward": 1379.093,
+              "food_total": 8035.6,
+              "seed": 2,
+              "wall_s": 0.5446,
+              "steps_per_s": 1101.6,
+              "mean_life": 19.821739196777344,
+              "eat_rate": 1.8286111111111112,
+              "extinct_seconds": -1.0,
+              "survived_90s": 0.0
+            }
+          ],
+          "train_history": [
+            {
+              "episode": 1.0,
+              "train_seed": 1000.0,
+              "updates": 378.0,
+              "transitions": 96417.0,
+              "mean_return": 0.34070214924145403,
+              "weight_delta": 0.006702721973973133
+            },
+            {
+              "episode": 2.0,
+              "train_seed": 1001.0,
+              "updates": 350.0,
+              "transitions": 89337.0,
+              "mean_return": 0.29037700843252,
+              "weight_delta": 0.00556227523028593
+            },
+            {
+              "episode": 3.0,
+              "train_seed": 1000.0,
+              "updates": 378.0,
+              "transitions": 96473.0,
+              "mean_return": 0.32979799766530976,
+              "weight_delta": 0.020556373547285952
+            },
+            {
+              "episode": 4.0,
+              "train_seed": 1001.0,
+              "updates": 350.0,
+              "transitions": 89337.0,
+              "mean_return": 0.28587212828507325,
+              "weight_delta": 0.014478746177549212
+            },
+            {
+              "episode": 5.0,
+              "train_seed": 1000.0,
+              "updates": 378.0,
+              "transitions": 96471.0,
+              "mean_return": 0.348573469726006,
+              "weight_delta": 0.016326533938860438
+            },
+            {
+              "episode": 6.0,
+              "train_seed": 1001.0,
+              "updates": 350.0,
+              "transitions": 89102.0,
+              "mean_return": 0.2993893600620217,
+              "weight_delta": 0.013247071130594104
+            },
+            {
+              "episode": 7.0,
+              "train_seed": 1000.0,
+              "updates": 378.0,
+              "transitions": 96471.0,
+              "mean_return": 0.37906301358453104,
+              "weight_delta": 0.010444592721414105
+            },
+            {
+              "episode": 8.0,
+              "train_seed": 1001.0,
+              "updates": 348.0,
+              "transitions": 88866.0,
+              "mean_return": 0.3158918548030054,
+              "weight_delta": 0.007616311872478923
+            }
+          ],
+          "final_mean_return": 0.3159,
+          "final_weight_delta": 0.007616
+        },
+        {
+          "episodes": 16,
+          "compute_agent_seconds": 57600.0,
+          "train_transitions": 1484718.0,
+          "train_wall_s": 116.515,
+          "eval_wall_s": 2.563,
+          "mean_eat_events": 6009.333,
+          "std_eat_events": 436.796,
+          "mean_eat_rate": 1.669259,
+          "paired": {
+            "metric": "eat_events",
+            "n": 3.0,
+            "mean_delta": 2643.0,
+            "std_delta": 300.74906483645134,
+            "wins": 3.0,
+            "losses": 0.0,
+            "ties": 0.0,
+            "relative": 0.7851272403208236
+          },
+          "eval_runs": [
+            {
+              "t": 30.0,
+              "steps": 600,
+              "population": 146,
+              "births": 26,
+              "deaths": 0,
+              "starvation_deaths": 0,
+              "old_age_deaths": 0,
+              "drowned": 0,
+              "eat_events": 5425,
+              "satiation_mean": 0.9531,
+              "satiation_std": 0.1157,
+              "gini_hunger": 0.0386,
+              "total_reward": 1102.685,
+              "food_total": 4811.7,
+              "seed": 0,
+              "wall_s": 0.7729,
+              "steps_per_s": 776.3,
+              "mean_life": 27.572811126708984,
+              "eat_rate": 1.5069444444444444,
+              "extinct_seconds": -1.0,
+              "survived_90s": 0.0
+            },
+            {
+              "t": 30.0,
+              "steps": 600,
+              "population": 231,
+              "births": 111,
+              "deaths": 0,
+              "starvation_deaths": 0,
+              "old_age_deaths": 0,
+              "drowned": 0,
+              "eat_events": 6475,
+              "satiation_mean": 0.9401,
+              "satiation_std": 0.1444,
+              "gini_hunger": 0.0519,
+              "total_reward": 1330.786,
+              "food_total": 9276.0,
+              "seed": 1,
+              "wall_s": 0.8461,
+              "steps_per_s": 709.2,
+              "mean_life": 20.337364196777344,
+              "eat_rate": 1.7986111111111112,
+              "extinct_seconds": -1.0,
+              "survived_90s": 0.0
+            },
+            {
+              "t": 30.0,
+              "steps": 600,
+              "population": 239,
+              "births": 119,
+              "deaths": 0,
+              "starvation_deaths": 0,
+              "old_age_deaths": 0,
+              "drowned": 0,
+              "eat_events": 6128,
+              "satiation_mean": 0.9094,
+              "satiation_std": 0.177,
+              "gini_hunger": 0.0777,
+              "total_reward": 1246.235,
+              "food_total": 8161.3,
+              "seed": 2,
+              "wall_s": 0.8238,
+              "steps_per_s": 728.3,
+              "mean_life": 19.57628059387207,
+              "eat_rate": 1.7022222222222223,
+              "extinct_seconds": -1.0,
+              "survived_90s": 0.0
+            }
+          ],
+          "train_history": [
+            {
+              "episode": 1.0,
+              "train_seed": 1000.0,
+              "updates": 378.0,
+              "transitions": 96417.0,
+              "mean_return": 0.34070214924145403,
+              "weight_delta": 0.006702721973973133
+            },
+            {
+              "episode": 2.0,
+              "train_seed": 1001.0,
+              "updates": 350.0,
+              "transitions": 89337.0,
+              "mean_return": 0.29037700843252,
+              "weight_delta": 0.00556227523028593
+            },
+            {
+              "episode": 3.0,
+              "train_seed": 1000.0,
+              "updates": 378.0,
+              "transitions": 96473.0,
+              "mean_return": 0.32979799766530976,
+              "weight_delta": 0.020556373547285952
+            },
+            {
+              "episode": 4.0,
+              "train_seed": 1001.0,
+              "updates": 350.0,
+              "transitions": 89337.0,
+              "mean_return": 0.28587212828507325,
+              "weight_delta": 0.014478746177549212
+            },
+            {
+              "episode": 5.0,
+              "train_seed": 1000.0,
+              "updates": 378.0,
+              "transitions": 96471.0,
+              "mean_return": 0.348573469726006,
+              "weight_delta": 0.016326533938860438
+            },
+            {
+              "episode": 6.0,
+              "train_seed": 1001.0,
+              "updates": 350.0,
+              "transitions": 89102.0,
+              "mean_return": 0.2993893600620217,
+              "weight_delta": 0.013247071130594104
+            },
+            {
+              "episode": 7.0,
+              "train_seed": 1000.0,
+              "updates": 378.0,
+              "transitions": 96471.0,
+              "mean_return": 0.37906301358453104,
+              "weight_delta": 0.010444592721414105
+            },
+            {
+              "episode": 8.0,
+              "train_seed": 1001.0,
+              "updates": 348.0,
+              "transitions": 88866.0,
+              "mean_return": 0.3158918548030054,
+              "weight_delta": 0.007616311872478923
+            },
+            {
+              "episode": 9.0,
+              "train_seed": 1000.0,
+              "updates": 378.0,
+              "transitions": 96473.0,
+              "mean_return": 0.3585568859261363,
+              "weight_delta": 0.007748906264679167
+            },
+            {
+              "episode": 10.0,
+              "train_seed": 1001.0,
+              "updates": 348.0,
+              "transitions": 88866.0,
+              "mean_return": 0.3203336934115124,
+              "weight_delta": 0.016462142120875097
+            },
+            {
+              "episode": 11.0,
+              "train_seed": 1000.0,
+              "updates": 378.0,
+              "transitions": 96531.0,
+              "mean_return": 0.36382482818048645,
+              "weight_delta": 0.008605559479753284
+            },
+            {
+              "episode": 12.0,
+              "train_seed": 1001.0,
+              "updates": 348.0,
+              "transitions": 88866.0,
+              "mean_return": 0.30834230192521633,
+              "weight_delta": 0.012590320021960342
+            },
+            {
+              "episode": 13.0,
+              "train_seed": 1000.0,
+              "updates": 378.0,
+              "transitions": 96303.0,
+              "mean_return": 0.3311011502935306,
+              "weight_delta": 0.013506399038622476
+            },
+            {
+              "episode": 14.0,
+              "train_seed": 1001.0,
+              "updates": 350.0,
+              "transitions": 89337.0,
+              "mean_return": 0.2851012207352523,
+              "weight_delta": 0.023554874200229687
+            },
+            {
+              "episode": 15.0,
+              "train_seed": 1000.0,
+              "updates": 378.0,
+              "transitions": 96531.0,
+              "mean_return": 0.32155009388112493,
+              "weight_delta": 0.01043135862832037
+            },
+            {
+              "episode": 16.0,
+              "train_seed": 1001.0,
+              "updates": 350.0,
+              "transitions": 89337.0,
+              "mean_return": 0.28358663314725374,
+              "weight_delta": 0.020569681033867512
+            }
+          ],
+          "final_mean_return": 0.2836,
+          "final_weight_delta": 0.02057
+        }
+      ],
+      "fit": {
+        "n": 5,
+        "valid": true,
+        "reason": "",
+        "a": 5626.355115234982,
+        "b": 0.007818932251980302,
+        "r2": 0.2271329063869647,
+        "r2_log": 0.2271329063869647,
+        "r2_linear": 0.22328273749609628,
+        "b_stderr": 0.008327203960314314,
+        "residual_rms_log": 0.014138400776843908,
+        "points": [
+          {
+            "x": 3600.0,
+            "y": 5948.667,
+            "predicted": 5998.375208355922,
+            "log_residual": -0.008321473103329424,
+            "relative_error": -0.00835619280015534
+          },
+          {
+            "x": 7200.0,
+            "y": 6012.333,
+            "predicted": 6030.972681590408,
+            "log_residual": -0.003095445215235415,
+            "relative_error": -0.0031002410529170866
+          },
+          {
+            "x": 14400.0,
+            "y": 6132.667,
+            "predicted": 6063.747302006314,
+            "log_residual": 0.011301753101545131,
+            "relative_error": 0.011238128206486018
+          },
+          {
+            "x": 28800.0,
+            "y": 6219.667,
+            "predicted": 6096.700032289423,
+            "log_residual": 0.01996872185594789,
+            "relative_error": 0.019770667418461084
+          },
+          {
+            "x": 57600.0,
+            "y": 6009.333,
+            "predicted": 6129.831840357113,
+            "log_residual": -0.019853556638921077,
+            "relative_error": -0.020051949252456687
+          }
+        ]
+      },
+      "baseline": {
+        "policy": "rule",
+        "eval_seeds": [
+          0,
+          1,
+          2
+        ],
+        "eval_seconds": 30.0,
+        "mean_eat_events": {
+          "mean": 3366.3333333333335,
+          "std": 136.23835322290446,
+          "n": 3.0
+        },
+        "mean_eat_rate": {
+          "mean": 0.9350925925925925,
+          "std": 0.03784398700636231,
+          "n": 3.0
+        },
+        "runs": [
+          {
+            "t": 30.0,
+            "steps": 600,
+            "population": 160,
+            "births": 40,
+            "deaths": 0,
+            "starvation_deaths": 0,
+            "old_age_deaths": 0,
+            "drowned": 0,
+            "eat_events": 3187,
+            "satiation_mean": 0.9753,
+            "satiation_std": 0.0172,
+            "gini_hunger": 0.0093,
+            "total_reward": 411.947,
+            "food_total": 5459.8,
+            "seed": 0,
+            "wall_s": 0.6331,
+            "steps_per_s": 947.7,
+            "mean_life": 26.29144287109375,
+            "eat_rate": 0.8852777777777778,
+            "extinct_seconds": -1.0,
+            "survived_90s": 0.0
+          },
+          {
+            "t": 30.0,
+            "steps": 600,
+            "population": 231,
+            "births": 111,
+            "deaths": 0,
+            "starvation_deaths": 0,
+            "old_age_deaths": 0,
+            "drowned": 0,
+            "eat_events": 3517,
+            "satiation_mean": 0.9573,
+            "satiation_std": 0.0924,
+            "gini_hunger": 0.0262,
+            "total_reward": 455.017,
+            "food_total": 10103.4,
+            "seed": 1,
+            "wall_s": 0.7306,
+            "steps_per_s": 821.2,
+            "mean_life": 20.337364196777344,
+            "eat_rate": 0.9769444444444444,
+            "extinct_seconds": -1.0,
+            "survived_90s": 0.0
+          },
+          {
+            "t": 30.0,
+            "steps": 600,
+            "population": 239,
+            "births": 119,
+            "deaths": 0,
+            "starvation_deaths": 0,
+            "old_age_deaths": 0,
+            "drowned": 0,
+            "eat_events": 3395,
+            "satiation_mean": 0.9364,
+            "satiation_std": 0.1313,
+            "gini_hunger": 0.0448,
+            "total_reward": 448.69,
+            "food_total": 8912.8,
+            "seed": 2,
+            "wall_s": 0.7051,
+            "steps_per_s": 851.0,
+            "mean_life": 19.57628059387207,
+            "eat_rate": 0.9430555555555555,
+            "extinct_seconds": -1.0,
+            "survived_90s": 0.0
+          }
+        ],
+        "wall_s": 2.253
+      },
+      "paired_trend": {
+        "metric": "eat_events",
+        "mean_delta_by_point": [
+          {
+            "episodes": 1,
+            "mean_delta": 2582.3333333333335
+          },
+          {
+            "episodes": 2,
+            "mean_delta": 2646.0
+          },
+          {
+            "episodes": 4,
+            "mean_delta": 2766.3333333333335
+          },
+          {
+            "episodes": 8,
+            "mean_delta": 2853.3333333333335
+          },
+          {
+            "episodes": 16,
+            "mean_delta": 2643.0
+          }
+        ],
+        "monotone_increasing": false,
+        "first": 2582.3333333333335,
+        "last": 2643.0,
+        "slope_per_log_compute": 47.41657701055015,
+        "r2": 0.22548945933333608,
+        "intercept": 2244.187058182005
+      },
+      "model": {
+        "saved": true,
+        "name": "p5_scaling_c16",
+        "path": "C:\\Users\\27826\\Desktop\\vscode_win_ws\\ds_ws\\newworld\\newworldpro\\assets\\zoo\\p5_scaling_c16",
+        "verified": true,
+        "weights_sha256": "98e1f0f303c116e3ad019f66cdc63a70a851157ffb01bb8822d4aed21116fdd9",
+        "tag": [
+          "p5",
+          "scaling_sweep"
+        ],
+        "metrics": {
+          "mean_eat_events": 6009.333,
+          "std_eat_events": 436.796,
+          "mean_eat_rate": 1.669259,
+          "paired_mean_delta_vs_rule": 2643.0,
+          "episodes": 16,
+          "compute_agent_seconds": 57600.0
+        }
+      },
+      "wall_s": 221.334
+    }
+  ],
+  "verdict": "Sweep A：吞吐随人口亚线性下降（b=-0.302, R2=0.926, n=5），固定每步开销与随人口增长的个体成本并存。 Sweep B：性能-算力幂律几乎不解释数据（b=0.008, R2=0.227, n=5）；配对差（neural-rule, eat_events）从 +2582.3 变到 +2643.0（单调递增=False，斜率=+47.4/log算力，R2=0.225）。在 1~16 episodes 的窄区间内无法声称学习标度律。",
+  "notes": [
+    "两个扫描都是单维度：每次只动一个人口/算力轴，地图 seed、世界参数、网络结构、优化超参全部冻结。",
+    "Sweep A 的吞吐是单机单进程纯 numpy 墙钟量（steps/wall_s），实现相关，不等于理论复杂度。",
+    "Sweep B 每档从零训练；算力 C=episodes*episode_seconds*initial_population（agent-seconds），评估 seed 与窗口固定。",
+    "5 个点 + 少量 seed 的幂律拟合只能做描述性判断，不宣称普适标度律；R2 与 b 的不确定性已一并报告。",
+    "detail 表与逐点残差见同目录 report.md。"
+  ],
+  "wall_s": 224.557,
+  "config_hash": "7681ad28ec342e26e0aff85ea7427d3f1c82e44ec0f833143c62c0e552bc2079",
+  "report_md": "C:\\Users\\27826\\Desktop\\vscode_win_ws\\ds_ws\\newworld\\newworldpro\\experiments\\results\\p5_scaling\\report.md",
+  "_artifact_dir": "C:\\Users\\27826\\Desktop\\vscode_win_ws\\ds_ws\\newworld\\newworldpro\\experiments\\results\\p5_scaling"
+}

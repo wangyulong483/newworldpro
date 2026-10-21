@@ -1,0 +1,40 @@
+{
+  "name": "p4_evolution_learning",
+  "kind": "neural",
+  "obs_dim": 9,
+  "n_actions": 5,
+  "hidden": 32,
+  "seed": 0,
+  "format_version": 1,
+  "created_at": "2026-10-21T06:46:28+00:00",
+  "git_commit": "fc502ff",
+  "config_hash": "dd687b57cdb46b45ee64857836c99db9f69551ccf8ab47df63cae334aaf576c5",
+  "weights_sha256": "685dde9243817f931141f7dac1447c348ddfdaadcb79c31a9350d757cf218bdd",
+  "description": "P4 学习臂：稀缺世界 REINFORCE 训练的 NeuralSwarmPolicy（训练 seed 与评估 seed 不重叠）",
+  "tags": [
+    "p4",
+    "scarce"
+  ],
+  "metrics": {
+    "train_episodes": 8,
+    "episode_seconds": 45.0,
+    "train_seeds": [
+      500,
+      501
+    ],
+    "eval_seeds": [
+      1100,
+      1101,
+      1102,
+      1103,
+      1104
+    ],
+    "eval_seconds": 90.0,
+    "eat_rate_delta_vs_rule": 0.5626851851851852,
+    "eat_events_delta_vs_rule": 6077.0,
+    "eat_events_wins_vs_rule": 4.0,
+    "event_count_vs_welfare_divergence": true,
+    "n_eval_seeds": 5
+  },
+  "extra": {}
+}

@@ -9,14 +9,7 @@ from __future__ import annotations
 
 import unittest
 
-try:
-    from tests._env_compat import patch_tempdir
-except ImportError:
-    from _env_compat import patch_tempdir
-
-patch_tempdir()
-
-from fastapi.testclient import TestClient  # noqa: E402
+from fastapi.testclient import TestClient
 
 from newworld.lab_server import DT, SCARCE_REGROW, create_app  # noqa: E402
 

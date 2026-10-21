@@ -1,0 +1,64 @@
+# P4 演化 vs 学习：rule / 技能分布演化 / 策略梯度学习 三臂配对对照
+# 运行：python -m newworld --config configs/p4_evolution.yaml
+_base: base.yaml
+
+name: p4_evolution
+protocol: evolution_compare
+description: >-
+  P4 适应来源对照：规则基线 / 技能分布 θ 的变异+选择（不含策略学习）/
+  策略梯度学习，稀缺世界、同 eval seed 配对。learning 在训练外 seed 上
+  训练后评估（修正旧 P4 的同 seed 训练信息泄漏）。
+
+world:
+  food_regrow_per_s: 0.0005
+
+swarm:
+  initial_population: 120
+  capacity_hard: 3000
+
+policy:
+  kind: rule
+  hidden: 32
+  lr: 0.02
+  gamma: 0.96
+  batch_size: 512
+  epochs_per_episode: 2
+  normalize_advantage: true
+  grad_clip: 0.5
+
+# 演化臂使用技能层（三机制全关、初始技能率 0，θ 全权决定技能）；
+# rule/learning 臂由协议关闭技能层。
+social:
+  enabled: true
+  enable_barter: false
+  enable_teaching: false
+  enable_inheritance: false
+  initial_skill_rate: 0.0
+
+comm:
+  enabled: false
+memory:
+  enabled: false
+
+run:
+  seconds: 90.0
+  eval_seconds: 90.0
+  seeds: [1100, 1101, 1102, 1103, 1104]
+  output_dir: experiments/results
+  save_models: true
+
+protocol_params:
+  # 评估 seed 1100+（训练外）
+  eval_seeds: 5
+  eval_seed_start: 1100
+  eval_seconds: 90.0
+  # 学习臂训练 seed 500+（与评估不重叠）；演化臂每代 45s × 4 代
+  train_seeds: 2
+  train_seed_start: 500
+  episodes: 8
+  episode_seconds: 45.0
+  generations: 4
+  gen_seconds: 45.0
+  sigma: 0.05
+  lr_evolution: 0.3
+  hidden: 32

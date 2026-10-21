@@ -1,0 +1,8 @@
+{
+  "mean_eat_events": 6009.333,
+  "std_eat_events": 436.796,
+  "mean_eat_rate": 1.669259,
+  "paired_mean_delta_vs_rule": 2643.0,
+  "episodes": 16,
+  "compute_agent_seconds": 57600.0
+}

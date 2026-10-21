@@ -168,3 +168,23 @@ CLI/训练/推理单代码路径、model zoo 统一产出格式（npz+metrics.js
 | scaling law 单维扫描 | P5 |
 | 涌现通信通道 | P6 |
 | 生成式记忆三层（去 LLM 化） | P6 |
+
+---
+
+## 第三轮：P5/P6 落地对照（本轮，2026-10-21）
+
+| 调研结论 | 落地状态 | 落点 |
+|---|---|---|
+| YOLO 式 YAML config + registry + 单代码路径 | ✅ 已落地 | `newworld/settings.py`（严格 YAML/继承/覆盖/指纹）、`registry.py`（POLICIES/PROTOCOLS/MECHANISMS）、`experiment.py`、`configs/*.yaml`、`experiments/run.py` |
+| model zoo 统一产出（npz + metrics + config） | ✅ 已落地 | `newworld/zoo.py`（policy.npz + card.json + metrics.json + config.yaml + sha256 + git commit） |
+| Scaling laws：其余冻结、只扫一维、报告拟合与残差 | ✅ 已落地并如实报告 | `protocols/p5_scaling.py`：人口→吞吐 b=-0.302/R²=0.926（n=5）；算力→表现 b=0.008/R²=0.227（无可测标度律，不外推） |
+| Generative Agents 非 LLM 机制：记忆流 × 新近/重要/相关检索 + 周期反思 | ✅ 已落地（去 LLM） | `newworld/agent_memory.py`：结构化事件、可复现检索打分、反思聚合、6 维观测 provider；配对消融显示"行为频率改变、福利未改善"的负结果 |
+| 涌现通信 / 指称博弈（Lazaridou 2016、Eccles 2019） | ✅ 受控博弈正结果 + 世界通道 null | `newworld/communication.py`：指称博弈 accuracy 0.996/MI 1.981 bits；世界内通道 MI≈有限样本偏置、无学习语义（如实报告） |
+| OpenAI ES / PBT：标量适应度 + 并行 rollout | ⚠️ 仅小规模 P4 臂，无效应 | `protocols/p4_evolution.py`：弱离散表型 + 单标量/代 → 无宏观效应；扩大并行 rollout 是后续工作 |
+| HF Trainer 的 callback/checkpoint/eval 分离 | ⚠️ 部分 | 协议把训练/评估/产物分离，但尚无通用 callback 框架 |
+| PettingZoo AEC 生灭生命周期对齐 | ⚠️ 概念对齐 | Swarm SoA + 槽位回收/压实；未接 PettingZoo 接口 |
+| Melting Pot 2.0 背景种群评估协议 | ❌ 未落地 | 后续可用"固定背景种群"作社会泛化标尺 |
+| PAIRED/UED 遗憾值课程 | ❌ 未落地 | 后续 SDT 候选 |
+
+**纪律**：以上 ✅ 只表示"机制已实现并有可复现产物"，不表示效应显著；
+实验判决一律以 `docs/EXPERIMENTS.md` 的配对数字为准。

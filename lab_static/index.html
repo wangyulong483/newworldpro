@@ -59,7 +59,6 @@
   <span class="stat">t=<b id="t">0</b>s</span>
   <span class="stat">人口 <b id="pop">0</b></span>
   <span class="stat">食物 <b id="food">0</b></span>
-  <span class="stat">燃烧 <b id="burn">0</b></span>
   <span class="stat">饱足 <b id="sat">0</b></span>
   <span class="stat" id="fps" style="margin-left:auto"></span>
 </footer>
@@ -71,7 +70,7 @@
 // ============================================================
 const COLORS = {1:[24,46,88],2:[46,92,138],3:[214,194,140],4:[96,148,66],5:[46,104,52],6:[122,116,110],7:[232,236,240]};
 const app = new PIXI.Application();
-let mapTex=null, agentGfx=null, cam={x:0,y:0,scale:3}, snap=null, tool="none";
+let mapTex=null, agentGfx=null, cam={x:0,y:0,scale:3}, snap=null;
 let selectedIdx=-1, hoverIdx=-1;
 
 (async () => {
@@ -156,7 +155,6 @@ function setupStream() {
     document.getElementById("t").textContent = lastFrame.t.toFixed(1);
     document.getElementById("pop").textContent = lastFrame.pop;
     document.getElementById("food").textContent = Math.round(lastFrame.food);
-    document.getElementById("burn").textContent = lastFrame.burn;
     document.getElementById("sat").textContent = lastFrame.sat.toFixed(2);
   };
 }
@@ -167,7 +165,7 @@ function renderSidebar() {
   stats.innerHTML = "";
   [["seed", snap.seed],["人口", snap.population],["累计出生", snap.births],
    ["累计死亡", snap.deaths],["食物总量", Math.round(snap.food_total)],
-   ["平均饱足", snap.saturation]].forEach(([k,v])=>{
+   ["平均饱足", snap.satiation]].forEach(([k,v])=>{
     stats.innerHTML += `<span>${k}</span><span>${v}</span>`;
   });
   const iv = document.getElementById("interventions");
@@ -221,10 +219,8 @@ function setupControls() {
     selectedIdx=-1; await fetchSnapshot(); };
 }
 
-// ---------- 实验设置面板（干预全部入审计；默认隐藏，观察优先） ----------
+// ---------- 顶栏：社会机制实时统计（交换/教学/继承——来自世界自身规则） ----------
 function setupToolbar() {
-  // P4：灾害/干预工具已移除（用户定位：抽象模拟，非上帝模拟器）。
-  // 顶栏改为显示社会机制实时统计（交换/教学/继承——来自世界自身规则）。
   const label = document.getElementById("social-label");
   if (label) {
     setInterval(async () => {
@@ -238,7 +234,7 @@ function setupToolbar() {
   }
 }
 
-// ---------- 画布事件：平移/缩放/点选/施放 ----------
+// ---------- 画布事件：平移/缩放/点选（纯观察） ----------
 function setupCanvasEvents() {
   const cv = document.getElementById("cv");
   let dragging=false, lastPt=null;

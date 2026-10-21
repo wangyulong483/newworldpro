@@ -1,0 +1,44 @@
+# P3 社会机制消融：交换 / 教学 / 继承五配置配对对照（稀缺世界，规则策略）
+# 运行：python -m newworld --config configs/p3_social.yaml
+_base: base.yaml
+
+name: p3_social
+protocol: social_ablation
+description: >-
+  P3 社会机制消融：off_all / barter_only / teach_only / inherit_only / all_on
+  五配置 × 配对 seed，报告机制活性（计数器开关）、配对效果量与社会指标。
+
+world:
+  food_regrow_per_s: 0.0005
+
+swarm:
+  initial_population: 120
+  capacity_hard: 3000
+
+policy:
+  kind: rule
+
+social:
+  enabled: true
+  # 三个机制由协议逐配置开关；这里只声明共同参数
+  enable_barter: true
+  enable_teaching: true
+  enable_inheritance: true
+  initial_skill_rate: 0.08
+
+comm:
+  enabled: false
+memory:
+  enabled: false
+
+run:
+  seconds: 90.0
+  eval_seconds: 90.0
+  seeds: [700, 701, 702, 703, 704, 705]
+  output_dir: experiments/results
+  save_models: false
+
+protocol_params:
+  seeds: 6
+  seed_start: 700
+  eval_seconds: 90.0

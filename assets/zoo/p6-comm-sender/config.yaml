@@ -1,0 +1,118 @@
+name: p6_communication
+protocol: communication
+description: P6-A 涌现通信：Lazaridou 式指称博弈演示语义协议形成，并对世界内信号通道做 off/on 配对消融（个体奖励+共享策略，诚实报告
+  null/negative）
+world:
+  width: 256
+  height: 160
+  seed: 0
+  ocean_margin: 6
+  noise_scale: 64
+  sea_level: 0.42
+  mountain_level: 0.74
+  snow_level: 0.86
+  food_regrow_per_s: 0.006
+  forest_spread_per_s: 0.0004
+swarm:
+  initial_population: 120
+  capacity_hard: 3000
+  metabolism_per_s: 0.01
+  bite_size: 0.35
+  mature_age_s: 12.0
+  breed_cooldown_s: 14.0
+  breed_food_threshold: 0.12
+  breed_hunger_threshold: 0.55
+  breed_probability_per_s: 0.1
+  old_age_s: 90.0
+  old_age_hazard_per_s: 0.05
+  move_speed: 3.0
+  wander: 0.55
+  forage_hunger: 0.95
+policy:
+  kind: neural
+  seed: 0
+  hidden: 32
+  checkpoint: null
+  lr: 0.02
+  gamma: 0.96
+  batch_size: 512
+  epochs_per_episode: 2
+  normalize_advantage: true
+  grad_clip: 0.5
+social:
+  enabled: false
+  enable_barter: true
+  barter_gap: 0.3
+  barter_transfer: 0.15
+  barter_radius: 2.5
+  barter_interval_s: 1.0
+  enable_teaching: true
+  teach_radius: 4.0
+  teach_chance_per_s: 0.06
+  teach_interval_s: 2.0
+  enable_inheritance: true
+  inherit_radius: 12.0
+  initial_skill_rate: 0.08
+comm:
+  enabled: true
+  n_symbols: 4
+  radius: 6.0
+  message_cost: 0.0
+  seed: 0
+  train: true
+  lr: 0.05
+  batch_size: 128
+  epochs: 1
+memory:
+  enabled: false
+  capacity: 24
+  recency_halflife_s: 30.0
+  weight_recency: 1.0
+  weight_importance: 1.0
+  weight_relevance: 1.0
+  top_k: 3
+  reflection_every_s: 20.0
+  reflection_min_events: 6
+  seed: 0
+run:
+  seconds: 30.0
+  dt: 0.05
+  daylight: 0.8
+  seeds:
+  - 0
+  - 1
+  - 2
+  - 3
+  - 4
+  eval_seconds: 60.0
+  output_dir: experiments/results
+  save_models: true
+protocol_params:
+  cue_dim: 4
+  game_n_symbols: 4
+  game_seeds:
+  - 0
+  - 1
+  - 2
+  - 3
+  - 4
+  game_episodes: 400
+  game_batch: 64
+  game_eval_n: 2000
+  game_lr: 0.5
+  game_hidden: 32
+  train_seeds:
+  - 1000
+  - 1001
+  - 1002
+  train_episodes: 6
+  train_episode_seconds: 30.0
+  train_policy_seed: 7
+  sender_seed: 12345
+  eval_seeds:
+  - 2000
+  - 2001
+  - 2002
+  - 2003
+  - 2004
+  eval_seconds: 60.0

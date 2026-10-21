@@ -1,0 +1,9 @@
+{
+  "eat_events_mean": 59405.0,
+  "eat_rate_mean": 8.250694444444445,
+  "satiation_mean": 0.9009199999999999,
+  "channel_mi_bits": 0.0036793423672403895,
+  "channel_entropy_bits": 0.5109649210125099,
+  "channel_alignment": 0.2288818359375,
+  "eat_events_paired_delta": -9944.8
+}

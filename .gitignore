@@ -5,19 +5,15 @@ __pycache__/
 .venv/
 venv/
 
-# newworld outputs
-assets/_*.png
-examples/*.jsonl
-examples/frames/
-run.jsonl
-frames/
-*.log
-
-# local scratch
+# 本地临时目录（测试把 TEMP 指向 .tmp/）
 .tmp/
+tmp*/
+probe_dir/
+.zcode/
+
+# 实验输出（协议重建后自动生成，不入库；最终归档报告在 experiments/records/ 入库）
 experiments/results/
 
-
-# scratch dirs created by permission probes / legacy tempdir tests
-probe_dir/
-tmp*/
+# 生成型资产 / 日志
+assets/_*.png
+*.log

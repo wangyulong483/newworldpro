@@ -1,78 +1,39 @@
-"""newworld —— 一个屏幕大小的像素世界（微型文明仿真）。
+"""newworld —— 俯视地图 + 群伙（swarm）研究平台。
 
-世界是一个物理屏幕大小的矩形，被涂成**纯白**：没有画天空、太阳、
-云或地板——"居民头顶是天空"是居民的**感知**事实，不是视觉元素。
-居民（用户蓝图上的生物）故意画得很小，因此几乎整个屏幕宽度都可
-以走；他只能左右移动，并被夹在屏幕边界内。
+当前世界是一张俯视地图（地形 + 食物网格）上的个体群伙：群伙按世界
+规则觅食、繁衍、死亡，社会机制层（交换/教学/继承）叠加在群伙之上。
+世界是抽象模拟，没有"上帝之手"改写地图的入口。
 
-包的拆分让仿真可以被 RL 研究复用：
+包的拆分（只暴露当前平台的三个基础模块）：
 
-* :mod:`newworld.world` —— 纯仿真（:class:`~newworld.world.World`）
-* :mod:`newworld.character` —— 居民与其物理
-* :mod:`newworld.env` —— Gymnasium 风格环境
-  （:class:`~newworld.env.NewWorldEnv`），奖励可插拔
-* :mod:`newworld.render` —— 预览/录像用的 headless PIL 渲染器
-* :mod:`newworld.app_tk` —— 交互式全屏前端
-* :mod:`newworld.preview` —— 文档 / 预览图
+* :mod:`newworld.map_engine` —— 地图与食物网格（世界规则唯一权威）
+* :mod:`newworld.swarm` —— 群伙个体与人口动态
+* :mod:`newworld.social_mech` —— P3 社会机制层（交换/教学/继承）
+* :mod:`newworld.map_render` / :mod:`newworld.viewport` —— 渲染与视口
+* :mod:`newworld.lab_server` —— 浏览器实验平台（P2）
+* :mod:`newworld.app_map` / :mod:`newworld.cli` —— 桌面 GUI 与命令行
 
 典型用法::
 
-    python -m newworld                     # 进入世界
-    python -m newworld --headless          # 无窗口运行
-    python -m newworld --preview           # 渲染 PNG 预览
+    python -m newworld                          # 桌面 GUI
+    python -m newworld.lab_server --port 8600   # 浏览器实验平台
 """
 
-from .config import (
-    WORLD_NAME,
-    WORLD_VERSION,
-    WorldConfig,
-    detect_screen_size,
-    make_config,
-    parse_size,
-)
+from __future__ import annotations
 
-__version__ = WORLD_VERSION
+from .map_engine import MapConfig, MapEngine
+from .social_mech import SocialConfig, SocialLayer
+from .swarm import Swarm, SwarmConfig
 
-from .character import Character  # noqa: E402
-from .world import World  # noqa: E402
-from .env import NewWorldEnv  # noqa: E402
-from . import physics  # noqa: E402
-from .daynight import DayCycle  # noqa: E402
-from .physiology import Physiology  # noqa: E402
-from .ecology import Ecology  # noqa: E402
-from .neural import NeuralPolicy  # noqa: E402
-from .pixelworld import PixelScene  # noqa: E402
-from .acoustics import SoundField  # noqa: E402
-from .environment import Air, Sun  # noqa: E402
-from .optics import Box, Disc, Scene  # noqa: E402
-from .perception import PerceptionState, VisualSystem  # noqa: E402
-from .autonomy import FreeWill, Mind  # noqa: E402
+#: 版本号（当前平台 1.0）
+__version__ = "1.0.0"
 
 __all__ = [
-    "WORLD_NAME",
-    "WORLD_VERSION",
     "__version__",
-    "WorldConfig",
-    "Character",
-    "World",
-    "NewWorldEnv",
-    "Box",
-    "Disc",
-    "Scene",
-    "physics",
-    "DayCycle",
-    "Physiology",
-    "PixelScene",
-    "Ecology",
-    "NeuralPolicy",
-    "SoundField",
-    "Air",
-    "Sun",
-    "VisualSystem",
-    "PerceptionState",
-    "FreeWill",
-    "Mind",
-    "detect_screen_size",
-    "make_config",
-    "parse_size",
+    "MapConfig",
+    "MapEngine",
+    "Swarm",
+    "SwarmConfig",
+    "SocialConfig",
+    "SocialLayer",
 ]

@@ -1,0 +1,21 @@
+{
+  "train_episodes": 8,
+  "episode_seconds": 45.0,
+  "train_seeds": [
+    500,
+    501
+  ],
+  "eval_seeds": [
+    1100,
+    1101,
+    1102,
+    1103,
+    1104
+  ],
+  "eval_seconds": 90.0,
+  "eat_rate_delta_vs_rule": 0.5626851851851852,
+  "eat_events_delta_vs_rule": 6077.0,
+  "eat_events_wins_vs_rule": 4.0,
+  "event_count_vs_welfare_divergence": true,
+  "n_eval_seeds": 5
+}
