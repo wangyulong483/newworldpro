@@ -32,16 +32,23 @@
 <body>
 <header>
   <h1>newworld 实验平台 <span id="seed-label" style="color:#8a94a6;font-weight:400"></span></h1>
-  <div id="toolbar">
-    <button class="tool active" data-tool="none"> 观察 </button>
-    <button class="tool" data-tool="meteor"> ☄ 陨石 </button>
-    <button class="tool" data-tool="lightning"> ⚡ 闪电 </button>
-    <button class="tool" data-tool="flood"> 🌊 洪水 </button>
-    <button class="tool" data-tool="heal"> ✚ 治愈 </button>
+  <button class="tool" id="settings-toggle" style="margin-left:auto">⚙ 实验设置</button>
+  <div id="settings-panel" style="display:none; position:absolute; top:42px; right:8px; z-index:10;
+       background:var(--panel); border:1px solid var(--border); border-radius:6px; padding:12px; width:260px;">
+    <h3 style="margin-top:0">实验干预（全部入审计）</h3>
+    <div style="display:grid; gap:6px">
+      <button class="tool" data-tool="meteor"> ☄ 注入陨石冲击 </button>
+      <button class="tool" data-tool="lightning"> ⚡ 注入雷击火源 </button>
+      <button class="tool" data-tool="flood"> 🌊 注入洪水 </button>
+      <button class="tool" data-tool="heal"> ✚ 注入治愈 </button>
+    </div>
+    <p style="margin-top:8px;color:#8a94a6;font-size:11px">
+      干预是实验变量操作，记录于审计日志；不作为常规观察手段。
+    </p>
   </div>
 </header>
 <main>
-  <div id="world"><canvas id="cv"></canvas><div id="hint">拖动平移 · 滚轮缩放 · 点击个体查看详情 · 选择工具后点击地图施放</div></div>
+  <div id="world"><canvas id="cv"></canvas><div id="hint">拖动平移 · 滚轮缩放 · 点击个体查看详情（纯观察，不干扰世界）</div></div>
   <div id="sidebar">
     <h3>实时统计</h3>
     <canvas id="chart" width="278" height="108"></canvas>
@@ -227,11 +234,28 @@ function setupControls() {
     selectedIdx=-1; await fetchSnapshot(); };
 }
 
-// ---------- 工具栏（上帝之手 → 实验干预，全部入审计） ----------
+// ---------- 实验设置面板（干预全部入审计；默认隐藏，观察优先） ----------
 function setupToolbar() {
-  document.querySelectorAll(".tool").forEach(btn => {
-    btn.onclick = () => {
-      document.querySelectorAll(".tool").forEach(b=>b.classList.remove("active"));
+  const toggle = document.getElementById("settings-toggle");
+  const panel = document.getElementById("settings-panel");
+  toggle.onclick = (e) => {
+    e.stopPropagation();
+    panel.style.display = panel.style.display === "none" ? "block" : "none";
+  };
+  document.addEventListener("click", (e) => {
+    if (!panel.contains(e.target) && e.target !== toggle) panel.style.display = "none";
+  });
+  document.querySelectorAll("#settings-panel .tool").forEach(btn => {
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      document.querySelectorAll("#settings-panel .tool").forEach(b=>b.classList.remove("active"));
+      btn.classList.add("active");
+      tool = btn.dataset.tool;
+    };
+  });
+  document.querySelectorAll("#settings-panel .tool").forEach(btn => {
+    btn.onclick = (e) => {
+      e.stopPropagation();
       btn.classList.add("active");
       tool = btn.dataset.tool;
     };
@@ -262,6 +286,10 @@ function setupCanvasEvents() {
     const wx=Math.floor((mx-cam.x)/cam.scale), wy=Math.floor((my-cam.y)/cam.scale);
     if (tool!=="none") {
       await post("catastrophe",{name:tool, x:wx, y:wy, radius:12});
+      // 施放后自动回到观察模式（单次干预，不打扰持续观察）
+      tool = "none";
+      document.querySelectorAll("#settings-panel .tool").forEach(b=>b.classList.remove("active"));
+      document.getElementById("settings-panel").style.display = "none";
       return;
     }
     // 点选最近个体
